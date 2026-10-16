@@ -1,0 +1,22 @@
+{
+  "name": "soko-music-app",
+  "version": "1.0.0",
+  "description": "Offline-First Mobile AI Companion using YouTube Music recommendations with look-ahead local caching",
+  "main": "apps/mobile/index.html",
+  "scripts": {
+    "test": "node tests/cache_test.js",
+    "preview": "bash scripts/preview.sh",
+    "build": "bash scripts/build.sh"
+  },
+  "keywords": [
+    "soko",
+    "music",
+    "offline-first",
+    "youtube-music",
+    "caching",
+    "mobile",
+    "opus"
+  ],
+  "author": "Saurabh",
+  "license": "MIT"
+}

@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Soko Music • Offline-First AI Companion</title>
+  <link rel="icon" type="image/svg+xml" href="../../assets/logo.svg" />
+
+  <style>
+    /* ============================================================ */
+    /* DESIGN TOKENS & SYSTEM VARIABLES (WCAG 2.2 AA / Mobile Ergonomics) */
+    /* ============================================================ */
+    :root {
+      --bg-base: #07090E;
+      --bg-surface: #0D111A;
+      --bg-surface-elevated: #131826;
+      --bg-card: rgba(19, 24, 38, 0.7);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+
+      --accent-primary: #6366F1;
+      --accent-secondary: #06B6D4;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --accent-success: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+
+      --safe-top: max(env(safe-area-inset-top, 0px), 16px);
+      --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+      --tab-bar-height: 64px;
+      --mini-player-height: 64px;
+      --touch-min: 44px;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Background Ambient Radial Glow */
+    body::before {
+      content: "";
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.05) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Container Constrained for Tablet/Desktop but 100% fluid on mobile */
+    .app-viewport {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ============================================================ */
+    /* APP HEADER                                                  */
+    /* ============================================================ */
+    .app-header {
+      padding: var(--safe-top) 16px 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(7, 9, 14, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 40;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      background: linear-gradient(135deg, #FFF 30%, #A5B4FC 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .badge-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+    }
+
+    /* ============================================================ */
+    /* MAIN SCROLLABLE CONTENT AREA                                */
+    /* ============================================================ */
+    .content-scroll {
+      flex: 1;
+      padding: 16px 16px calc(var(--tab-bar-height) + var(--mini-player-height) + var(--safe-bottom) + 56px) 16px;
+      overflow-y: auto;
+    }
+
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section Headers */
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 12px 0;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: var(--text-main);
+    }
+
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================ */
+    /* HORIZONTAL SHELF CARDS (Quick Picks, Mixes)                  */
+    /* ============================================================ */
+    .shelf-container {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+    }
+    .shelf-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .shelf-card {
+      flex: 0 0 136px;
+      scroll-snap-align: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .shelf-card:active {
+      transform: scale(0.97);
+      border-color: var(--accent-primary);
+    }
+
+    .shelf-art-wrapper {
+      position: relative;
+      width: 116px;
+      height: 116px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: 8px;
+      background: #11141F;
+    }
+
+    .shelf-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .cached-indicator-tag {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #38BDF8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .shelf-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .shelf-artist {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ============================================================ */
+    /* TRACK LIST ROWS (Vertical)                                  */
+    /* ============================================================ */
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .track-row:active {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: var(--accent-primary);
+    }
+
+    .track-art {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #151A26;
+      flex-shrink: 0;
+    }
+
+    .track-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tag-offline {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .action-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .action-icon-btn:active {
+      transform: scale(0.92);
+      border-color: var(--accent-primary);
+    }
+
+    /* ============================================================ */
+    /* SEARCH TAB                                                  */
+    /* ============================================================ */
+    .search-input-box {
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 0 14px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s ease;
+    }
+    .search-input-box:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    .search-input {
+      flex: 1;
+      height: 44px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    .filter-pills-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .filter-pills-row::-webkit-scrollbar { display: none; }
+
+    .filter-pill {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .filter-pill.active {
+      background: var(--accent-primary);
+      color: #fff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* ============================================================ */
+    /* SETTINGS & STORAGE DASHBOARD                                */
+    /* ============================================================ */
+    .storage-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .storage-meter-bar {
+      height: 8px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      margin: 10px 0;
+      display: flex;
+    }
+
+    .storage-fill-used {
+      background: linear-gradient(90deg, #6366F1, #06B6D4);
+      width: 32%;
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .btn-action {
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+    .btn-action:active {
+      transform: scale(0.97);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      color: #FB7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      box-shadow: none;
+    }
+
+    /* ============================================================ */
+    /* FLOATING MINI-PLAYER (Bottom Anchor)                         */
+    /* ============================================================ */
+    .mini-player-dock {
+      position: fixed;
+      bottom: calc(var(--tab-bar-height) + var(--safe-bottom) + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 24px);
+      max-width: 496px;
+      height: var(--mini-player-height);
+      background: rgba(19, 24, 38, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-focus);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px var(--accent-glow);
+      cursor: pointer;
+      z-index: 50;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .mini-art {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .mini-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mini-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-artist {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .mini-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Mini Progress Bar attached to top of mini player */
+    .mini-progress-track {
+      position: absolute;
+      top: 0;
+      left: 12px;
+      right: 12px;
+      height: 2.5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .mini-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366F1, #06B6D4);
+      transition: width 0.1s linear;
+    }
+
+    /* ============================================================ */
+    /* FULL-SCREEN NOW PLAYING MODAL SHEET                         */
+    /* ============================================================ */
+    .now-playing-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 9, 14, 0.96);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: var(--safe-top) 20px var(--safe-bottom) 20px;
+      overflow-y: auto;
+    }
+    .now-playing-modal.active {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .modal-hero-art-container {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1;
+      margin: 0 auto 28px auto;
+      border-radius: 24px;
+      position: relative;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 32px var(--accent-glow);
+      overflow: hidden;
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .modal-hero-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Animated Frequency Equalizer */
+    .visualizer-container {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 4px;
+      height: 28px;
+      margin-bottom: 16px;
+    }
+
+    .v-bar {
+      width: 4px;
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #06B6D4, #6366F1);
+      transition: height 0.08s ease;
+    }
+
+    /* Seek Slider */
+    .seek-slider-container {
+      margin-bottom: 24px;
+    }
+
+    .seek-slider {
+      width: 100%;
+      accent-color: #6366F1;
+      cursor: pointer;
+      height: 5px;
+    }
+
+    .seek-timestamps {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: ui-monospace, monospace;
+      margin-top: 4px;
+    }
+
+    /* Modal Main Playback Controls */
+    .modal-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      margin-bottom: 24px;
+    }
+
+    .btn-main-play {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 24px var(--accent-glow);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .btn-main-play:active {
+      transform: scale(0.92);
+    }
+
+    /* Look-Ahead Queue Drawer inside modal */
+    .queue-preview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-top: auto;
+    }
+
+    /* ============================================================ */
+    /* BOTTOM NAVIGATION DOCK (4 Tabs)                             */
+    /* ============================================================ */
+    .tab-bar-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 520px;
+      height: calc(var(--tab-bar-height) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: rgba(7, 9, 14, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 45;
+    }
+
+    .nav-tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      flex: 1;
+      height: 100%;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+    .nav-tab-item.active {
+      color: var(--accent-primary);
+    }
+    .nav-tab-item svg {
+      transition: transform 0.15s ease;
+    }
+    .nav-tab-item.active svg {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+
+    /* Floating Toast */
+    .toast-pill {
+      position: fixed;
+      top: calc(var(--safe-top) + 54px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(19, 24, 38, 0.95);
+      border: 1px solid var(--accent-primary);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 14px var(--accent-glow);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toast-pill.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Mobile Responsive Tweaks for Narrow 360px Viewports */
+    @media (max-width: 380px) {
+      .content-scroll {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+      .shelf-card {
+        flex: 0 0 120px;
+      }
+      .shelf-art-wrapper {
+        width: 100px;
+        height: 100px;
+      }
+      .modal-hero-art-container {
+        max-width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <!-- ============================================================ -->
+    <!-- HEADER BAR                                                  -->
+    <!-- ============================================================ -->
+    <header class="app-header">
+      <div class="brand-group">
+        <img class="brand-icon" src="../../assets/logo.svg" alt="Soko Logo" />
+        <span class="brand-title">Soko Music</span>
+      </div>
+      <div class="header-actions">
+        <div id="offlineModeBadge" class="badge-pill">
+          <span class="badge-indicator"></span>
+          <span id="badgeStatusText">Offline Ready</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Floating Global Toast Alert -->
+    <div id="globalToast" class="toast-pill">
+      <span id="toastIcon">⚡</span>
+      <span id="toastMsg">Downloaded to local storage</span>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MAIN CONTENT SCROLL AREA                                    -->
+    <!-- ============================================================ */ -->
+    <main class="content-scroll">
+
+      <!-- ============================================================ -->
+      <!-- TAB 1: HOME (Quick Picks & Recommendation Mixes)             -->
+      <!-- ============================================================ -->
+      <section id="pane-home" class="tab-pane active">
+        <!-- Quick Picks Shelf -->
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Quick Picks</h2>
+            <p class="section-subtitle">Based on your offline listening profile</p>
+          </div>
+        </div>
+
+        <div class="shelf-container" id="quickPicksShelf">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- YouTube Music Daily Mixes -->
+        <div class="section-title-row" style="margin-top: 24px;">
+          <div>
+            <h2 class="section-title">Mixed For You</h2>
+            <p class="section-subtitle">Auto-generated algorithmic stations</p>
+          </div>
+        </div>
+
+        <div class="shelf-container" id="mixedForYouShelf">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Forgotten Favorites (Local Smart Playlist) -->
+        <div class="section-title-row" style="margin-top: 24px;">
+          <div>
+            <h2 class="section-title">Offline Essentials</h2>
+            <p class="section-subtitle">Zero data required • Pre-cached in storage</p>
+          </div>
+        </div>
+
+        <div class="track-list" id="homeOfflineList">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB 2: CHARTS & TRENDING                                     -->
+      <!-- ============================================================ -->
+      <section id="pane-charts" class="tab-pane">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Top 100 Charts</h2>
+            <p class="section-subtitle">Most streamed YouTube Music hits right now</p>
+          </div>
+        </div>
+
+        <div class="filter-pills-row">
+          <div class="filter-pill active" onclick="switchChartRegion('Global')">Global</div>
+          <div class="filter-pill" onclick="switchChartRegion('United States')">United States</div>
+          <div class="filter-pill" onclick="switchChartRegion('India')">India</div>
+          <div class="filter-pill" onclick="switchChartRegion('United Kingdom')">United Kingdom</div>
+          <div class="filter-pill" onclick="switchChartRegion('Japan')">Japan</div>
+        </div>
+
+        <div class="track-list" id="chartsTrackList">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB 3: SEARCH                                                -->
+      <!-- ============================================================ -->
+      <section id="pane-search" class="tab-pane">
+        <div class="search-input-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-dim);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search songs, artists, podcasts..." oninput="handleDebouncedSearch(this.value)" />
+        </div>
+
+        <div class="filter-pills-row">
+          <div class="filter-pill active">All Results</div>
+          <div class="filter-pill">Songs</div>
+          <div class="filter-pill">Artists</div>
+          <div class="filter-pill">Playlists</div>
+        </div>
+
+        <div class="track-list" id="searchResultsList">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB 4: LIBRARY & OFFLINE STORAGE                             -->
+      <!-- ============================================================ -->
+      <section id="pane-library" class="tab-pane">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Your Library</h2>
+            <p class="section-subtitle">Local storage & smart playlists</p>
+          </div>
+        </div>
+
+        <div class="filter-pills-row">
+          <div class="filter-pill active" onclick="filterLibraryTab('all')">All Cached (<span id="libCountAll">0</span>)</div>
+          <div class="filter-pill" onclick="filterLibraryTab('favorites')">Favorites (<span id="libCountFavs">0</span>)</div>
+          <div class="filter-pill" onclick="filterLibraryTab('most_played')">Most Played</div>
+          <div class="filter-pill" onclick="filterLibraryTab('recent')">Recently Played</div>
+        </div>
+
+        <div class="track-list" id="libraryTrackList">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB 5: SETTINGS & STORAGE MANAGEMENT                         -->
+      <!-- ============================================================ -->
+      <section id="pane-settings" class="tab-pane">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Settings & Storage</h2>
+            <p class="section-subtitle">Manage offline space and audio quality</p>
+          </div>
+        </div>
+
+        <!-- Storage Dashboard Card -->
+        <div class="storage-card">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span style="font-size: 13px; font-weight: 600;">Offline Cache Consumption</span>
+            <span id="storageLabel" style="font-size: 12px; font-weight: 700; color: #38BDF8;">1.2 GB / 4.0 GB</span>
+          </div>
+
+          <div class="storage-meter-bar">
+            <div id="storageUsedBar" class="storage-fill-used" style="width: 30%;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim);">
+            <span id="cachedSongStats">18 songs cached locally</span>
+            <span>LRU Auto-Prune Active</span>
+          </div>
+        </div>
+
+        <!-- Setting Rows -->
+        <div class="storage-card">
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Maximum Cache Size</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Automated eviction of oldest un-favorited songs</div>
+            </div>
+            <select id="maxCacheSelect" onchange="updateMaxCacheLimit(this.value)" style="background: var(--bg-surface-elevated); color: #fff; border: 1px solid var(--border-subtle); padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+              <option value="2">2.0 GB (~500 songs)</option>
+              <option value="4" selected>4.0 GB (~1,000 songs)</option>
+              <option value="8">8.0 GB (~2,000 songs)</option>
+              <option value="16">16.0 GB (~4,000 songs)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Download Stream Quality</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Format 251 Opus or Format 140 AAC</div>
+            </div>
+            <select style="background: var(--bg-surface-elevated); color: #fff; border: 1px solid var(--border-subtle); padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+              <option selected>160 kbps Opus (Recommended)</option>
+              <option>128 kbps AAC</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Look-Ahead Pre-download</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Quietly caches upcoming radio tracks</div>
+            </div>
+            <input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #6366F1;" />
+          </div>
+
+          <div class="setting-row" style="padding-top: 16px;">
+            <button class="btn-action btn-danger" onclick="clearUnpinnedCache()" style="width: 100%; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Clear Cache (Preserve Favorites)
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- FLOATING MINI-PLAYER (Always Accessible Above Nav)           -->
+    <!-- ============================================================ -->
+    <div id="miniPlayer" class="mini-player-dock" onclick="openNowPlayingModal()">
+      <div class="mini-progress-track">
+        <div id="miniProgressFill" class="mini-progress-fill"></div>
+      </div>
+
+      <img id="miniArt" class="mini-art" src="../../assets/logo.png" alt="Art" />
+
+      <div class="mini-meta">
+        <div id="miniTitle" class="mini-title">Select a track to play</div>
+        <div id="miniArtist" class="mini-artist">⚡ Download-First Local Engine</div>
+      </div>
+
+      <div class="mini-controls" onclick="event.stopPropagation()">
+        <button class="action-icon-btn" onclick="togglePlayPause()" title="Play / Pause" style="background: var(--accent-primary); border: none; color: #fff;">
+          <svg id="miniPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+        <button class="action-icon-btn" onclick="playNextTrack()" title="Next Track">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- FULL-SCREEN NOW PLAYING MODAL SHEET                         -->
+    <!-- ============================================================ -->
+    <div id="nowPlayingModal" class="now-playing-modal">
+      <div class="modal-header">
+        <button class="action-icon-btn" onclick="closeNowPlayingModal()" title="Collapse">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+
+        <div style="text-align: center;">
+          <div style="font-size: 11px; font-weight: 700; color: #818CF8; letter-spacing: 0.5px; text-transform: uppercase;">Playing From Local Storage</div>
+          <div id="modalBitrateBadge" style="font-size: 10px; color: var(--text-dim); margin-top: 1px;">⚡ 160k Opus • Local Flash Memory</div>
+        </div>
+
+        <button id="modalFavBtn" class="action-icon-btn" onclick="toggleCurrentFavorite()" title="Favorite">
+          <svg id="modalFavIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </button>
+      </div>
+
+      <!-- Large Hero Artwork -->
+      <div class="modal-hero-art-container">
+        <img id="modalHeroArt" class="modal-hero-art" src="../../assets/logo.png" alt="Cover" />
+      </div>
+
+      <!-- Live Multi-Bar Audio Visualizer -->
+      <div class="visualizer-container" id="modalVisualizer">
+        <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+        <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+        <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+      </div>
+
+      <!-- Track Titles -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 id="modalTrackTitle" style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Select a Track</h1>
+        <p id="modalTrackArtist" style="font-size: 13px; color: var(--text-muted);">Soko Music Engine</p>
+      </div>
+
+      <!-- Scrub / Seek Slider -->
+      <div class="seek-slider-container">
+        <input type="range" id="modalSeekSlider" class="seek-slider" min="0" max="100" value="0" oninput="handleSeek(this.value)" />
+        <div class="seek-timestamps">
+          <span id="modalTimeCurrent">0:00</span>
+          <span id="modalTimeDuration">0:00</span>
+        </div>
+      </div>
+
+      <!-- Main Controls Row -->
+      <div class="modal-controls-row">
+        <button class="action-icon-btn" onclick="toggleShuffle()" title="Shuffle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+        </button>
+
+        <button class="action-icon-btn" onclick="playPreviousTrack()" title="Previous Track">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
+        </button>
+
+        <button id="modalBtnPlay" class="btn-main-play" onclick="togglePlayPause()" title="Play / Pause">
+          <svg id="modalPlayIcon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+
+        <button class="action-icon-btn" onclick="playNextTrack()" title="Next Track">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+        </button>
+
+        <button class="action-icon-btn" onclick="toggleRepeat()" title="Repeat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+        </button>
+      </div>
+
+      <!-- Look-Ahead Queue Drawer -->
+      <div class="queue-preview-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: #818CF8; text-transform: uppercase;">⚡ Look-Ahead Auto Queue</span>
+          <span id="queuePreCacheStatus" style="font-size: 10px; color: #10B981; font-weight: 600;">Next Track Pre-Cached ✓</span>
+        </div>
+        <div id="modalUpNextTrack" style="display: flex; align-items: center; gap: 10px;">
+          <img id="nextArt" src="../../assets/logo.png" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;" />
+          <div style="flex: 1; min-width: 0;">
+            <div id="nextTitle" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Upcoming Track</div>
+            <div id="nextArtist" style="font-size: 10px; color: var(--text-muted);">Auto-downloaded in background</div>
+          </div>
+          <span style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38BDF8; padding: 2px 6px; border-radius: 4px; font-weight: 700;">0ms Gap</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- BOTTOM NAVIGATION BAR                                        -->
+    <!-- ============================================================ -->
+    <nav class="tab-bar-nav">
+      <div class="nav-tab-item active" onclick="switchNavTab('home', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>Home</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('charts', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Charts</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('search', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Search</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('library', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <span>Library</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('settings', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Settings</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Hidden HTML5 Audio Element & Audio Synthesis Context -->
+  <audio id="audioPlayer" preload="auto" playsinline></audio>
+
+  <!-- ============================================================ -->
+  <!-- APPLICATION SCRIPT LOGIC                                     -->
+  <!-- ============================================================ -->
+  <script>
+    // ============================================================
+    // STATE & CATALOG (InnerTube Mock + Offline Store)
+    // ============================================================
+    const CATALOG = [
+      { id: "dQw4w9WgXcQ", title: "Never Gonna Give You Up", artist: "Rick Astley", duration: 213, cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80", plays: 42, favorite: true },
+      { id: "kJQP7kiw5Fk", title: "Despacito (Remix)", artist: "Luis Fonsi, Daddy Yankee", duration: 230, cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80", plays: 28, favorite: false },
+      { id: "fJ9rUzIMcZQ", title: "Bohemian Rhapsody", artist: "Queen", duration: 354, cover: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&auto=format&fit=crop&q=80", plays: 35, favorite: true },
+      { id: "9bZkp7q19f0", title: "Gangnam Style", artist: "PSY", duration: 219, cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80", plays: 14, favorite: false },
+      { id: "OPf0YbXqDm0", title: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars", duration: 270, cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80", plays: 19, favorite: true },
+      { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran", duration: 233, cover: "https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&auto=format&fit=crop&q=80", plays: 31, favorite: true },
+      { id: "hT_nvWreIhg", title: "Counting Stars", artist: "OneRepublic", duration: 257, cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&auto=format&fit=crop&q=80", plays: 22, favorite: false },
+      { id: "RgKAFK5djSk", title: "See You Again", artist: "Wiz Khalifa ft. Charlie Puth", duration: 229, cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80", plays: 17, favorite: false },
+      { id: "CevxZvSJLk8", title: "Roar", artist: "Katy Perry", duration: 263, cover: "https://images.unsplash.com/photo-1520523839898-50712825e617?w=400&auto=format&fit=crop&q=80", plays: 12, favorite: false },
+      { id: "09R8_2nJtjg", title: "Sugar", artist: "Maroon 5", duration: 235, cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&auto=format&fit=crop&q=80", plays: 25, favorite: true }
+    ];
+
+    // IN-MEMORY O(1) DEDUPLICATION REGISTRY
+    // Pre-seed some downloaded IDs to showcase instant O(1) cache hits
+    const downloadedSet = new Set(["dQw4w9WgXcQ", "fJ9rUzIMcZQ", "OPf0YbXqDm0"]);
+    let currentTrack = null;
+    let lookAheadNextTrack = null;
+    let isPlaying = false;
+    let isModalOpen = false;
+    let searchDebounceTimer = null;
+    let visualizerInterval = null;
+    let maxCacheGB = 4.0;
+
+    // Web Audio Synthesizer (to provide actual pleasant audio playback without network stalls)
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let synthTimer = null;
+
+    // ============================================================
+    // INITIALIZATION & VIEWPORT SETUP
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderShelves();
+      renderCharts('Global');
+      renderLibrary('all');
+      updateStorageMetrics();
+      setupMediaSession();
+    });
+
+    function showToast(msg, icon = '⚡') {
+      const toast = document.getElementById('globalToast');
+      const text = document.getElementById('toastMsg');
+      const ic = document.getElementById('toastIcon');
+      if (!toast || !text) return;
+      text.innerText = msg;
+      if (ic) ic.innerText = icon;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    // ============================================================
+    // NAVIGATION CONTROLLER
+    // ============================================================
+    function switchNavTab(tabName, el) {
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-item').forEach(t => t.classList.remove('active'));
+
+      const targetPane = document.getElementById(`pane-${tabName}`);
+      if (targetPane) targetPane.classList.add('active');
+      if (el) el.classList.add('active');
+
+      if (tabName === 'library') {
+        renderLibrary('all');
+      }
+    }
+
+    // ============================================================
+    // RENDER HOMEPAGE SHELVES & CHARTS
+    // ============================================================
+    function renderShelves() {
+      const quickContainer = document.getElementById('quickPicksShelf');
+      const mixContainer = document.getElementById('mixedForYouShelf');
+      const offlineList = document.getElementById('homeOfflineList');
+
+      if (quickContainer) {
+        quickContainer.innerHTML = CATALOG.slice(0, 5).map(track => createShelfCardHtml(track)).join('');
+      }
+      if (mixContainer) {
+        mixContainer.innerHTML = CATALOG.slice(5, 10).map(track => createShelfCardHtml(track)).join('');
+      }
+      if (offlineList) {
+        const cachedTracks = CATALOG.filter(t => downloadedSet.has(t.id));
+        offlineList.innerHTML = cachedTracks.map(track => createTrackRowHtml(track)).join('');
+      }
+    }
+
+    function createShelfCardHtml(track) {
+      const isCached = downloadedSet.has(track.id);
+      return `
+        <div class="shelf-card" onclick="selectTrackToPlay('${track.id}')">
+          <div class="shelf-art-wrapper">
+            <img class="shelf-art" src="${track.cover}" alt="${track.title}" loading="lazy" onerror="this.onerror=null; this.src='../../assets/logo.png';" />
+            ${isCached ? '<div class="cached-indicator-tag">⚡ Cached</div>' : ''}
+          </div>
+          <div class="shelf-title">${track.title}</div>
+          <div class="shelf-artist">${track.artist}</div>
+        </div>
+      `;
+    }
+
+    function createTrackRowHtml(track) {
+      const isCached = downloadedSet.has(track.id);
+      return `
+        <div class="track-row" onclick="selectTrackToPlay('${track.id}')">
+          <img class="track-art" src="${track.cover}" alt="${track.title}" loading="lazy" onerror="this.onerror=null; this.src='../../assets/logo.png';" />
+          <div class="track-meta">
+            <div class="track-title">${track.title}</div>
+            <div class="track-desc">
+              ${isCached ? '<span class="tag-offline">⚡ Offline</span> • ' : ''}
+              <span>${track.artist}</span> • <span>${formatTime(track.duration)}</span>
+            </div>
+          </div>
+          <button class="action-icon-btn" onclick="event.stopPropagation(); toggleFavorite('${track.id}')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="${track.favorite ? '#F43F5E' : 'none'}" stroke="${track.favorite ? '#F43F5E' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </button>
+        </div>
+      `;
+    }
+
+    function switchChartRegion(region) {
+      document.querySelectorAll('#pane-charts .filter-pill').forEach(p => {
+        p.classList.toggle('active', p.innerText === region);
+      });
+      renderCharts(region);
+      showToast(`Showing ${region} Top Charts`, '📈');
+    }
+
+    function renderCharts(region) {
+      const list = document.getElementById('chartsTrackList');
+      if (!list) return;
+      list.innerHTML = CATALOG.map((track, i) => `
+        <div class="track-row" onclick="selectTrackToPlay('${track.id}')">
+          <span style="font-size: 13px; font-weight: 800; color: ${i < 3 ? '#6366F1' : 'var(--text-dim)'}; width: 20px; text-align: center;">${i + 1}</span>
+          <img class="track-art" src="${track.cover}" alt="${track.title}" onerror="this.onerror=null; this.src='../../assets/logo.png';" />
+          <div class="track-meta">
+            <div class="track-title">${track.title}</div>
+            <div class="track-desc">${track.artist} • ${formatTime(track.duration)}</div>
+          </div>
+          <span style="font-size: 11px; color: ${downloadedSet.has(track.id) ? '#38BDF8' : 'var(--text-dim)'}; font-weight: 600;">
+            ${downloadedSet.has(track.id) ? '⚡ Local' : '📥 Online'}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    // ============================================================
+    // SEARCH & DEBOUNCING (Human-Like Rate Limiting)
+    // ============================================================
+    function handleDebouncedSearch(val) {
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        executeSearch(val);
+      }, 400); // 400ms debounce
+    }
+
+    function executeSearch(query) {
+      const list = document.getElementById('searchResultsList');
+      if (!list) return;
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        list.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px;">Type a title or artist to search</div>';
+        return;
+      }
+      const results = CATALOG.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+      if (results.length === 0) {
+        list.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px;">No matching songs found</div>';
+        return;
+      }
+      list.innerHTML = results.map(track => createTrackRowHtml(track)).join('');
+    }
+
+    // ============================================================
+    // LIBRARY & STORAGE SMART PLAYLISTS
+    // ============================================================
+    function filterLibraryTab(filter) {
+      document.querySelectorAll('#pane-library .filter-pill').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      renderLibrary(filter);
+    }
+
+    function renderLibrary(filter) {
+      const list = document.getElementById('libraryTrackList');
+      if (!list) return;
+
+      let filtered = [];
+      if (filter === 'favorites') {
+        filtered = CATALOG.filter(t => t.favorite);
+      } else if (filter === 'most_played') {
+        filtered = [...CATALOG].sort((a, b) => b.plays - a.plays);
+      } else if (filter === 'recent') {
+        filtered = CATALOG.slice(0, 4);
+      } else {
+        filtered = CATALOG.filter(t => downloadedSet.has(t.id));
+      }
+
+      list.innerHTML = filtered.map(track => createTrackRowHtml(track)).join('');
+
+      // Update counters
+      const allCount = document.getElementById('libCountAll');
+      const favCount = document.getElementById('libCountFavs');
+      if (allCount) allCount.innerText = downloadedSet.size;
+      if (favCount) favCount.innerText = CATALOG.filter(t => t.favorite).length;
+    }
+
+    // ============================================================
+    // CORE DOWNLOAD-FIRST & LOOK-AHEAD PLAYBACK ENGINE
+    // ============================================================
+    async function selectTrackToPlay(trackId) {
+      const track = CATALOG.find(t => t.id === trackId);
+      if (!track) return;
+      currentTrack = track;
+
+      // 1. SUB-MILLISECOND IN-MEMORY DEDUPLICATION CHECK
+      const isAlreadyCached = downloadedSet.has(trackId);
+
+      if (isAlreadyCached) {
+        showToast(`⚡ Cache HIT (<0.05ms): Playing "${track.title}" locally`, '⚡');
+        startPlayback(track);
+      } else {
+        showToast(`📥 Pre-downloading 160k Opus: "${track.title}"...`, '📥');
+        // Simulate high-speed download into app storage (1.2s)
+        await new Promise(r => setTimeout(r, 1100));
+        downloadedSet.add(trackId);
+        showToast(`✓ Downloaded & Saved: "${track.title}"`, '💾');
+        renderShelves();
+        updateStorageMetrics();
+        startPlayback(track);
+      }
+
+      // 2. TRIGGER LOOK-AHEAD PRE-FETCH FOR UPCOMING TRACK
+      scheduleLookAheadWorker(trackId);
+    }
+
+    function startPlayback(track) {
+      isPlaying = true;
+      track.plays = (track.plays || 0) + 1;
+      updatePlayerUI(track);
+      startVisualizer();
+      initSyntheticAudio();
+      updateMediaSession(track);
+    }
+
+    function scheduleLookAheadWorker(currentId) {
+      // Find the next recommended track in queue
+      const currentIndex = CATALOG.findIndex(t => t.id === currentId);
+      const nextIndex = (currentIndex + 1) % CATALOG.length;
+      const nextTrack = CATALOG[nextIndex];
+      lookAheadNextTrack = nextTrack;
+
+      const nextTitleEl = document.getElementById('nextTitle');
+      const nextArtistEl = document.getElementById('nextArtist');
+      const nextArtEl = document.getElementById('nextArt');
+      const preCacheStatus = document.getElementById('queuePreCacheStatus');
+
+      if (nextTitleEl) nextTitleEl.innerText = nextTrack.title;
+      if (nextArtistEl) nextArtistEl.innerText = nextTrack.artist;
+      if (nextArtEl) nextArtEl.src = nextTrack.cover;
+
+      if (downloadedSet.has(nextTrack.id)) {
+        if (preCacheStatus) {
+          preCacheStatus.innerText = 'Next Track Pre-Cached ✓';
+          preCacheStatus.style.color = '#10B981';
+        }
+      } else {
+        if (preCacheStatus) {
+          preCacheStatus.innerText = 'Pre-downloading Next Track...';
+          preCacheStatus.style.color = '#F59E0B';
+        }
+        // Quiet background download worker
+        setTimeout(() => {
+          downloadedSet.add(nextTrack.id);
+          if (preCacheStatus) {
+            preCacheStatus.innerText = 'Next Track Pre-Cached ✓';
+            preCacheStatus.style.color = '#10B981';
+          }
+          updateStorageMetrics();
+        }, 3000);
+      }
+    }
+
+    // ============================================================
+    // PLAYER UI CONTROLS & TIMESTAMPS
+    // ============================================================
+    function updatePlayerUI(track) {
+      // Mini Player
+      const mini = document.getElementById('miniPlayer');
+      const miniTitle = document.getElementById('miniTitle');
+      const miniArtist = document.getElementById('miniArtist');
+      const miniArt = document.getElementById('miniArt');
+      const miniIcon = document.getElementById('miniPlayIcon');
+
+      if (mini) mini.style.opacity = '1';
+      if (miniTitle) miniTitle.innerText = track.title;
+      if (miniArtist) miniArtist.innerText = `${track.artist} • ⚡ Local 160k Opus`;
+      if (miniArt) miniArt.src = track.cover;
+      if (miniIcon) miniIcon.innerHTML = isPlaying ? '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>' : '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+
+      // Modal Player
+      const modalTitle = document.getElementById('modalTrackTitle');
+      const modalArtist = document.getElementById('modalTrackArtist');
+      const modalArt = document.getElementById('modalHeroArt');
+      const modalPlayIcon = document.getElementById('modalPlayIcon');
+      const modalTimeDuration = document.getElementById('modalTimeDuration');
+      const modalFavIcon = document.getElementById('modalFavIcon');
+
+      if (modalTitle) modalTitle.innerText = track.title;
+      if (modalArtist) modalArtist.innerText = track.artist;
+      if (modalArt) modalArt.src = track.cover;
+      if (modalTimeDuration) modalTimeDuration.innerText = formatTime(track.duration);
+      if (modalPlayIcon) modalPlayIcon.innerHTML = isPlaying ? '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>' : '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      if (modalFavIcon) {
+        modalFavIcon.setAttribute('fill', track.favorite ? '#F43F5E' : 'none');
+        modalFavIcon.setAttribute('stroke', track.favorite ? '#F43F5E' : 'currentColor');
+      }
+    }
+
+    function togglePlayPause() {
+      if (!currentTrack) {
+        selectTrackToPlay(CATALOG[0].id);
+        return;
+      }
+      isPlaying = !isPlaying;
+      updatePlayerUI(currentTrack);
+      if (isPlaying) {
+        startVisualizer();
+        initSyntheticAudio();
+      } else {
+        stopVisualizer();
+        stopSyntheticAudio();
+      }
+    }
+
+    function playNextTrack() {
+      if (lookAheadNextTrack) {
+        selectTrackToPlay(lookAheadNextTrack.id);
+      } else {
+        const curIdx = CATALOG.findIndex(t => t.id === currentTrack?.id);
+        const nextTrack = CATALOG[(curIdx + 1) % CATALOG.length];
+        selectTrackToPlay(nextTrack.id);
+      }
+    }
+
+    function playPreviousTrack() {
+      const curIdx = CATALOG.findIndex(t => t.id === currentTrack?.id);
+      const prevIdx = (curIdx - 1 + CATALOG.length) % CATALOG.length;
+      selectTrackToPlay(CATALOG[prevIdx].id);
+    }
+
+    function toggleCurrentFavorite() {
+      if (!currentTrack) return;
+      toggleFavorite(currentTrack.id);
+      updatePlayerUI(currentTrack);
+    }
+
+    function toggleFavorite(id) {
+      const t = CATALOG.find(x => x.id === id);
+      if (t) {
+        t.favorite = !t.favorite;
+        showToast(t.favorite ? 'Added to Liked Songs (Pinned ✓)' : 'Removed from Liked Songs', t.favorite ? '❤️' : '💔');
+        renderLibrary('all');
+        renderShelves();
+      }
+    }
+
+    function handleSeek(val) {
+      const slider = document.getElementById('modalSeekSlider');
+      const curTime = document.getElementById('modalTimeCurrent');
+      const miniFill = document.getElementById('miniProgressFill');
+      if (currentTrack) {
+        const seconds = Math.floor((val / 100) * currentTrack.duration);
+        if (curTime) curTime.innerText = formatTime(seconds);
+        if (miniFill) miniFill.style.width = `${val}%`;
+      }
+    }
+
+    function openNowPlayingModal() {
+      const modal = document.getElementById('nowPlayingModal');
+      if (modal) modal.classList.add('active');
+      isModalOpen = true;
+    }
+
+    function closeNowPlayingModal() {
+      const modal = document.getElementById('nowPlayingModal');
+      if (modal) modal.classList.remove('active');
+      isModalOpen = false;
+    }
+
+    // ============================================================
+    // AUDIO SYNTHESIS & 60FPS VISUALIZER (WebAudio)
+    // ============================================================
+    function initSyntheticAudio() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        stopSyntheticAudio();
+
+        // Harmonious ambient melodic synth chime (no harsh beeps)
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(432, audioCtx.currentTime); // 432Hz natural frequency
+        gainNode.gain.setValueAtTime(0.02, audioCtx.currentTime); // gentle whisper volume
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+      } catch (e) {}
+    }
+
+    function stopSyntheticAudio() {
+      try {
+        if (oscillator) {
+          oscillator.stop();
+          oscillator.disconnect();
+          oscillator = null;
+        }
+      } catch (e) {}
+    }
+
+    function startVisualizer() {
+      stopVisualizer();
+      const bars = document.querySelectorAll('.v-bar');
+      visualizerInterval = setInterval(() => {
+        bars.forEach(b => {
+          const rand = Math.floor(Math.random() * 24) + 6;
+          b.style.height = `${rand}px`;
+        });
+
+        // Advance seek slider automatically
+        const slider = document.getElementById('modalSeekSlider');
+        const curTime = document.getElementById('modalTimeCurrent');
+        const miniFill = document.getElementById('miniProgressFill');
+        if (slider && currentTrack) {
+          let curVal = parseInt(slider.value, 10) || 0;
+          curVal = (curVal + 1) % 100;
+          slider.value = curVal;
+          if (miniFill) miniFill.style.width = `${curVal}%`;
+          const seconds = Math.floor((curVal / 100) * currentTrack.duration);
+          if (curTime) curTime.innerText = formatTime(seconds);
+
+          if (curVal >= 99) {
+            playNextTrack();
+          }
+        }
+      }, 350);
+    }
+
+    function stopVisualizer() {
+      if (visualizerInterval) {
+        clearInterval(visualizerInterval);
+        visualizerInterval = null;
+      }
+      document.querySelectorAll('.v-bar').forEach((b, i) => {
+        b.style.height = `${(i % 4 + 1) * 4}px`;
+      });
+    }
+
+    // ============================================================
+    // STORAGE METRICS & LRU PRUNING
+    // ============================================================
+    function updateStorageMetrics() {
+      const label = document.getElementById('storageLabel');
+      const bar = document.getElementById('storageUsedBar');
+      const stats = document.getElementById('cachedSongStats');
+
+      const count = downloadedSet.size;
+      const usedMB = (count * 3.4).toFixed(1); // 3.4 MB average per 160k Opus song
+      const usedGB = (usedMB / 1024).toFixed(2);
+      const percent = Math.min(100, Math.round((usedGB / maxCacheGB) * 100));
+
+      if (label) label.innerText = `${usedGB} GB / ${maxCacheGB.toFixed(1)} GB`;
+      if (bar) bar.style.width = `${Math.max(8, percent)}%`;
+      if (stats) stats.innerText = `${count} songs cached locally (${usedMB} MB)`;
+    }
+
+    function updateMaxCacheLimit(val) {
+      maxCacheGB = parseFloat(val);
+      updateStorageMetrics();
+      showToast(`Cache limit updated to ${maxCacheGB} GB`, '⚙️');
+    }
+
+    function clearUnpinnedCache() {
+      let evictedCount = 0;
+      CATALOG.forEach(track => {
+        if (!track.favorite && downloadedSet.has(track.id)) {
+          downloadedSet.delete(track.id);
+          evictedCount++;
+        }
+      });
+      updateStorageMetrics();
+      renderShelves();
+      renderLibrary('all');
+      showToast(`Pruned ${evictedCount} un-favorited songs from cache`, '🧹');
+    }
+
+    // ============================================================
+    // MEDIA SESSION INTEGRATION (Android Lock Screen)
+    // ============================================================
+    function setupMediaSession() {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
+        navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPreviousTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
+      }
+    }
+
+    function updateMediaSession(track) {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: track.artist,
+          album: 'Soko Music (Offline)',
+          artwork: [
+            { src: track.cover, sizes: '512x512', type: 'image/jpeg' }
+          ]
+        });
+      }
+    }
+
+    // Helper Utility: Format seconds to M:SS
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+  </script>
+</body>
+</html>
