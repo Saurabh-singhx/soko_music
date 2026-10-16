@@ -68,6 +68,8 @@ cp -r "${PROJECT_ROOT}/res/"* "${WORK}/res/"
 cp "${PROJECT_ROOT}/apps/mobile/index.html" "${WORK}/assets/"
 mkdir -p "${WORK}/assets/assets"
 cp -r "${PROJECT_ROOT}/assets/"* "${WORK}/assets/assets/"
+mkdir -p "${WORK}/assets/music"
+cp -r "${PROJECT_ROOT}/assets/music/"* "${WORK}/assets/music/"
 
 # 1. Strings & Styles
 cat <<EOF > "${WORK}/res/values/strings.xml"
@@ -132,6 +134,8 @@ package com.soko.music;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -143,6 +147,8 @@ import android.graphics.Color;
 import android.content.Intent;
 import android.content.Context;
 import android.util.Log;
+import android.media.MediaPlayer;
+import android.media.AudioAttributes;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.media.MediaMetadata;
@@ -153,6 +159,9 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.File;
 import java.io.ByteArrayOutputStream;
 
 public class MainActivity extends Activity {
@@ -161,6 +170,12 @@ public class MainActivity extends Activity {
     private static final int MEDIA_NOTIF_ID = 9101;
     private WebView webView;
     private MediaSession mediaSession;
+    private MediaPlayer mediaPlayer;
+    private Handler progressHandler = new Handler(Looper.getMainLooper());
+    private Runnable progressRunnable;
+    private String currentTrackTitle = "Soko Music";
+    private String currentTrackArtist = "Offline Storage";
+    private String currentCoverUrl = "";
 
     private BroadcastReceiver mediaActionReceiver = new BroadcastReceiver() {
         @Override
@@ -202,6 +217,305 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void initMediaPlayer() {
+        if (mediaPlayer == null) {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .build());
+            mediaPlayer.setVolume(1.0f, 1.0f);
+
+            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    stopProgressUpdater();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) webView.evaluateJavascript("window.onNativeTrackEnded && window.onNativeTrackEnded()", null);
+                        }
+                    });
+                }
+            });
+
+            mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+                @Override
+                public boolean onError(MediaPlayer mp, int what, int extra) {
+                    Log.e(TAG, "Native MediaPlayer error: what=" + what + ", extra=" + extra);
+                    stopProgressUpdater();
+                    return true;
+                }
+            });
+        }
+    }
+
+    public void playNativeAudio(final String pathOrUrl, final String title, final String artist, final String coverUrl) {
+        currentTrackTitle = title;
+        currentTrackArtist = artist;
+        currentCoverUrl = coverUrl;
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    initMediaPlayer();
+                    mediaPlayer.reset();
+                    mediaPlayer.setVolume(1.0f, 1.0f);
+
+                    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+                        mediaPlayer.setDataSource(pathOrUrl);
+                        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                            @Override
+                            public void onPrepared(MediaPlayer mp) {
+                                mp.start();
+                                startProgressUpdater();
+                                int durSec = mp.getDuration() > 0 ? mp.getDuration() / 1000 : 215;
+                                updateNotificationAndSession(title, artist, true, durSec, 0);
+                                if (webView != null) {
+                                    webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
+                                }
+                            }
+                        });
+                        mediaPlayer.prepareAsync();
+                    } else {
+                        String cleanPath = pathOrUrl;
+                        if (cleanPath.startsWith("file:///android_asset/")) {
+                            cleanPath = cleanPath.substring("file:///android_asset/".length());
+                        }
+                        while (cleanPath.startsWith("/")) {
+                            cleanPath = cleanPath.substring(1);
+                        }
+
+                        File musicDir = new File(getCacheDir(), "music");
+                        if (!musicDir.exists()) musicDir.mkdirs();
+
+                        String fileName = new File(cleanPath).getName();
+                        File localTarget = new File(musicDir, fileName);
+
+                        if (!localTarget.exists() || localTarget.length() == 0) {
+                            InputStream in = null;
+                            String[] candidates = new String[]{
+                                cleanPath,
+                                "assets/" + cleanPath,
+                                "music/" + fileName,
+                                "assets/music/" + fileName
+                            };
+                            for (String cand : candidates) {
+                                try {
+                                    in = getAssets().open(cand);
+                                    if (in != null) break;
+                                } catch (Exception ignored) {}
+                            }
+
+                            if (in != null) {
+                                FileOutputStream fos = new FileOutputStream(localTarget);
+                                byte[] buf = new byte[8192];
+                                int len;
+                                while ((len = in.read(buf)) != -1) {
+                                    fos.write(buf, 0, len);
+                                }
+                                fos.flush();
+                                fos.close();
+                                in.close();
+                            }
+                        }
+
+                        if (localTarget.exists() && localTarget.length() > 0) {
+                            mediaPlayer.setDataSource(localTarget.getAbsolutePath());
+                            mediaPlayer.prepare();
+                            mediaPlayer.start();
+                            startProgressUpdater();
+                            int durSec = mediaPlayer.getDuration() > 0 ? mediaPlayer.getDuration() / 1000 : 215;
+                            updateNotificationAndSession(title, artist, true, durSec, 0);
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
+                            }
+                        } else {
+                            Log.e(TAG, "Audio asset not found for " + cleanPath);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error playing audio: " + pathOrUrl, e);
+                }
+            }
+        });
+    }
+
+    public void pauseNativeAudio() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        mediaPlayer.pause();
+                        stopProgressUpdater();
+                        int cur = mediaPlayer.getCurrentPosition() / 1000;
+                        int dur = mediaPlayer.getDuration() / 1000;
+                        updateNotificationAndSession(currentTrackTitle, currentTrackArtist, false, dur, cur);
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(false, " + dur + ")", null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "pauseNativeAudio error", e);
+                }
+            }
+        });
+    }
+
+    public void resumeNativeAudio() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.start();
+                        startProgressUpdater();
+                        int cur = mediaPlayer.getCurrentPosition() / 1000;
+                        int dur = mediaPlayer.getDuration() / 1000;
+                        updateNotificationAndSession(currentTrackTitle, currentTrackArtist, true, dur, cur);
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + dur + ")", null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "resumeNativeAudio error", e);
+                }
+            }
+        });
+    }
+
+    public void seekNativeAudio(final int seconds) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.seekTo(seconds * 1000);
+                        int dur = mediaPlayer.getDuration() / 1000;
+                        updateNotificationAndSession(currentTrackTitle, currentTrackArtist, mediaPlayer.isPlaying(), dur, seconds);
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.onNativePlayerProgress && window.onNativePlayerProgress(" + seconds + ", " + dur + ")", null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "seekNativeAudio error", e);
+                }
+            }
+        });
+    }
+
+    private void startProgressUpdater() {
+        stopProgressUpdater();
+        progressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        final int cur = mediaPlayer.getCurrentPosition() / 1000;
+                        final int dur = mediaPlayer.getDuration() / 1000;
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.onNativePlayerProgress && window.onNativePlayerProgress(" + cur + ", " + dur + ")", null);
+                        }
+                        progressHandler.postDelayed(this, 500);
+                    }
+                } catch (Exception ignored) {}
+            }
+        };
+        progressHandler.postDelayed(progressRunnable, 500);
+    }
+
+    private void stopProgressUpdater() {
+        if (progressRunnable != null) {
+            progressHandler.removeCallbacks(progressRunnable);
+            progressRunnable = null;
+        }
+    }
+
+    private void updateNotificationAndSession(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec) {
+        if (mediaSession != null) {
+            try {
+                PlaybackState.Builder stateBuilder = new PlaybackState.Builder();
+                stateBuilder.setActions(
+                    PlaybackState.ACTION_PLAY |
+                    PlaybackState.ACTION_PAUSE |
+                    PlaybackState.ACTION_PLAY_PAUSE |
+                    PlaybackState.ACTION_SKIP_TO_NEXT |
+                    PlaybackState.ACTION_SKIP_TO_PREVIOUS |
+                    PlaybackState.ACTION_SEEK_TO
+                );
+                stateBuilder.setState(
+                    isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
+                    positionSec * 1000L,
+                    isPlaying ? 1.0f : 0.0f
+                );
+                mediaSession.setPlaybackState(stateBuilder.build());
+
+                MediaMetadata.Builder metaBuilder = new MediaMetadata.Builder();
+                metaBuilder.putString(MediaMetadata.METADATA_KEY_TITLE, title);
+                metaBuilder.putString(MediaMetadata.METADATA_KEY_ARTIST, artist);
+                metaBuilder.putString(MediaMetadata.METADATA_KEY_ALBUM, "Soko Offline Storage");
+                metaBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, durationSec * 1000L);
+                mediaSession.setMetadata(metaBuilder.build());
+                mediaSession.setActive(true);
+            } catch (Exception e) {
+                Log.e(TAG, "MediaSession update error", e);
+            }
+        }
+
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                Intent toggleIntent = new Intent("com.soko.music.ACTION_TOGGLE");
+                Intent nextIntent = new Intent("com.soko.music.ACTION_NEXT");
+                Intent prevIntent = new Intent("com.soko.music.ACTION_PREV");
+
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (android.os.Build.VERSION.SDK_INT >= 23) {
+                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+
+                PendingIntent pToggle = PendingIntent.getBroadcast(this, 1, toggleIntent, flags);
+                PendingIntent pNext = PendingIntent.getBroadcast(this, 2, nextIntent, flags);
+                PendingIntent pPrev = PendingIntent.getBroadcast(this, 3, prevIntent, flags);
+
+                Intent contentIntent = new Intent(this, MainActivity.class);
+                PendingIntent pContent = PendingIntent.getActivity(this, 0, contentIntent, flags);
+
+                Notification.Builder nb;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    nb = new Notification.Builder(this, MEDIA_CHANNEL_ID);
+                } else {
+                    nb = new Notification.Builder(this);
+                }
+
+                nb.setContentTitle(title)
+                  .setContentText(artist + " • Soko Offline")
+                  .setSmallIcon(android.R.drawable.ic_media_play)
+                  .setContentIntent(pContent)
+                  .setOngoing(isPlaying)
+                  .setVisibility(Notification.VISIBILITY_PUBLIC)
+                  .addAction(android.R.drawable.ic_media_previous, "Prev", pPrev)
+                  .addAction(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play, isPlaying ? "Pause" : "Play", pToggle)
+                  .addAction(android.R.drawable.ic_media_next, "Next", pNext);
+
+                if (android.os.Build.VERSION.SDK_INT >= 21) {
+                    Notification.MediaStyle style = new Notification.MediaStyle();
+                    if (mediaSession != null) {
+                        style.setMediaSession(mediaSession.getSessionToken());
+                    }
+                    style.setShowActionsInCompactView(0, 1, 2);
+                    nb.setStyle(style);
+                }
+
+                nm.notify(MEDIA_NOTIF_ID, nb.build());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Notification post error: " + e.getMessage());
+        }
+    }
+
     public class SokoNativeBridge {
         @JavascriptInterface
         public String getAppVersion() {
@@ -209,40 +523,33 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void updateNativePlayer(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (mediaSession != null) {
-                        try {
-                            PlaybackState.Builder stateBuilder = new PlaybackState.Builder();
-                            stateBuilder.setActions(
-                                PlaybackState.ACTION_PLAY |
-                                PlaybackState.ACTION_PAUSE |
-                                PlaybackState.ACTION_PLAY_PAUSE |
-                                PlaybackState.ACTION_SKIP_TO_NEXT |
-                                PlaybackState.ACTION_SKIP_TO_PREVIOUS
-                            );
-                            stateBuilder.setState(
-                                isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
-                                positionSec * 1000L,
-                                isPlaying ? 1.0f : 0.0f
-                            );
-                            mediaSession.setPlaybackState(stateBuilder.build());
+        public boolean isNativeAvailable() {
+            return true;
+        }
 
-                            MediaMetadata.Builder metaBuilder = new MediaMetadata.Builder();
-                            metaBuilder.putString(MediaMetadata.METADATA_KEY_TITLE, title);
-                            metaBuilder.putString(MediaMetadata.METADATA_KEY_ARTIST, artist);
-                            metaBuilder.putString(MediaMetadata.METADATA_KEY_ALBUM, "Soko Offline Storage");
-                            metaBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, durationSec * 1000L);
-                            mediaSession.setMetadata(metaBuilder.build());
-                            mediaSession.setActive(true);
-                        } catch (Exception e) {
-                            Log.e(TAG, "MediaSession update error", e);
-                        }
-                    }
-                }
-            });
+        @JavascriptInterface
+        public void playAudio(final String urlOrAsset, final String title, final String artist, final String coverUrl) {
+            playNativeAudio(urlOrAsset, title, artist, coverUrl);
+        }
+
+        @JavascriptInterface
+        public void pauseAudio() {
+            pauseNativeAudio();
+        }
+
+        @JavascriptInterface
+        public void resumeAudio() {
+            resumeNativeAudio();
+        }
+
+        @JavascriptInterface
+        public void seekAudio(final int seconds) {
+            seekNativeAudio(seconds);
+        }
+
+        @JavascriptInterface
+        public void updateNativePlayer(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl) {
+            updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec);
         }
     }
 
@@ -349,11 +656,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopProgressUpdater();
         try {
             unregisterReceiver(mediaActionReceiver);
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.release();
+            } catch (Exception ignored) {}
+            mediaPlayer = null;
+        }
         if (mediaSession != null) {
             mediaSession.release();
+            mediaSession = null;
         }
     }
 }
@@ -380,6 +695,7 @@ echo "[1/5] Compiling resources with AAPT2..."
 "${AAPT2}" compile --dir "${WORK}/res" -o "${WORK}/res.zip"
 "${AAPT2}" link -I "${PLATFORM_JAR}" \
   --auto-add-overlay \
+  -0 opus -0 mp3 -0 m4a -0 webm -0 ogg -0 jpg -0 png \
   -R "${WORK}/res.zip" \
   --manifest "${WORK}/AndroidManifest.xml" \
   -A "${WORK}/assets" \
