@@ -58,6 +58,7 @@
       display: flex;
       flex-direction: column;
       position: relative;
+      padding-bottom: calc(var(--tab-bar-height) + var(--safe-bottom) + 16px);
     }
 
     /* Background Ambient Radial Glow */
@@ -249,7 +250,7 @@
       backdrop-filter: blur(6px);
       padding: 3px 6px;
       border-radius: 6px;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
       color: #38BDF8;
       border: 1px solid rgba(56, 189, 248, 0.4);
@@ -337,8 +338,10 @@
     }
 
     .action-icon-btn {
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
       border-radius: 50%;
       background: var(--bg-glass);
       border: 1px solid var(--border-subtle);
@@ -631,7 +634,9 @@
       width: 100%;
       accent-color: #6366F1;
       cursor: pointer;
-      height: 5px;
+      height: 40px;
+      padding: 16px 0;
+      background: transparent;
     }
 
     .seek-timestamps {
@@ -779,7 +784,7 @@
     <!-- ============================================================ -->
     <header class="app-header">
       <div class="brand-group">
-        <img class="brand-icon" src="../../assets/logo.svg" alt="Soko Logo" />
+        <img class="brand-icon" src="assets/logo.svg" onerror="this.onerror=null; this.src='../../assets/logo.svg';" alt="Soko Logo" />
         <span class="brand-title">Soko Music</span>
       </div>
       <div class="header-actions">
@@ -991,7 +996,7 @@
         <div id="miniProgressFill" class="mini-progress-fill"></div>
       </div>
 
-      <img id="miniArt" class="mini-art" src="../../assets/logo.png" alt="Art" />
+      <img id="miniArt" class="mini-art" src="assets/logo.png" onerror="this.onerror=null; this.src='../../assets/logo.png';" alt="Art" />
 
       <div class="mini-meta">
         <div id="miniTitle" class="mini-title">Select a track to play</div>
@@ -1029,7 +1034,7 @@
 
       <!-- Large Hero Artwork -->
       <div class="modal-hero-art-container">
-        <img id="modalHeroArt" class="modal-hero-art" src="../../assets/logo.png" alt="Cover" />
+        <img id="modalHeroArt" class="modal-hero-art" src="assets/logo.png" onerror="this.onerror=null; this.src='../../assets/logo.png';" alt="Cover" />
       </div>
 
       <!-- Live Multi-Bar Audio Visualizer -->
@@ -1084,7 +1089,7 @@
           <span id="queuePreCacheStatus" style="font-size: 10px; color: #10B981; font-weight: 600;">Next Track Pre-Cached ✓</span>
         </div>
         <div id="modalUpNextTrack" style="display: flex; align-items: center; gap: 10px;">
-          <img id="nextArt" src="../../assets/logo.png" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;" />
+          <img id="nextArt" src="assets/logo.png" onerror="this.onerror=null; this.src='../../assets/logo.png';" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;" />
           <div style="flex: 1; min-width: 0;">
             <div id="nextTitle" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Upcoming Track</div>
             <div id="nextArtist" style="font-size: 10px; color: var(--text-muted);">Auto-downloaded in background</div>
