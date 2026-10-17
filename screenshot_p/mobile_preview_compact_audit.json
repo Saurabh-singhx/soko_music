@@ -5,16 +5,35 @@
   },
   "summary": {
     "issuesCount": 0,
-    "warningsCount": 0,
-    "passedCount": 4,
-    "score": 100
+    "warningsCount": 3,
+    "passedCount": 1,
+    "score": 70
   },
   "issues": [],
-  "warnings": [],
+  "warnings": [
+    {
+      "category": "accessibility",
+      "severity": "warning",
+      "title": "Small Tap Targets Detected",
+      "details": "5 interactive elements are smaller than 40x40px recommended for thumb taps. Samples: #headerAuthBtn (\"Saurabh\"): 78x22px, .mini-controls (\"\"): 80x38px, .mini-btn (\"\"): 38x38px, .mini-btn (\"\"): 38x38px, #modalSeekSlider (\"\"): 320x36px",
+      "recommendation": "Increase padding or min-height/min-width to at least 44px for comfortable touch navigation."
+    },
+    {
+      "category": "typography",
+      "severity": "warning",
+      "title": "Micro-text Detected",
+      "details": "18 text elements have font-size < 10px, which may be unreadable on mobile screens.",
+      "recommendation": "Use minimum 11px for secondary badges and 13-16px for body copy."
+    },
+    {
+      "category": "safe-area",
+      "severity": "warning",
+      "title": "Low Bottom Clearance",
+      "details": "body has only 0px bottom padding. Bottom navigation bars or home indicators may occlude content.",
+      "recommendation": "Set padding-bottom to calc(var(--tab-height, 64px) + env(safe-area-inset-bottom, 20px) + 24px)."
+    }
+  ],
   "passed": [
-    "No horizontal overflow; layout fits within viewport width.",
-    "All interactive touch targets meet recommended size requirements.",
-    "Typography meets mobile readability standards (font-size >= 10px).",
-    "Safe bottom clearance verified (96px)."
+    "No horizontal overflow; layout fits within viewport width."
   ]
 }
