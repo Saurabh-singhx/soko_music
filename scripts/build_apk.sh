@@ -143,6 +143,9 @@ import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.net.Uri;
 import android.view.Window;
 import android.view.WindowManager;
 import android.graphics.Color;
@@ -879,7 +882,45 @@ public class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(true);
 
         webView.addJavascriptInterface(new SokoNativeBridge(), "SokoNative");
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                String path = uri.getPath();
+                if (path != null && (path.contains("assets/") || path.contains("music/"))) {
+                    try {
+                        String assetPath = path;
+                        if (assetPath.contains("assets/")) {
+                            assetPath = assetPath.substring(assetPath.indexOf("assets/"));
+                        } else if (assetPath.contains("music/")) {
+                            assetPath = assetPath.substring(assetPath.indexOf("music/"));
+                        }
+                        while (assetPath.startsWith("/")) {
+                            assetPath = assetPath.substring(1);
+                        }
+                        InputStream in = null;
+                        String fileName = new File(assetPath).getName();
+                        String[] candidates = new String[]{
+                            assetPath,
+                            "assets/" + assetPath,
+                            "music/" + fileName,
+                            "assets/music/" + fileName
+                        };
+                        for (String cand : candidates) {
+                            try {
+                                in = getAssets().open(cand);
+                                if (in != null) break;
+                            } catch (Exception ignored) {}
+                        }
+                        if (in != null) {
+                            String mime = assetPath.endsWith(".png") ? "image/png" : (assetPath.endsWith(".jpg") ? "image/jpeg" : (assetPath.endsWith(".opus") ? "audio/opus" : "application/octet-stream"));
+                            return new WebResourceResponse(mime, "UTF-8", in);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient());
 
         try {
@@ -892,7 +933,7 @@ public class MainActivity extends Activity {
             }
             is.close();
             String htmlContent = baos.toString("UTF-8");
-            webView.loadDataWithBaseURL("file:///android_asset/", htmlContent, "text/html", "UTF-8", null);
+            webView.loadDataWithBaseURL("https://music.youtube.com/", htmlContent, "text/html", "UTF-8", null);
         } catch (Exception e) {
             webView.loadUrl("file:///android_asset/index.html");
         }
