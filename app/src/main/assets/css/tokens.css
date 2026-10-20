@@ -1,0 +1,26 @@
+    :root {
+      --bg-primary: #07090E;
+      --bg-surface: #0E121B;
+      --bg-card: #151B27;
+      --bg-card-hover: #1C2434;
+      --accent-primary: #6366F1;
+      --accent-hover: #4F46E5;
+      --accent-cyan: #06B6D4;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --text-primary: #FFFFFF;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.4);
+      --success: #10B981;
+      --warning: #F59E0B;
+      --tab-bar-height: 60px;
+      --mini-player-height: 56px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-full: 9999px;
+    }
+

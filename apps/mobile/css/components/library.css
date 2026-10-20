@@ -1,0 +1,242 @@
+    /* Library Offline Songs Sort Bar */
+    .library-sort-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px 6px;
+    }
+    .library-sort-container::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .library-sort-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      flex-shrink: 0;
+    }
+
+    .library-sort-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .library-sort-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      min-height: 40px;
+      min-width: 40px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .library-sort-chip:active {
+      transform: scale(0.96);
+    }
+    .library-sort-chip.active {
+      background: rgba(99, 102, 241, 0.22);
+      border-color: var(--accent-primary);
+      color: #FFFFFF;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+    }
+
+    .sort-dir-arrow {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      margin-left: 2px;
+    }
+
+    .offline-chip {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(7, 9, 14, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #10B981;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      z-index: 2;
+    }
+
+    /* Track List Rows */
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .track-row:active {
+      background: var(--bg-card-hover);
+    }
+
+    .track-art {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background: #11141E;
+      flex-shrink: 0;
+    }
+
+    .track-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+
+    .track-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+
+    .action-icon-btn {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 0.15s ease, background 0.15s ease;
+      box-sizing: border-box;
+    }
+    .action-icon-btn:active {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .action-icon-btn-compact {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 0.15s ease, background 0.15s ease;
+      box-sizing: border-box;
+    }
+    .action-icon-btn-compact:active {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Filter Pills */
+    .filter-pills-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 14px;
+      padding-bottom: 4px;
+    }
+    .filter-pill {
+      flex: 0 0 auto;
+      padding: 8px 16px;
+      min-height: 40px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-pill.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .shelf-play-all-btn {
+      font-size: 11px !important;
+      font-weight: 600;
+      padding: 6px 14px !important;
+      min-height: 40px;
+      min-width: 64px;
+      cursor: pointer;
+    }
+
+    .auth-banner-refresh-btn {
+      font-size: 11px !important;
+      font-weight: 600;
+      padding: 6px 14px !important;
+      min-height: 40px;
+      min-width: 76px;
+      cursor: pointer;
+    }
+
