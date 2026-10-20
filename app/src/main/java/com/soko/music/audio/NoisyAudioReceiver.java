@@ -31,7 +31,12 @@ public class NoisyAudioReceiver extends BroadcastReceiver {
 
     public void register(Context context) {
         if (!isRegistered && context != null) {
-            context.registerReceiver(this, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+            IntentFilter filter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                context.registerReceiver(this, filter, Context.RECEIVER_EXPORTED);
+            } else {
+                context.registerReceiver(this, filter);
+            }
             isRegistered = true;
         }
     }
