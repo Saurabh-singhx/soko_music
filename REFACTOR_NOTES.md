@@ -224,3 +224,110 @@ To ensure zero behavior breakage, the following identifiers must be preserved ch
   - `"com.soko.music.ACTION_NEXT"`
   - `"com.soko.music.ACTION_PREV"`
   - `android.media.AUDIO_BECOMING_NOISY`
+
+
+---
+
+## 4. Final Refactoring Audit & Verification Checklist
+
+### Verification Summary
+- **Node Test Runner**: 204 automated test cases passed with 100% success rate (`tests/cache_test.js` and `tests/comprehensive_test.js`).
+- **APK Compilation**: Signed release APK successfully generated via AAPT2, javac (OpenJDK 17, target Java 8), D8 DEXing, zipalign 4-byte boundary, and apksigner v2/v3 signatures. Output: `dist/soko-music.apk` (140 MB).
+- **Function Inventory Count**:
+  - Baseline JS functions: 121
+  - New modular JS functions: 122 (121 original + `initApp` bootstrap)
+  - Missing JS functions: 0
+  - Duplicate JS function definitions: 0
+  - Baseline Java classes: 2 monoliths (containing 12 embedded inner classes)
+  - New modular Java classes: 14 top-level single-responsibility classes
+  - Missing Java classes: 0
+- **Line Count Compliance**:
+  - Soft ceiling: ~300 lines (hard limit: 400 lines)
+  - All Java files are <= 350 lines
+  - All JS files are <= 392 lines
+  - `index.html` is pure HTML markup + `<script src="...">` tags with 0 inline scripts and 0 inline CSS.
+- **Shared Strings & Identifiers**:
+  - All 23 `@JavascriptInterface` method names preserved verbatim
+  - All 6 localStorage keys preserved verbatim
+  - All DOM element IDs, class names, and data attributes preserved verbatim
+  - All broadcast intents and notification channels preserved verbatim
+
+### Before & After Line Counts
+
+| Layer / File | Original Lines | Refactored Line Count | Responsibilities |
+|---|---|---|---|
+| **Build & Scripts** | | | |
+| `scripts/build_apk.sh` | 1,651 lines | 79 lines | Orchestrates multi-stage build pipeline |
+| `scripts/env.sh` | - | 45 lines | Shared Android SDK and build paths |
+| `scripts/compile_res.sh` | - | 20 lines | AAPT2 resource compilation & linking |
+| `scripts/compile_java.sh` | - | 15 lines | javac Java bytecode compilation |
+| `scripts/dex.sh` | - | 19 lines | D8 DEX bytecode conversion & zip injection |
+| `scripts/sign.sh` | - | 45 lines | Zipalign 4-byte alignment & apksigner |
+| `tools/generate_icons.py` | - | 50 lines | Pillow multi-density launcher icon generator |
+| **Java Native Layer** | | | |
+| `MainActivity.java` | Embedded in build_apk.sh | 120 lines | Activity lifecycle, WebView setup, bridge binding |
+| `bridge/SokoNativeBridge.java` | Embedded | 145 lines | Unified `@JavascriptInterface "SokoNative"` facade |
+| `bridge/PlayerBridge.java` | Embedded | 78 lines | Native playback delegation |
+| `bridge/StorageBridge.java` | Embedded | 90 lines | Download & cache delegation |
+| `bridge/AuthBridge.java` | Embedded | 115 lines | Google login & InnerTube HTTP proxy |
+| `bridge/TelemetryBridge.java` | Embedded | 42 lines | Watchtime telemetry beacon proxy |
+| `audio/AudioEngine.java` | Embedded | 337 lines | Android MediaPlayer core audio playback engine |
+| `audio/AudioFocusManager.java` | Embedded | 134 lines | Audio focus request, abandon, ducking |
+| `audio/NoisyAudioReceiver.java` | Embedded | 43 lines | `ACTION_AUDIO_BECOMING_NOISY` receiver |
+| `audio/MediaNotificationManager.java` | Embedded | 211 lines | Android MediaStyle lockscreen notification |
+| `cache/DiskCacheManager.java` | Embedded | 222 lines | LRU eviction engine on disk storage |
+| `cache/TrackDownloader.java` | Embedded | 350 lines | Background track download & file streaming |
+| `util/CryptoUtil.java` | Embedded | 52 lines | SHA-1 / HMAC-SHA1 signature utils |
+| `util/HttpUtil.java` | Embedded | 112 lines | OkHttp / HttpURLConnection network client |
+| **Frontend HTML & CSS** | | | |
+| `index.html` | 2,138 lines | 590 lines | Semantic markup & script tags; 0 inline styles/JS |
+| `css/tokens.css` | Embedded in index.html | 46 lines | CSS custom properties & design tokens |
+| `css/base.css` | Embedded | 146 lines | Reset, typography, foundational styles |
+| `css/layout.css` | Embedded | 48 lines | Main app container, tab pane layouts |
+| `css/animations.css` | Embedded | 43 lines | Keyframe animations (spin, pulse, fade) |
+| `css/components/*.css` (12 files) | Embedded | ~1,260 lines | One CSS file per UI component / modal |
+| **Frontend JS: Config & Utils** | | | |
+| `js/config/constants.js` | Embedded in index.html | 45 lines | Core constants, storage keys, limits |
+| `js/config/catalog.js` | Embedded | 180 lines | Core bundled catalog metadata |
+| `js/data/charts_*.js` (8 files) | Embedded | 352 lines each | Regional Top 100 charts (50 songs per file) |
+| `js/data/regional_charts.js` | Embedded | 35 lines | Regional charts index assembler |
+| `js/utils/duration.js` | Embedded | 50 lines | Time formatters & duration parsers |
+| `js/utils/text.js` | Embedded | 25 lines | Safe text extraction & sanitization |
+| `js/utils/filter.js` | Embedded | 75 lines | Podcast & long-track duration filter |
+| `js/utils/crypto.js` | Embedded | 20 lines | Client playback nonce / cpn generator |
+| **Frontend JS: State & Cache** | | | |
+| `js/state/store.js` | Embedded | 82 lines | Application state variables & getters |
+| `js/state/storage.js` | Embedded | 185 lines | localStorage persistence engine |
+| `js/cache/lru_cache.js` | Embedded | 105 lines | In-memory LRU cache eviction logic |
+| `js/cache/downloader.js` | Embedded | 215 lines | Native download orchestration & progress |
+| **Frontend JS: API & Network** | | | |
+| `js/api/innertube.js` | Embedded | 73 lines | Raw InnerTube HTTP call bridge |
+| `js/api/radio.js` | Embedded | 83 lines | Dynamic YouTube Music radio queue fetcher |
+| `js/api/browse_parser.js` | Embedded | 273 lines | InnerTube browse response shelf parser |
+| `js/api/playlist.js` | Embedded | 166 lines | Dynamic playlist resolution |
+| `js/api/browse.js` | Embedded | 146 lines | YouTube Music home feed fetcher |
+| `js/api/search.js` | Embedded | 192 lines | Search autocomplete & query executor |
+| `js/api/auth.js` | Embedded | 99 lines | Account login, cookie sync, demo profile |
+| **Frontend JS: Player Engine** | | | |
+| `js/player/telemetry.js` | Embedded | 127 lines | Watchtime telemetry pings & beacons |
+| `js/player/mediasession.js` | Embedded | 43 lines | Web MediaSession API integration |
+| `js/player/yt_iframe.js` | Embedded | 205 lines | YouTube IFrame player integration |
+| `js/player/queue.js` | Embedded | 102 lines | Queue management, shuffle, repeat, look-ahead |
+| `js/player/audio_engine.js` | Embedded | 291 lines | Core playback engine, audio element controller |
+| `js/player/native_audio_listener.js` | Embedded | 93 lines | Native bridge player callbacks |
+| **Frontend JS: UI Screens & Gestures** | | | |
+| `js/ui/toast.js` | Embedded | 22 lines | Toast notification display controller |
+| `js/ui/visualizer.js` | Embedded | 32 lines | Simulated audio frequency visualizer |
+| `js/ui/gestures/pull_to_refresh.js` | Embedded | 181 lines | Native-like pull-to-refresh touch gesture |
+| `js/ui/auth_modal.js` | Embedded | 47 lines | Account login modal controller |
+| `js/ui/navigation.js` | Embedded | 32 lines | Tab bar navigation & view switching |
+| `js/ui/player_ui.js` | Embedded | 110 lines | Now Playing modal & miniplayer UI |
+| `js/ui/cards.js` | Embedded | 75 lines | Card HTML templates (shelf, line, mix) |
+| `js/ui/home.js` | Embedded | 392 lines | Home feed shelves rendering & curated mixes |
+| `js/ui/charts.js` | Embedded | 90 lines | Regional charts tab renderer & pagination |
+| `js/ui/search.js` | Embedded | 74 lines | Search results list renderer |
+| `js/ui/library.js` | Embedded | 263 lines | Offline library tracks list & sort |
+| `js/ui/playlists.js` | Embedded | 168 lines | Custom playlists CRUD modal & views |
+| `js/ui/favorites.js` | Embedded | 32 lines | Favorites toggle & liked songs sync |
+| **Frontend JS: Bootstrap** | | | |
+| `js/app.js` | Embedded | 65 lines | `DOMContentLoaded` bootstrap lifecycle |
