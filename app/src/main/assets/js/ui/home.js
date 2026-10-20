@@ -138,7 +138,7 @@ function prepareHomeShelves(apiShelves = []) {
 
   const quickTracks = (apiQuick && apiQuick.tracks && apiQuick.tracks.length > 0)
     ? apiQuick.tracks
-    : (REGIONAL_CHARTS['Global'] ? REGIONAL_CHARTS['Global'].slice(0, 16) : CATALOG.slice(0, 16));
+    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []).slice(0, 16);
   allShelves.push({
     id: 'quick_picks',
     title: 'Quick picks',
@@ -160,7 +160,7 @@ function prepareHomeShelves(apiShelves = []) {
 
   const trendTracks = (apiTrending && apiTrending.tracks && apiTrending.tracks.length > 0)
     ? apiTrending.tracks
-    : (REGIONAL_CHARTS['India'] ? REGIONAL_CHARTS['India'].slice(0, 16) : CATALOG.slice(0, 16));
+    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []).slice(0, 16);
   allShelves.push({
     id: 'trending_for_you',
     title: 'Trending songs for you',
@@ -182,8 +182,7 @@ function prepareHomeShelves(apiShelves = []) {
   const trendIds = new Set(trendTracks.map(t => t.id));
   const forgottenPool = [
     ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
-    ...(REGIONAL_CHARTS['United States'] ? REGIONAL_CHARTS['United States'].slice(0, 16) : []),
-    ...CATALOG
+    ...(((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []).slice(0, 16))
   ];
   const uniqueForgotten = [];
   const seenF = new Set();
@@ -271,25 +270,10 @@ function updateHomeAuthBanner() {
   if (!banner) return;
 
   if (userSession && userSession.isLoggedIn) {
-    const initial = (userSession.name || 'Y').charAt(0).toUpperCase();
-    banner.innerHTML = `
-      <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #06B6D4); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 14px;">
-            ${initial}
-          </div>
-          <div>
-            <div style="font-size: 13px; font-weight: 700; color: #fff;">${userSession.name || 'YouTube Music'}</div>
-            <div style="font-size: 11px; color: var(--accent-cyan);">● Personal Feed Synced</div>
-          </div>
-        </div>
-        <div style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; padding: 5px 10px; background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-full); border: 1px solid rgba(255, 255, 255, 0.08);">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-          <span>Swipe down to refresh</span>
-        </div>
-      </div>
-    `;
+    banner.innerHTML = '';
+    banner.style.display = 'none';
   } else {
+    banner.style.display = 'block';
     banner.innerHTML = `
       <div onclick="loginWithGoogle()" style="background: linear-gradient(135deg, rgba(255, 0, 0, 0.12), rgba(99, 102, 241, 0.08)); border: 1px solid rgba(255, 0, 0, 0.25); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -312,9 +296,21 @@ function renderHomeShelves(rawShelves) {
   if (!container) return;
 
   const shelves = prepareHomeShelves(rawShelves);
-  currentHomeShelves = shelves;
+  const visibleShelves = shelves.filter(s => (s.tracks && s.tracks.length > 0) || (s.mixes && s.mixes.length > 0));
+  currentHomeShelves = visibleShelves;
 
-  container.innerHTML = shelves.map(shelf => {
+  if (visibleShelves.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+        <svg width="28" height="28" fill="var(--accent-primary)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px;">Syncing YouTube Music</div>
+        <div style="font-size: 12px;">Loading live recommendations...</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = visibleShelves.map(shelf => {
     if (shelf.type === 'ytm-line') {
       return `
         <div class="section-title-row" style="margin-top: 22px;">

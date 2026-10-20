@@ -12,51 +12,57 @@ const STORAGE_KEY_LAST_PLAYED = 'soko_last_played_track_v1';
 const CURATED_MIXES = [
   {
     id: 'mix_supermix',
+    playlistId: 'RDTMAK5uy_kset8DisdE7LSD4TNJEVnkflThQVSoNys',
     title: 'My Supermix',
     subtitle: 'Infinite Personalized Mix',
     badge: 'Supermix',
     gradient: 'linear-gradient(135deg, #FF0055, #7A00FF)',
-    songIds: ['kPa7bsKwL-c', 'yJg-Y5byMMw', '4HVhnhpJxr0', 'EW9opRK1MPk', 'XI3JGDHduR4', 'ZCRL8V0ZkEA']
+    songIds: []
   },
   {
     id: 'mix_discover',
+    playlistId: 'RDTMAK5uy_n7FqZ-7aI2b4p-j5eJc5g5h5e',
     title: 'Discover Mix',
     subtitle: 'Updated Weekly • Fresh Picks',
     badge: 'Discover',
     gradient: 'linear-gradient(135deg, #00C6FF, #0072FF)',
-    songIds: ['s_SN6KDYjKY', 'S4uPiw9rnbY', '7Fq2ArrUU9c', '8TfP90KODxo', 'jLHyFkCKEzg']
+    songIds: []
   },
   {
     id: 'mix_chill',
+    playlistId: 'RDTMAK5uy_m01Z',
     title: 'Chill Mix',
     subtitle: 'Mellow Acoustics & Lo-Fi',
     badge: 'Chill',
     gradient: 'linear-gradient(135deg, #43E97B, #38F9D7)',
-    songIds: ['4HVhnhpJxr0', 'Io_Z3HxgJGs', 'ZUL-ivsl_Fs', 'Qo4-4388R3g', 'tXi15CFnFws']
+    songIds: []
   },
   {
     id: 'mix_energy',
+    playlistId: 'RDTMAK5uy_k23Z',
     title: 'Energy Mix',
     subtitle: 'High Tempo & Workout Hype',
     badge: 'Energy',
     gradient: 'linear-gradient(135deg, #FA709A, #FEE140)',
-    songIds: ['yJg-Y5byMMw', 'XI3JGDHduR4', 'cK9h5PVzRpk', 'iKopExw_3Zg', 'ppcVqfsekIs']
+    songIds: []
   },
   {
     id: 'mix_focus',
+    playlistId: 'RDTMAK5uy_l45Z',
     title: 'Focus Mix',
     subtitle: 'Instrumental Concentration',
     badge: 'Focus',
     gradient: 'linear-gradient(135deg, #667EEA, #764BA2)',
-    songIds: ['EW9opRK1MPk', 'ZCRL8V0ZkEA', 'yiJ5k2vBtlw', 'SxkHNou0uiM', '4HVhnhpJxr0']
+    songIds: []
   },
   {
     id: 'mix_forgotten',
+    playlistId: 'RDTMAK5uy_f001',
     title: 'Forgotten Favorites Mix',
     subtitle: 'Timeless Throwbacks',
     badge: 'Favorites',
     gradient: 'linear-gradient(135deg, #F83600, #F9D423)',
-    songIds: ['Io_Z3HxgJGs', 'ZUL-ivsl_Fs', '4HVhnhpJxr0', 'EW9opRK1MPk', 'kPa7bsKwL-c']
+    songIds: []
   }
 ];
 

@@ -50,6 +50,13 @@ function playNextTrack() {
     ? window.activeQueueList
     : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
   if (!pool || pool.length <= 1) pool = CATALOG;
+  const filterFn = (typeof isPodcastOrLongTrack === 'function')
+    ? isPodcastOrLongTrack
+    : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
+  if (filterFn) {
+    const validPool = pool.filter(t => t && !filterFn(t));
+    if (validPool.length > 0) pool = validPool;
+  }
 
   let nextTrack;
   if (isShuffle) {
@@ -61,6 +68,12 @@ function playNextTrack() {
     nextTrack = pool[nextIdx];
   }
   if (nextTrack) {
+    if (window.isRadioActive && typeof fetchAndApplyYtmRadioQueue === 'function') {
+      const curPos = pool.findIndex(t => t.id === nextTrack.id);
+      if (curPos >= pool.length - 3) {
+        fetchAndApplyYtmRadioQueue(nextTrack.id, false);
+      }
+    }
     selectTrackToPlay(nextTrack.id);
   }
 }
@@ -96,6 +109,13 @@ function playPreviousTrack() {
     ? window.activeQueueList
     : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
   if (!pool || pool.length <= 1) pool = CATALOG;
+  const filterFn = (typeof isPodcastOrLongTrack === 'function')
+    ? isPodcastOrLongTrack
+    : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
+  if (filterFn) {
+    const validPool = pool.filter(t => t && !filterFn(t));
+    if (validPool.length > 0) pool = validPool;
+  }
 
   const curIdx = pool.findIndex(t => t.id === currentTrack?.id);
   const prevIdx = curIdx > 0 ? curIdx - 1 : pool.length - 1;
@@ -114,7 +134,7 @@ function scheduleLookAhead(currentId) {
   const poolToUse = validPool.length > 0 ? validPool : pool;
   const curIdx = poolToUse.findIndex(t => t.id === currentId);
   const nextIdx = curIdx >= 0 ? (curIdx + 1) % poolToUse.length : 0;
-  lookAheadNextTrack = poolToUse[nextIdx] || CATALOG[0];
+  lookAheadNextTrack = poolToUse[nextIdx] || CATALOG[0] || null;
   window.lookAheadNextTrack = lookAheadNextTrack;
   updateLookAheadUI();
 }
