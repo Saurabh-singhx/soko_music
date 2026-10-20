@@ -1,0 +1,167 @@
+package com.soko.music;
+
+import android.app.Activity;
+import android.content.Context;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Window;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import com.soko.music.audio.AudioEngine;
+import com.soko.music.audio.AudioFocusManager;
+import com.soko.music.audio.MediaNotificationManager;
+import com.soko.music.audio.NoisyAudioReceiver;
+import com.soko.music.bridge.AuthBridge;
+import com.soko.music.bridge.PlayerBridge;
+import com.soko.music.bridge.SokoNativeBridge;
+import com.soko.music.bridge.StorageBridge;
+import com.soko.music.bridge.TelemetryBridge;
+import com.soko.music.cache.DiskCacheManager;
+import com.soko.music.cache.TrackDownloader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.InputStream;
+
+public class MainActivity extends Activity {
+    private static final String TAG = "SokoMusic";
+
+    private WebView webView;
+    private MediaNotificationManager mediaNotificationManager;
+    private AudioFocusManager audioFocusManager;
+    private AudioEngine audioEngine;
+    private NoisyAudioReceiver noisyAudioReceiver;
+    private DiskCacheManager diskCacheManager;
+    private TrackDownloader trackDownloader;
+    private SokoNativeBridge sokoNativeBridge;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            getWindow().setStatusBarColor(Color.parseColor("#07090E"));
+            getWindow().setNavigationBarColor(Color.parseColor("#07090E"));
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+
+        webView = new WebView(this);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+
+        mediaNotificationManager = new MediaNotificationManager(this, webView);
+        audioFocusManager = new AudioFocusManager(this, webView);
+        audioEngine = new AudioEngine(this, webView, audioFocusManager, mediaNotificationManager);
+        noisyAudioReceiver = new NoisyAudioReceiver(webView);
+        diskCacheManager = new DiskCacheManager(this);
+        trackDownloader = new TrackDownloader(this, webView, audioEngine, diskCacheManager);
+
+        PlayerBridge playerBridge = new PlayerBridge(audioEngine, mediaNotificationManager);
+        StorageBridge storageBridge = new StorageBridge(trackDownloader, diskCacheManager);
+        AuthBridge authBridge = new AuthBridge(this, webView);
+        TelemetryBridge telemetryBridge = new TelemetryBridge();
+        sokoNativeBridge = new SokoNativeBridge(playerBridge, storageBridge, authBridge, telemetryBridge);
+
+        noisyAudioReceiver.register(this);
+        mediaNotificationManager.registerActionReceiver();
+
+        webView.addJavascriptInterface(sokoNativeBridge, "SokoNative");
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                String path = uri.getPath();
+                if (path != null && (path.contains("assets/") || path.contains("music/"))) {
+                    try {
+                        String assetPath = path;
+                        if (assetPath.contains("assets/")) {
+                            assetPath = assetPath.substring(assetPath.indexOf("assets/"));
+                        } else if (assetPath.contains("music/")) {
+                            assetPath = assetPath.substring(assetPath.indexOf("music/"));
+                        }
+                        while (assetPath.startsWith("/")) {
+                            assetPath = assetPath.substring(1);
+                        }
+                        InputStream in = null;
+                        String fileName = new File(assetPath).getName();
+                        String[] candidates = new String[]{
+                            assetPath,
+                            "assets/" + assetPath,
+                            "music/" + fileName,
+                            "assets/music/" + fileName
+                        };
+                        for (String cand : candidates) {
+                            try {
+                                in = getAssets().open(cand);
+                                if (in != null) break;
+                            } catch (Exception ignored) {}
+                        }
+                        if (in != null) {
+                            String mime = assetPath.endsWith(".png") ? "image/png" : (assetPath.endsWith(".jpg") ? "image/jpeg" : (assetPath.endsWith(".opus") ? "audio/opus" : "application/octet-stream"));
+                            return new WebResourceResponse(mime, "UTF-8", in);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+        });
+        webView.setWebChromeClient(new WebChromeClient());
+
+        try {
+            InputStream is = getAssets().open("index.html");
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int read;
+            while ((read = is.read(buf)) != -1) {
+                baos.write(buf, 0, read);
+            }
+            is.close();
+            String htmlContent = baos.toString("UTF-8");
+            webView.loadDataWithBaseURL("https://music.youtube.com/", htmlContent, "text/html", "UTF-8", null);
+        } catch (Exception e) {
+            webView.loadUrl("file:///android_asset/index.html");
+        }
+
+        setContentView(webView);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (noisyAudioReceiver != null) {
+            noisyAudioReceiver.unregister(this);
+        }
+        if (mediaNotificationManager != null) {
+            mediaNotificationManager.release();
+        }
+        if (audioFocusManager != null) {
+            audioFocusManager.abandonAudioFocus();
+        }
+        if (audioEngine != null) {
+            audioEngine.release();
+        }
+        if (webView != null) {
+            webView.destroy();
+        }
+    }
+}
