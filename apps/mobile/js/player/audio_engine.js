@@ -11,6 +11,12 @@ function isRadioHomeShelf(shelf) {
 }
 
 function selectTrackToPlay(trackId, startRadio = false) {
+  if (typeof window !== 'undefined' && window.__isAppOutdated) {
+    if (typeof showToast === 'function') {
+      showToast('⚠️ App is outdated. Please update to continue.', '⛔');
+    }
+    return;
+  }
   let track = findTrackAcrossAllSources(trackId);
   if (!track && trackId) {
     track = {
@@ -96,6 +102,9 @@ function selectTrackToPlay(trackId, startRadio = false) {
 }
 
 function playRealTrack(track) {
+  if (typeof window !== 'undefined' && window.__isAppOutdated) {
+    return;
+  }
   const filterFn = (typeof isPodcastOrLongTrack === 'function')
     ? isPodcastOrLongTrack
     : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);

@@ -158,6 +158,10 @@ window.isPodcastOrLongTrack = isPodcastOrLongTrack;
 window.parseDurationStringToSeconds = parseDurationStringToSeconds;
 window.isInnerTubePodcastItem = isInnerTubePodcastItem;
 window.MAX_ALLOWED_DURATION_SECONDS = MAX_ALLOWED_DURATION_SECONDS;
+window.compareAppVersions = compareAppVersions;
+window.checkForAppUpdates = checkForAppUpdates;
+window.stopApplicationDueToOutdated = stopApplicationDueToOutdated;
+window.renderOutdatedBlockerModal = renderOutdatedBlockerModal;
 window.startDownloadTrack = startDownloadTrack;
 window.triggerDownloadCurrentTrack = triggerDownloadCurrentTrack;
 window.autoPrefetchNextTrack = autoPrefetchNextTrack;
@@ -1659,6 +1663,114 @@ window.selectTrackToPlay('rad_track_1');
   await window.fetchAndApplyYtmRadioQueue('tr_seed_1', true);
   assert(radioEndpointPayload && radioEndpointPayload.playlistId === 'RDAMVMtr_seed_1', 'InnerTube called with radio playlistId RDAMVMtr_seed_1');
   assert(window.activeQueueList.some(t => t.id === 'dyn_radio_1'), 'Trending queue dynamically populated with radio recommendations');
+
+  console.log('\n--- Test Suite 15: Auto-Update & Outdated Application Halting Engine ---');
+
+  // 1. Version Comparison Logic
+  assert(window.compareAppVersions('1.0.0', '1.0.0') === 0, 'compareAppVersions equal versions returns 0');
+  assert(window.compareAppVersions('1.0.0', '1.0.1') === -1, 'compareAppVersions 1.0.0 < 1.0.1 returns -1');
+  assert(window.compareAppVersions('1.0.1', '1.0.0') === 1, 'compareAppVersions 1.0.1 > 1.0.0 returns 1');
+  assert(window.compareAppVersions('v1.0.0', '1.0.0') === 0, 'compareAppVersions strips v prefix');
+  assert(window.compareAppVersions('1.1.0', '1.0.9') === 1, 'compareAppVersions 1.1.0 > 1.0.9 returns 1');
+  assert(window.compareAppVersions('1.0.0', '2.0.0') === -1, 'compareAppVersions major upgrade returns -1');
+
+  // 2. Up-to-date check does not halt app
+  let openedUrl = null;
+  let exitAppCalled = false;
+  let nativeOutdatedSet = false;
+  let nativeAudioStopped = false;
+
+  window.SokoNative = {
+    getAppVersion: () => '1.0.0',
+    getAppVersionCode: () => 1,
+    setAppOutdated: (val) => { nativeOutdatedSet = val; },
+    stopAudio: () => { nativeAudioStopped = true; },
+    openExternalUrl: (url) => { openedUrl = url; },
+    exitApp: () => { exitAppCalled = true; }
+  };
+
+  // Mock global fetch for up-to-date response
+  global.fetch = async (url) => {
+    return {
+      ok: true,
+      json: async () => ({
+        version: '1.0.0',
+        buildNumber: 1,
+        minVersion: '1.0.0',
+        mandatory: true,
+        releaseTag: 'v1.0.0',
+        releaseNotes: 'Current stable release',
+        downloads: {
+          androidApk: 'https://github.com/Saurabh-singhx/soko_music/releases/download/v1.0.0/soko-music.apk'
+        }
+      })
+    };
+  };
+
+  const upToDateResult = await window.checkForAppUpdates();
+  assert(upToDateResult && upToDateResult.outdated === false, 'Check for updates on matching version reports outdated: false');
+  assert(window.__isAppOutdated === false, 'App is NOT marked outdated when version matches');
+
+  // 3. Outdated version check triggers full application halt
+  let audioPlayerPaused = false;
+  const mockAudioEl = {
+    pause: () => { audioPlayerPaused = true; },
+    src: 'http://test.audio/stream.opus'
+  };
+  global.audioEl = mockAudioEl;
+  document.getElementById = (id) => {
+    if (id === 'audioPlayer') return mockAudioEl;
+    return getEl(id);
+  };
+
+  global.fetch = async (url) => {
+    return {
+      ok: true,
+      json: async () => ({
+        version: '1.1.0',
+        buildNumber: 2,
+        minVersion: '1.1.0',
+        mandatory: true,
+        releaseTag: 'v1.1.0',
+        releaseNotes: 'Crucial security update and performance upgrade.',
+        downloads: {
+          androidApk: 'https://github.com/Saurabh-singhx/soko_music/releases/download/v1.1.0/soko-music.apk'
+        }
+      })
+    };
+  };
+
+  const outdatedResult = await window.checkForAppUpdates();
+  assert(outdatedResult && outdatedResult.outdated === true, 'Check for updates on older version reports outdated: true');
+  assert(window.__isAppOutdated === true, 'window.__isAppOutdated is set to true');
+  assert(nativeOutdatedSet === true, 'SokoNative.setAppOutdated(true) was invoked');
+  assert(nativeAudioStopped === true, 'SokoNative.stopAudio() was invoked');
+  assert(audioPlayerPaused === true, 'HTML5 audioEl was paused');
+  assert(mockAudioEl.src === '', 'HTML5 audio source was cleared');
+
+  // 4. Modal and action buttons verification
+  const modalEl = getEl('appOutdatedModal');
+  assert(modalEl !== null, '#appOutdatedModal element was generated');
+  assert(modalEl.style.display === 'flex', '#appOutdatedModal is set to display: flex');
+  assert(modalEl.innerHTML.includes('Update Required'), 'Modal displays "Update Required"');
+  assert(modalEl.innerHTML.includes('v1.1.0'), 'Modal displays target version v1.1.0');
+  assert(modalEl.innerHTML.includes('Crucial security update'), 'Modal renders changelog from Gist');
+
+  const btnDownload = getEl('btnDownloadUpdate');
+  assert(btnDownload && typeof btnDownload.onclick === 'function', '#btnDownloadUpdate button has click handler');
+  btnDownload.onclick();
+  assert(openedUrl === 'https://github.com/Saurabh-singhx/soko_music/releases/download/v1.1.0/soko-music.apk', 'Clicking update button opens download APK URL');
+
+  const btnExit = getEl('btnExitApp');
+  assert(btnExit && typeof btnExit.onclick === 'function', '#btnExitApp button has click handler');
+  btnExit.onclick();
+  assert(exitAppCalled === true, 'Clicking Exit calls SokoNative.exitApp() to stop process');
+
+  // 5. Playback blocked when application is outdated
+  window.currentTrack = null;
+  window.isPlaying = false;
+  window.selectTrackToPlay('blocked_song_when_outdated');
+  assert(window.currentTrack === null || window.currentTrack.id !== 'blocked_song_when_outdated', 'selectTrackToPlay is blocked when app is outdated');
 
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);

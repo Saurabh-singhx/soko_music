@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
         StorageBridge storageBridge = new StorageBridge(trackDownloader, diskCacheManager);
         AuthBridge authBridge = new AuthBridge(this, webView);
         TelemetryBridge telemetryBridge = new TelemetryBridge();
-        sokoNativeBridge = new SokoNativeBridge(playerBridge, storageBridge, authBridge, telemetryBridge);
+        sokoNativeBridge = new SokoNativeBridge(this, playerBridge, storageBridge, authBridge, telemetryBridge);
 
         noisyAudioReceiver.register(this);
         mediaNotificationManager.registerActionReceiver();
@@ -213,6 +213,16 @@ public class MainActivity extends Activity {
         if (audioEngine != null) {
             audioEngine.syncPlaybackStateToWebView();
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (sokoNativeBridge != null && sokoNativeBridge.isAppOutdated()) {
+            finishAffinity();
+            System.exit(0);
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override
