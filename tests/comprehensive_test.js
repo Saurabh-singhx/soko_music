@@ -207,22 +207,41 @@ function assert(condition, message) {
 }
 
 // ------------------------------------------------------------
-// TEST SUITE 1: 100-Song Regional Charts & Pagination
+// TEST SUITE 1: Zero Hardcoded Songs & Dynamic Charts Verification
 // ------------------------------------------------------------
-console.log('\n--- Test Suite 1: 100-Song Regional Charts & Pagination ---');
+console.log('\n--- Test Suite 1: Zero Hardcoded Songs & Dynamic Charts Verification ---');
 assert(typeof window.REGIONAL_CHARTS === 'object', 'REGIONAL_CHARTS is defined');
+assert(window.CATALOG.length === 0, 'Zero hardcoded songs in CATALOG (actual: 0)');
+assert(window.BUNDLED_TRACKS.length === 0, 'Zero hardcoded tracks in BUNDLED_TRACKS (actual: 0)');
+assert(window.GENUINE_BUNDLED_IDS.size === 0, 'Zero hardcoded bundled IDs in GENUINE_BUNDLED_IDS (actual: 0)');
+
 const regions = ['Global', 'India', 'United States', 'United Kingdom'];
 regions.forEach(reg => {
   assert(Array.isArray(window.REGIONAL_CHARTS[reg]), `Region ${reg} is an array`);
-  assert(window.REGIONAL_CHARTS[reg].length === 100, `Region ${reg} has exactly 100 tracks (actual: ${window.REGIONAL_CHARTS[reg].length})`);
-  const sample = window.REGIONAL_CHARTS[reg][0];
-  assert(sample && sample.id && sample.id.length === 11, `Region ${reg} track 0 has authentic 11-char YouTube ID: ${sample.id}`);
-  assert(sample.cover && sample.cover.includes('i.ytimg.com'), `Region ${reg} track 0 has YouTube album art: ${sample.cover}`);
+  assert(window.REGIONAL_CHARTS[reg].length === 0, `Region ${reg} has 0 hardcoded tracks initially (actual: ${window.REGIONAL_CHARTS[reg].length})`);
 });
 
-// Test Pagination
+// Test initial loading state when charts are empty
 window.renderCharts('Global', 1);
 const chartsListEl = getEl('chartsTrackList');
+assert(chartsListEl.innerHTML.includes('Loading Live Global Charts'), 'renderCharts displays loading state when region is empty');
+
+// Test dynamic chart rendering when populated
+const mockDynamicCharts = [];
+for (let i = 1; i <= 50; i++) {
+  mockDynamicCharts.push({
+    id: `dyn_chart_${i}`,
+    title: i === 1 ? 'Die With A Smile' : `Chart Track ${i}`,
+    artist: i === 1 ? 'Lady Gaga & Bruno Mars' : `Artist ${i}`,
+    duration: 215,
+    cover: `https://i.ytimg.com/vi/dyn_chart_${i}/hqdefault.jpg`
+  });
+}
+window.REGIONAL_CHARTS['Global'] = mockDynamicCharts;
+window.REGIONAL_CHARTS['India'] = mockDynamicCharts.map(t => ({ ...t, id: 'in_' + t.id, title: 'India ' + t.title }));
+window.REGIONAL_CHARTS['United States'] = mockDynamicCharts.map(t => ({ ...t, id: 'us_' + t.id, title: 'US ' + t.title }));
+window.REGIONAL_CHARTS['United Kingdom'] = mockDynamicCharts.map(t => ({ ...t, id: 'uk_' + t.id, title: 'UK ' + t.title }));
+window.renderCharts('Global', 1);
 assert(chartsListEl.innerHTML.includes('Die With A Smile'), 'Page 1 renders Top track "Die With A Smile"');
 assert(chartsListEl.innerHTML.includes('>1<'), 'Page 1 displays Rank 1 badge');
 
@@ -238,7 +257,6 @@ console.log('\n--- Test Suite 2: Playback Engine & Exact Track Streaming ---');
 console.log('Testing click on online chart track (Tauba Tauba, yJg-Y5byMMw)...');
 window.selectTrackToPlay('yJg-Y5byMMw');
 assert(window.currentTrack.id === 'yJg-Y5byMMw', 'Current track ID is yJg-Y5byMMw');
-assert(window.currentTrack.title === 'Tauba Tauba', 'Current track title is "Tauba Tauba"');
 assert(window.isOnlineYtPlaying === true, 'isOnlineYtPlaying is TRUE for online track');
 const ytWrapper = getEl('ytOnlinePlayerWrapper');
 assert(ytWrapper.innerHTML.includes('yJg-Y5byMMw'), 'YouTube player is loaded with exact video ID yJg-Y5byMMw (zero wrong song hashing)');
@@ -250,11 +268,18 @@ assert(window.currentTrack.id === 'kPa7bsKwL-c', 'Current track ID is kPa7bsKwL-
 assert(window.isOnlineYtPlaying === true, 'isOnlineYtPlaying is TRUE');
 assert(ytWrapper.innerHTML.includes('kPa7bsKwL-c'), 'YouTube player loaded exact video ID kPa7bsKwL-c');
 
-// Test 2C: Clicking a local offline bundled track ("Gale Lag Ja", ID: 4HVhnhpJxr0)
-console.log('Testing click on local bundled track (Gale Lag Ja, 4HVhnhpJxr0)...');
-window.selectTrackToPlay('4HVhnhpJxr0');
-assert(window.currentTrack.id === '4HVhnhpJxr0', 'Current track ID is 4HVhnhpJxr0');
-assert(window.isOnlineYtPlaying === false, 'isOnlineYtPlaying is FALSE for local offline track');
+// Test 2C: Offline playback when track is downloaded on disk
+console.log('Testing offline playback for downloaded track on disk...');
+window.SokoNative = {
+  getDownloadedTrackPath: (id) => id === 'local_offline_test' ? '/data/user/0/com.soko.music/files/music/local_offline_test.opus' : '',
+  isTrackDownloaded: (id) => id === 'local_offline_test',
+  playAudio: () => {},
+  setActivePlaybackId: () => {},
+  stopAudio: () => {}
+};
+window.selectTrackToPlay('local_offline_test');
+assert(window.currentTrack.id === 'local_offline_test', 'Current track ID is local_offline_test');
+assert(window.isOnlineYtPlaying === false, 'isOnlineYtPlaying is FALSE for downloaded offline track');
 
 // ------------------------------------------------------------
 // TEST SUITE 3: Persistent Storage & Cache Retention
@@ -262,7 +287,7 @@ assert(window.isOnlineYtPlaying === false, 'isOnlineYtPlaying is FALSE for local
 console.log('\n--- Test Suite 3: Persistent Storage Engine (Surviving Process Kills) ---');
 
 const initialOfflineCount = window.downloadedSet.size;
-assert(initialOfflineCount === 16, `Initial downloadedSet has 16 bundled tracks (actual: ${initialOfflineCount})`);
+assert(initialOfflineCount === 0, `Initial downloadedSet has 0 hardcoded tracks (actual: ${initialOfflineCount})`);
 
 // Download an online track
 console.log('Simulating user downloading "Die With A Smile" (kPa7bsKwL-c)...');
@@ -293,12 +318,12 @@ assert(Array.isArray(savedTracks) && savedTracks.some(t => t.id === 'kPa7bsKwL-c
 // Verify Storage Metrics before clear
 window.updateStorageMetrics();
 const storageStatsEl = getEl('cachedSongStats');
-assert(storageStatsEl.innerText.includes('17 real songs'), `Storage metrics accurately shows 17 songs (actual: "${storageStatsEl.innerText}")`);
+assert(storageStatsEl.innerText.includes('1 real songs'), `Storage metrics accurately shows 1 song (actual: "${storageStatsEl.innerText}")`);
 
 // SIMULATE APP CLEAR / FORCE STOP / REBOOT
 console.log('\nSimulating App Force Close & Restart (wiping in-memory state)...');
 window.downloadedSet.clear();
-// Reset to only bundled 16
+// Reset to only bundled 0
 window.BUNDLED_TRACKS.forEach(b => window.downloadedSet.add(b.id));
 assert(window.downloadedSet.has('kPa7bsKwL-c') === false, 'In-memory state reset (simulating kill)');
 
@@ -308,10 +333,10 @@ window.initPersistentStorage();
 
 // Verify rehydration
 assert(window.downloadedSet.has('kPa7bsKwL-c') === true, 'downloadedSet restored kPa7bsKwL-c from persistent storage');
-assert(window.downloadedSet.size === 17, `downloadedSet size is 17 (does NOT reset to hardcoded size)`);
+assert(window.downloadedSet.size === 1, `downloadedSet size is 1 (does NOT reset to hardcoded size)`);
 
 window.updateStorageMetrics();
-assert(storageStatsEl.innerText.includes('17 real songs'), `Post-restart metrics retains all 17 downloaded tracks: "${storageStatsEl.innerText}"`);
+assert(storageStatsEl.innerText.includes('1 real songs'), `Post-restart metrics retains all downloaded tracks: "${storageStatsEl.innerText}"`);
 
 // ------------------------------------------------------------
 // TEST SUITE 4: Playlist Creation & Persistence
@@ -720,7 +745,7 @@ window.selectTrackToPlay('rad_track_1');
   assert(html.includes('.ptr-container'), 'CSS contains .ptr-container styles');
   assert(html.includes('.ptr-spinner'), 'CSS contains .ptr-spinner styles');
 
-  // 12B: Logged-in Auth Banner: No visible refresh button, swipe-down prompt shown
+  // 12B: Logged-in Auth Banner: Component removed from home feed (swipe down refresh operates natively)
   window.userSession = {
     isLoggedIn: true,
     name: 'Verified Audiophile',
@@ -730,7 +755,8 @@ window.selectTrackToPlay('rad_track_1');
   const authBannerEl = getEl('homeAuthBanner');
   assert(!authBannerEl.innerHTML.includes('onclick="fetchYouTubeMusicFeed()"'), 'Auth banner has visible refresh button REMOVED');
   assert(!authBannerEl.innerHTML.includes('↻ Refresh'), 'Auth banner does not contain "↻ Refresh" button text');
-  assert(authBannerEl.innerHTML.includes('Swipe down to refresh'), 'Auth banner contains "Swipe down to refresh" hint');
+  assert(authBannerEl.innerHTML === '', 'Auth banner is empty when logged in (component removed from home feed)');
+  assert(authBannerEl.style.display === 'none', 'Auth banner display is set to none when logged in');
 
   // 12C: Pull-to-Refresh Trigger
   let homeFeedFetchTriggered = false;
@@ -1014,8 +1040,8 @@ window.selectTrackToPlay('rad_track_1');
   const tSongs = preparedUnique.find(s => s.id === 'trending_for_you');
   const fSongs = preparedUnique.find(s => s.id === 'forgotten_favorites');
   assert(qPicks.tracks[0].title === 'Espresso', 'Quick picks displays authentic live song Espresso');
-  assert(tSongs.tracks[0].title !== 'Espresso', 'Trending songs does not duplicate Quick picks song');
-  assert(fSongs.tracks[0].title !== 'Espresso', 'Forgotten favorites does not duplicate Quick picks song');
+  assert(!tSongs.tracks[0] || tSongs.tracks[0].title !== 'Espresso', 'Trending songs does not duplicate Quick picks song');
+  assert(!fSongs.tracks[0] || fSongs.tracks[0].title !== 'Espresso', 'Forgotten favorites does not duplicate Quick picks song');
 
   // 12K: Demo account feed generation returns rich distinct shelves
   window.userSession = {
@@ -1541,6 +1567,98 @@ window.selectTrackToPlay('rad_track_1');
   assert(authTelemetryUrl !== null, 'sendTelemetryPing invoked sendAuthenticatedTelemetryPing when userSession has cookies');
   assert(authTelemetryCookie === 'test_telemetry_auth_cookie_xyz', 'sendAuthenticatedTelemetryPing received session cookie');
   window.SokoNative = originalNativeForLookahead;
+
+  // 14K: Quick picks & Trending songs trigger dynamic YouTube Music Radio
+  console.log('\n--- Test 14K: Quick Picks & Trending Radio Triggering ---');
+  window.fetchYouTubeMusicFeed = async () => ({ success: true, shelves: [] });
+  const shelvesToTest = [
+    {
+      id: 'quick_picks',
+      title: 'Quick picks',
+      badge: 'START RADIO FROM A SONG',
+      tracks: [
+        { id: 'qp_seed_1', title: 'Quick Pick Seed', duration: 210 },
+        { id: 'qp_static_2', title: 'Quick Pick 2', duration: 190 }
+      ]
+    },
+    {
+      id: 'trending_for_you',
+      title: 'Trending songs for you',
+      badge: 'CHARTS & BUZZ',
+      tracks: [
+        { id: 'tr_seed_1', title: 'Trending Seed', duration: 240 },
+        { id: 'tr_static_2', title: 'Trending 2', duration: 200 }
+      ]
+    }
+  ];
+  window.currentHomeShelves = shelvesToTest;
+
+  let radioEndpointPayload = null;
+  window.callInnerTubeApi = async (endpoint, payload) => {
+    if (endpoint.includes('next') && payload && payload.playlistId) {
+      radioEndpointPayload = payload;
+    }
+    return {
+      contents: {
+        singleColumnMusicWatchNextResultsRenderer: {
+          tabbedRenderer: {
+            watchNextTabbedResultsRenderer: {
+              tabs: [{
+                tabRenderer: {
+                  content: {
+                    musicQueueRenderer: {
+                      content: {
+                        playlistPanelRenderer: {
+                          contents: [
+                            {
+                              playlistPanelVideoRenderer: {
+                                videoId: 'dyn_radio_1',
+                                title: { runs: [{ text: 'Dynamic Radio Track 1' }] },
+                                shortBylineText: { runs: [{ text: 'Artist 1' }] },
+                                lengthText: { simpleText: '3:30' }
+                              }
+                            },
+                            {
+                              playlistPanelVideoRenderer: {
+                                videoId: 'dyn_radio_2',
+                                title: { runs: [{ text: 'Dynamic Radio Track 2' }] },
+                                shortBylineText: { runs: [{ text: 'Artist 2' }] },
+                                lengthText: { simpleText: '3:45' }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }]
+            }
+          }
+        }
+      }
+    };
+  };
+
+  // 1. Starting song from Quick picks sets isRadioActive and triggers radio API
+  window.isRadioActive = false;
+  window.activeQueueList = null;
+  window.selectTrackToPlay('qp_seed_1', true);
+  assert(window.isRadioActive === true, 'Starting song from Quick picks sets window.isRadioActive to true');
+  await window.fetchAndApplyYtmRadioQueue('qp_seed_1', true);
+  assert(radioEndpointPayload && radioEndpointPayload.playlistId === 'RDAMVMqp_seed_1', 'InnerTube called with radio playlistId RDAMVMqp_seed_1');
+  assert(window.activeQueueList.some(t => t.id === 'dyn_radio_1'), 'Queue contains dynamic YouTube Music radio recommendation dyn_radio_1');
+  assert(window.activeQueueList.some(t => t.id === 'dyn_radio_2'), 'Queue contains dynamic YouTube Music radio recommendation dyn_radio_2');
+
+  // 2. Starting song from Trending songs sets isRadioActive and triggers radio API
+  radioEndpointPayload = null;
+  window.isRadioActive = false;
+  window.activeQueueList = null;
+  window.selectTrackToPlay('tr_seed_1', true);
+  assert(window.isRadioActive === true, 'Starting song from Trending songs sets window.isRadioActive to true');
+  await window.fetchAndApplyYtmRadioQueue('tr_seed_1', true);
+  assert(radioEndpointPayload && radioEndpointPayload.playlistId === 'RDAMVMtr_seed_1', 'InnerTube called with radio playlistId RDAMVMtr_seed_1');
+  assert(window.activeQueueList.some(t => t.id === 'dyn_radio_1'), 'Trending queue dynamically populated with radio recommendations');
 
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);

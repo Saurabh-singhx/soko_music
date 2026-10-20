@@ -12,7 +12,7 @@ async function fetchYouTubeMusicFeed(force = false) {
         {
           title: "Quick picks",
           badge: "START RADIO FROM A SONG",
-          tracks: (REGIONAL_CHARTS['Global'] || CATALOG).slice(0, 16),
+          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || CATALOG || []).slice(0, 16),
           mixes: []
         },
         {
@@ -27,13 +27,13 @@ async function fetchYouTubeMusicFeed(force = false) {
         {
           title: "Trending songs for you",
           badge: "CHARTS & BUZZ",
-          tracks: (REGIONAL_CHARTS['India'] || CATALOG).slice(0, 16),
+          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || CATALOG || []).slice(0, 16),
           mixes: []
         },
         {
           title: "Forgotten favorites",
           badge: "REVISIT PAST FAVORITES",
-          tracks: (REGIONAL_CHARTS['United States'] || CATALOG).slice(0, 16),
+          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || CATALOG || []).slice(0, 16),
           mixes: []
         }
       ];

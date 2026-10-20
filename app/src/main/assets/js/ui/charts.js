@@ -1,6 +1,38 @@
 // ============================================================
-// CHARTS TAB (100 Songs with Pagination)
+// CHARTS TAB (Dynamic Live Charts with Pagination)
 // ============================================================
+const REGIONAL_PLAYLIST_IDS = {
+  "Global": "PL4fGSI1pDJn5kI81J1fYWK5eZRl1zJ5kK",
+  "India": "PL4fGSI1pDJn6OPO0FT8P2vHWmWZxCE56q",
+  "United States": "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i",
+  "United Kingdom": "PL4fGSI1pDJn69On1PS-xwbT4zW8L8tQDn"
+};
+
+let isFetchingCharts = false;
+
+async function fetchLiveRegionalCharts(region) {
+  if (isFetchingCharts) return;
+  isFetchingCharts = true;
+  try {
+    const playlistId = REGIONAL_PLAYLIST_IDS[region];
+    if (playlistId && typeof resolvePlaylistTracks === 'function') {
+      const tracks = await resolvePlaylistTracks(playlistId);
+      if (tracks && tracks.length > 0) {
+        REGIONAL_CHARTS[region] = tracks;
+        try {
+          localStorage.setItem(`soko_cached_charts_${region}`, JSON.stringify(tracks));
+        } catch (e) {}
+        renderCharts(region, 1);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn(`[Charts] Failed to fetch live charts for ${region}:`, err);
+  } finally {
+    isFetchingCharts = false;
+  }
+}
+
 function switchChartRegion(region) {
   currentChartRegion = region;
   window.currentChartRegion = region;
@@ -25,8 +57,36 @@ function renderCharts(region, page = 1) {
   const list = document.getElementById('chartsTrackList');
   if (!list) return;
 
-  const rawTracks = (REGIONAL_CHARTS && REGIONAL_CHARTS[region]) ? REGIONAL_CHARTS[region] : CATALOG;
+  const rawTracks = (REGIONAL_CHARTS && REGIONAL_CHARTS[region]) ? REGIONAL_CHARTS[region] : [];
   const tracks = rawTracks.filter(t => !isPodcastOrLongTrack(t));
+
+  if (tracks.length === 0) {
+    try {
+      const cached = localStorage.getItem(`soko_cached_charts_${region}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          REGIONAL_CHARTS[region] = parsed;
+          renderCharts(region, page);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    list.innerHTML = `
+      <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+        <svg width="28" height="28" fill="var(--accent-primary)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px;">Loading Live ${region} Charts</div>
+        <div style="font-size: 12px;">Fetching top songs directly from YouTube Music...</div>
+      </div>
+    `;
+    const paginationContainer = document.getElementById('chartsPagination');
+    if (paginationContainer) paginationContainer.innerHTML = '';
+
+    fetchLiveRegionalCharts(region);
+    return;
+  }
+
   const totalPages = Math.ceil(tracks.length / CHARTS_PER_PAGE) || 1;
   const startIdx = (page - 1) * CHARTS_PER_PAGE;
   const pageTracks = tracks.slice(startIdx, startIdx + CHARTS_PER_PAGE);
@@ -85,6 +145,7 @@ function renderCharts(region, page = 1) {
   paginationContainer.innerHTML = pHtml;
 }
 
+window.fetchLiveRegionalCharts = fetchLiveRegionalCharts;
 window.switchChartRegion = switchChartRegion;
 window.setChartPage = setChartPage;
 window.renderCharts = renderCharts;

@@ -12,7 +12,9 @@ obj/
 *.dex
 *.class
 *.idsig
+dist/*.idsig
 *.apk
+!dist/soko-music.apk
 
 # Environment & Local Configuration
 local.properties

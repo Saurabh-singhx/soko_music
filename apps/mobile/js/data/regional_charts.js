@@ -1,8 +1,8 @@
-// Aggregated 400 Real Regional Chart Tracks (100 per region)
+// Dynamic YouTube Music Regional Charts (zero hardcoded chart data)
 window.REGIONAL_CHARTS = {
-  "Global": (window._charts_global_1 || []).concat(window._charts_global_2 || []),
-  "India": (window._charts_india_1 || []).concat(window._charts_india_2 || []),
-  "United States": (window._charts_us_1 || []).concat(window._charts_us_2 || []),
-  "United Kingdom": (window._charts_uk_1 || []).concat(window._charts_uk_2 || [])
+  "Global": [],
+  "India": [],
+  "United States": [],
+  "United Kingdom": []
 };
 const REGIONAL_CHARTS = window.REGIONAL_CHARTS;

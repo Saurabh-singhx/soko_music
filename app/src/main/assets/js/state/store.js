@@ -9,7 +9,7 @@ if (savedSession) {
   }
 }
 
-const downloadedSet = new Set(BUNDLED_TRACKS.map(t => t.id));
+const downloadedSet = new Set();
 let personalShelves = null;
 let currentHomeShelves = [];
 
@@ -30,25 +30,25 @@ let userPlaylists = [
         id: "pl_favorites",
         name: "Liked Songs",
         isSystem: true,
-        songIds: ["4HVhnhpJxr0", "Io_Z3HxgJGs", "EW9opRK1MPk", "XI3JGDHduR4", "ZCRL8V0ZkEA", "ZUL-ivsl_Fs"]
+        songIds: []
       },
       {
         id: "pl_offline",
         name: "Downloaded Music",
         isSystem: true,
-        songIds: BUNDLED_TRACKS.map(t => t.id)
+        songIds: []
       },
       {
         id: "pl_chill",
         name: "Late Night Lo-Fi & Acoustic",
         isSystem: false,
-        songIds: ["4HVhnhpJxr0", "EW9opRK1MPk", "ZUL-ivsl_Fs", "ppcVqfsekIs", "tXi15CFnFws"]
+        songIds: []
       },
       {
         id: "pl_workout",
         name: "High Energy & Party",
         isSystem: false,
-        songIds: ["XI3JGDHduR4", "ZCRL8V0ZkEA", "iKopExw_3Zg", "SxkHNou0uiM"]
+        songIds: []
       }
     ];
 
@@ -83,8 +83,11 @@ function findTrackAcrossAllSources(trackId) {
       let track = CATALOG.find(t => t.id === trackId);
       if (track) return track;
 
-      if (currentYtmSearchResults) {
-        track = currentYtmSearchResults.find(t => t.id === trackId);
+      const searchPool = (typeof window !== 'undefined' && window.currentYtmSearchResults && window.currentYtmSearchResults.length > 0)
+        ? window.currentYtmSearchResults
+        : currentYtmSearchResults;
+      if (searchPool) {
+        track = searchPool.find(t => t.id === trackId);
         if (track) return track;
       }
 
@@ -109,8 +112,9 @@ function findTrackAcrossAllSources(trackId) {
         }
       }
 
-      if (typeof currentHomeShelves !== 'undefined' && currentHomeShelves) {
-        for (const shelf of currentHomeShelves) {
+      const homeShelves = (typeof window !== 'undefined' && window.currentHomeShelves) || currentHomeShelves;
+      if (homeShelves) {
+        for (const shelf of homeShelves) {
           if (shelf.tracks) {
             track = shelf.tracks.find(t => t.id === trackId);
             if (track) return track;

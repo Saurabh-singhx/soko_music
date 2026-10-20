@@ -60,9 +60,13 @@ else
   cp "${PROJECT_ROOT}/apps/mobile/index.html" "${WORK}/assets/"
 fi
 mkdir -p "${WORK}/assets/assets"
-cp -r "${PROJECT_ROOT}/assets/"* "${WORK}/assets/assets/"
+if [ -d "${PROJECT_ROOT}/assets" ] && [ -n "$(ls -A "${PROJECT_ROOT}/assets" 2>/dev/null)" ]; then
+  cp -r "${PROJECT_ROOT}/assets/"* "${WORK}/assets/assets/"
+fi
 mkdir -p "${WORK}/assets/music"
-cp -r "${PROJECT_ROOT}/assets/music/"* "${WORK}/assets/music/"
+if [ -d "${PROJECT_ROOT}/assets/music" ] && [ -n "$(ls -A "${PROJECT_ROOT}/assets/music" 2>/dev/null)" ]; then
+  cp -r "${PROJECT_ROOT}/assets/music/"* "${WORK}/assets/music/"
+fi
 
 # Copy Java sources
 if [ -d "${PROJECT_ROOT}/app/src/main/java" ]; then
