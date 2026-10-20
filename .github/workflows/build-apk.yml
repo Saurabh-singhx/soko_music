@@ -1,0 +1,179 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Target Version Name (e.g. 1.0.1)'
+        required: false
+        default: ''
+        type: string
+      create_release:
+        description: 'Publish as GitHub Release'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Soko Music APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Automated Verification Tests
+        run: |
+          node tests/comprehensive_test.js
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install Pillow
+
+      - name: Setup Android SDK Environment
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          if [ -d "${ANDROID_HOME}/cmdline-tools/latest/bin" ]; then
+            export PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${PATH}"
+            yes | sdkmanager --licenses || true
+          fi
+
+      - name: Determine Dynamic Versioning
+        id: version_info
+        run: |
+          # 1. Monotonically increasing versionCode
+          COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo 1)
+          RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
+          VERSION_CODE=$((COMMIT_COUNT + RUN_NUM))
+
+          # 2. Determine versionName
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
+            VERSION_NAME="${RAW_TAG#v}"
+            IS_RELEASE="true"
+          elif [ -n "${{ github.event.inputs.version_name }}" ]; then
+            RAW_INPUT="${{ github.event.inputs.version_name }}"
+            VERSION_NAME="${RAW_INPUT#v}"
+            IS_RELEASE="${{ github.event.inputs.create_release }}"
+          else
+            BASE_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "1.0.0")
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              VERSION_NAME="${BASE_VERSION}-pr.${{ github.event.pull_request.number }}.${RUN_NUM}"
+              IS_RELEASE="false"
+            else
+              VERSION_NAME="${BASE_VERSION}"
+              IS_RELEASE="false"
+            fi
+          fi
+
+          TAG="v${VERSION_NAME}"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "is_release=${IS_RELEASE}" >> "$GITHUB_OUTPUT"
+
+          echo "=========================================================="
+          echo "Dynamic Version : ${VERSION_NAME}"
+          echo "Version Code    : ${VERSION_CODE}"
+          echo "Release Tag     : ${TAG}"
+          echo "Publish Release : ${IS_RELEASE}"
+          echo "=========================================================="
+
+      - name: Make Scripts Executable
+        run: |
+          chmod +x scripts/*.sh
+
+      - name: Compile and Package APK
+        env:
+          VERSION_NAME: ${{ steps.version_info.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version_info.outputs.version_code }}
+        run: |
+          bash scripts/build_apk.sh
+
+      - name: Verify Signed APK Artifact
+        run: |
+          ls -lh dist/soko-music.apk
+          file dist/soko-music.apk
+
+      - name: Upload APK Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soko-music-${{ steps.version_info.outputs.tag }}
+          path: dist/soko-music.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: steps.version_info.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version_info.outputs.tag }}
+          name: Soko Music ${{ steps.version_info.outputs.tag }}
+          files: dist/soko-music.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Auto-Update Gist
+        if: steps.version_info.outputs.is_release == 'true' && env.GIST_PAT != ''
+        env:
+          GIST_PAT: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: "04c5db7f1bed9206d1b858cd44bfb8eb"
+          VERSION: ${{ steps.version_info.outputs.version_name }}
+          BUILD_NUM: ${{ steps.version_info.outputs.version_code }}
+          TAG: ${{ steps.version_info.outputs.tag }}
+        run: |
+          echo "Syncing Gist version metadata for ${TAG}..."
+          JSON_PAYLOAD=$(cat << EOF
+          {
+            "files": {
+              "soko-music-version.json": {
+                "content": "{\n  \"version\": \"${VERSION}\",\n  \"buildNumber\": ${BUILD_NUM},\n  \"releaseTag\": \"${TAG}\",\n  \"minVersion\": \"${VERSION}\",\n  \"mandatory\": true,\n  \"releaseDate\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",\n  \"releaseUrl\": \"https://github.com/${{ github.repository }}/releases/tag/${TAG}\",\n  \"releaseNotes\": \"Soko Music ${TAG} release build generated by GitHub Actions CI/CD pipeline.\",\n  \"downloads\": {\n    \"androidApk\": \"https://github.com/${{ github.repository }}/releases/download/${TAG}/soko-music.apk\"\n  }\n}"
+              }
+            }
+          }
+          EOF
+          )
+          curl -s -X PATCH \
+            -H "Authorization: token ${GIST_PAT}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/gists/${GIST_ID}" \
+            -d "${JSON_PAYLOAD}" > /dev/null
+          echo "Gist synchronization complete."

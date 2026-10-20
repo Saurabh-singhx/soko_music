@@ -9,9 +9,9 @@ WORK="${BUILD_DIR}/work"
 OUTPUT_DIR="${PROJECT_ROOT}/dist"
 
 # Detect Android SDK Home
-SDK_HOME="${ANDROID_HOME:-/home/saurabh/Android/Sdk}"
-if [ ! -d "${SDK_HOME}" ] && [ -d "/usr/local/lib/android/sdk" ]; then
-  SDK_HOME="/usr/local/lib/android/sdk"
+SDK_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+if [ ! -d "${SDK_HOME}" ] && [ -d "/home/saurabh/Android/Sdk" ]; then
+  SDK_HOME="/home/saurabh/Android/Sdk"
 fi
 
 # Detect Build Tools
@@ -37,9 +37,9 @@ ZIPALIGN="${BUILD_TOOLS}/zipalign"
 APKSIGNER="${BUILD_TOOLS}/apksigner"
 
 # Keystore configuration
-KEYSTORE="${PROJECT_ROOT}/apps/android/keystore/soko_music.keystore"
+KEYSTORE="${KEYSTORE_PATH:-${PROJECT_ROOT}/apps/android/keystore/soko_music.keystore}"
 if [ ! -f "${KEYSTORE}" ] && [ -f "${PROJECT_ROOT}/scripts/soko_music.keystore" ]; then
   KEYSTORE="${PROJECT_ROOT}/scripts/soko_music.keystore"
 fi
-KEY_PASS="sokomusic123"
-KEY_ALIAS="soko-music-key"
+KEY_PASS="${KEYSTORE_PASSWORD:-sokomusic123}"
+KEY_ALIAS="${KEYSTORE_ALIAS:-soko-music-key}"
