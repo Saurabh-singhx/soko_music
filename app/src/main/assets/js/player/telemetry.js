@@ -10,7 +10,10 @@ let hasSentMidpointPing = false;
 let hasSentCompletionPing = false;
 
 function sendTelemetryPing(urlString) {
-  if (window.SokoNative && typeof window.SokoNative.sendTelemetryPing === 'function') {
+  const cookie = (userSession && userSession.cookie) ? userSession.cookie : null;
+  if (window.SokoNative && typeof window.SokoNative.sendAuthenticatedTelemetryPing === 'function' && cookie) {
+    window.SokoNative.sendAuthenticatedTelemetryPing(urlString, cookie);
+  } else if (window.SokoNative && typeof window.SokoNative.sendTelemetryPing === 'function') {
     window.SokoNative.sendTelemetryPing(urlString);
   } else {
     try {

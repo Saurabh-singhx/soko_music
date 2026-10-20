@@ -18,7 +18,11 @@ function selectTrackToPlay(trackId) {
     track = CATALOG[0];
   }
 
-  if (window.activeQueueList && window.activeQueueList.length > 1 && window.activeQueueList.some(t => t.id === track.id)) {
+  if (activePlaylist && activePlaylist.songIds && activePlaylist.songIds.includes(track.id)) {
+    if (!window.activeQueueList || !window.activeQueueList.some(t => t.id === track.id)) {
+      window.activeQueueList = activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean);
+    }
+  } else if (window.activeQueueList && window.activeQueueList.length > 1 && window.activeQueueList.some(t => t.id === track.id)) {
     // Track is already part of the active queue - keep queue progression intact
   } else if (currentYtmSearchResults && currentYtmSearchResults.some(t => t.id === track.id)) {
     activePlaylist = null;
@@ -60,6 +64,7 @@ function playRealTrack(track) {
   stopAllAudioEngines();
   currentTrack = track;
   window.currentTrack = track;
+  if (typeof recordLruPlay === 'function') recordLruPlay(track.id);
   startPlaybackTelemetry(track);
   if (window.SokoNative && typeof window.SokoNative.setActivePlaybackId === 'function') {
     try { window.SokoNative.setActivePlaybackId(track.id); } catch (e) {}

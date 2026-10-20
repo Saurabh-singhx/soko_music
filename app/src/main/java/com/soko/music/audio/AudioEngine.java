@@ -49,6 +49,7 @@ public class AudioEngine {
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .build());
+            mediaPlayer.setWakeMode(activity.getApplicationContext(), android.os.PowerManager.PARTIAL_WAKE_LOCK);
             mediaPlayer.setVolume(1.0f, 1.0f);
 
             mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {

@@ -51,7 +51,7 @@ public class PlayerBridge {
     @JavascriptInterface
     public void updateNativePlayer(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl) {
         if (mediaNotificationManager != null) {
-            mediaNotificationManager.updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec);
+            mediaNotificationManager.updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec, coverUrl, false);
         }
     }
 }

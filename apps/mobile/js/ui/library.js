@@ -60,15 +60,23 @@ function setLibraryPage(page) {
 }
 
 function playAllOfflineTracks(shuffle = false) {
-  const cached = CATALOG.filter(t => downloadedSet.has(t.id));
+  const cached = Array.from(downloadedSet).map(id => {
+    let t = findTrackAcrossAllSources(id);
+    if (!t) {
+      t = { id, title: 'Offline Song', artist: 'Soko Offline', duration: 200, cover: 'assets/logo.png' };
+    }
+    return t;
+  }).filter(Boolean);
   if (cached.length === 0) {
     showToast('No downloaded songs in offline storage', 'ℹ️');
     return;
   }
   isShuffle = shuffle;
+  window.isShuffle = isShuffle;
   const btn = document.getElementById('btnShuffle');
   if (btn) btn.style.color = isShuffle ? 'var(--accent-primary)' : 'var(--text-dim)';
 
+  window.activeQueueList = cached;
   const firstTrack = isShuffle ? cached[Math.floor(Math.random() * cached.length)] : cached[0];
   selectTrackToPlay(firstTrack.id);
   showToast(isShuffle ? 'Shuffling All Offline Songs 🔀' : 'Playing All Offline Songs ▶', '⚡');
@@ -94,6 +102,15 @@ function deleteOfflineTrack(trackId) {
   const offPl = userPlaylists.find(p => p.id === 'pl_offline');
   if (offPl) {
     offPl.songIds = offPl.songIds.filter(id => id !== trackId);
+  }
+
+  const inOtherPlaylist = userPlaylists.some(p => p.id !== 'pl_offline' && p.songIds && p.songIds.includes(trackId));
+  const isFav = userPlaylists.find(p => p.id === 'pl_favorites')?.songIds?.includes(trackId) || (track && track.favorite);
+  if (!inOtherPlaylist && !isFav) {
+    const catIdx = CATALOG.findIndex(t => t.id === trackId);
+    if (catIdx >= 0) {
+      CATALOG.splice(catIdx, 1);
+    }
   }
 
   persistDownloadState();

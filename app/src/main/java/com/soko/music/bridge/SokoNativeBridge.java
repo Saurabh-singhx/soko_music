@@ -129,4 +129,9 @@ public class SokoNativeBridge {
     public void sendTelemetryPing(final String urlString) {
         if (telemetryBridge != null) telemetryBridge.sendTelemetryPing(urlString);
     }
+
+    @JavascriptInterface
+    public void sendAuthenticatedTelemetryPing(final String urlString, final String cookies) {
+        if (telemetryBridge != null) telemetryBridge.sendAuthenticatedTelemetryPing(urlString, cookies);
+    }
 }

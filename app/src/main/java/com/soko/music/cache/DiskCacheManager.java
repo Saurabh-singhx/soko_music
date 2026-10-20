@@ -91,4 +91,37 @@ public class DiskCacheManager {
         }
         return total;
     }
+
+    public void evictOldestFilesToFit(long newFileBytes, long maxSizeBytes, java.util.Set<String> protectedIds) {
+        try {
+            long used = getDiskStorageUsedBytes();
+            if (used + newFileBytes <= maxSizeBytes) {
+                return;
+            }
+            File musicDir = getMusicDir();
+            File[] files = musicDir.listFiles();
+            if (files == null || files.length == 0) return;
+
+            java.util.Arrays.sort(files, new java.util.Comparator<File>() {
+                @Override
+                public int compare(File f1, File f2) {
+                    return Long.compare(f1.lastModified(), f2.lastModified());
+                }
+            });
+
+            for (File f : files) {
+                if (used + newFileBytes <= maxSizeBytes) break;
+                if (!f.isFile() || !f.getName().endsWith(".m4a")) continue;
+                String vid = f.getName().substring(0, f.getName().length() - 4);
+                if (protectedIds != null && protectedIds.contains(vid)) continue;
+                long len = f.length();
+                if (f.delete()) {
+                    used -= len;
+                    Log.d(TAG, "LRU evicted offline track: " + vid + " (" + len + " bytes)");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error during disk LRU eviction", e);
+        }
+    }
 }
