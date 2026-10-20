@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Soko Music</title>
+  <!-- Tokens & Base Styles -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/animations.css">
+
+  <!-- Component Styles -->
+  <link rel="stylesheet" href="css/components/header.css">
+  <link rel="stylesheet" href="css/components/shelves.css">
+  <link rel="stylesheet" href="css/components/library.css">
+  <link rel="stylesheet" href="css/components/ptr.css">
+  <link rel="stylesheet" href="css/components/search.css">
+  <link rel="stylesheet" href="css/components/playlists.css">
+  <link rel="stylesheet" href="css/components/miniplayer.css">
+  <link rel="stylesheet" href="css/components/player.css">
+  <link rel="stylesheet" href="css/components/navigation.css">
+  <link rel="stylesheet" href="css/components/settings.css">
+  <link rel="stylesheet" href="css/components/modal.css">
+  <link rel="stylesheet" href="css/components/toast.css">
+</head>
+<body>
+  <div class="app-viewport">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="brand-group" onclick="switchNavTab('home', document.querySelector('.nav-tab-item'))">
+        <img class="brand-icon" src="assets/logo.svg" alt="Soko Logo" onerror="this.onerror=null; this.src='assets/logo.png';" />
+        <span class="brand-text">Soko<span class="brand-text-sub">Music</span></span>
+      </div>
+
+      <div class="status-badge-container" id="headerAuthBtn" onclick="openAuthModal()" style="cursor: pointer;">
+        <span class="pulse-dot"></span>
+        <span id="badgeStatusText">Sync / Login</span>
+      </div>
+    </header>
+
+    <!-- Main Content Tabs -->
+    <main class="content-scroll">
+      <!-- 1. HOME TAB (Dynamic YouTube Music Feed) -->
+      <section id="pane-home" class="tab-pane active">
+        <!-- Native Swipe-Down Pull-to-Refresh Container -->
+        <div id="pullToRefreshContainer" class="ptr-container">
+          <div class="ptr-content">
+            <div id="ptrIconWrapper" class="ptr-icon-wrapper">
+              <svg id="ptrArrow" class="ptr-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+              </svg>
+              <div id="ptrSpinner" class="ptr-spinner spin-icon" style="display: none;"></div>
+            </div>
+            <span id="ptrText" class="ptr-text">Pull down to refresh</span>
+          </div>
+        </div>
+
+        <!-- Auth status banner / Sign-in prompt -->
+        <div id="homeAuthBanner"></div>
+
+        <!-- Dynamic Home Feed Shelves from YouTube Music -->
+        <div id="homeFeedContainer">
+          <div style="text-align: center; color: var(--text-dim); padding: 50px 20px;">
+            <div class="spin-icon" style="display: inline-block; width: 26px; height: 26px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-primary); border-radius: 50%; margin-bottom: 12px;"></div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Loading YouTube Music Feed...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. CHARTS TAB (100 Songs with Pagination) -->
+      <section id="pane-charts" class="tab-pane">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Top 100 Charts</h2>
+            <p class="section-subtitle">Trending hits with authentic audio</p>
+          </div>
+        </div>
+
+        <div class="filter-pills-row">
+          <div class="filter-pill active" onclick="switchChartRegion('Global')">Global</div>
+          <div class="filter-pill" onclick="switchChartRegion('United States')">United States</div>
+          <div class="filter-pill" onclick="switchChartRegion('India')">India</div>
+          <div class="filter-pill" onclick="switchChartRegion('United Kingdom')">United Kingdom</div>
+        </div>
+
+        <div class="track-list" id="chartsTrackList">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div id="chartsPagination" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0 32px 0; padding: 0 16px;">
+          <!-- Pagination Buttons -->
+        </div>
+      </section>
+
+      <!-- 3. SEARCH TAB (Responsive Cards & Real Playback) -->
+      <section id="pane-search" class="tab-pane">
+        <div style="position: relative; margin-bottom: 16px;">
+          <div class="search-icon-wrapper">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input type="text" id="searchInput" class="search-input-box" placeholder="Search songs, artists, or albums..." oninput="handleDebouncedSearch(this.value)" />
+        </div>
+
+        <div class="filter-pills-row">
+          <div class="filter-pill active" onclick="filterSearchCategory('all')">All Songs</div>
+          <div class="filter-pill" onclick="filterSearchCategory('offline')">Offline Only</div>
+          <div class="filter-pill" onclick="filterSearchCategory('favorites')">Favorites</div>
+        </div>
+
+        <div class="track-list" id="searchResultsList">
+          <div style="text-align: center; color: var(--text-dim); padding: 40px;">Type a title, artist, or song name to search</div>
+        </div>
+      </section>
+
+      <!-- 4. LIBRARY TAB -->
+      <section id="pane-library" class="tab-pane">
+        <div id="playlistDetailView" style="display: none; margin-bottom: 24px;">
+          <button class="filter-pill" onclick="backToPlaylists()" style="margin-bottom: 16px; display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to Library
+          </button>
+          <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+            <div id="plDetailArt" style="width: 72px; height: 72px; border-radius: var(--radius-md); background: #151B27; display: flex; align-items: center; justify-content: center; font-size: 28px;">📁</div>
+            <div>
+              <h2 id="plDetailTitle" class="section-title">Playlist</h2>
+              <p id="plDetailSubtitle" class="section-subtitle">0 tracks</p>
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <button class="filter-pill active" onclick="playActivePlaylist(false)">▶ Play</button>
+                <button class="filter-pill" onclick="playActivePlaylist(true)">🔀 Shuffle</button>
+              </div>
+            </div>
+          </div>
+          <div class="track-list" id="plDetailTrackList"></div>
+        </div>
+
+        <div id="mainLibraryView">
+          <div class="section-title-row">
+            <div>
+              <h2 class="section-title">Your Playlists</h2>
+              <p class="section-subtitle">Local collections & auto-smart lists</p>
+            </div>
+            <button class="action-icon-btn" onclick="openCreatePlaylistDialog()" title="Create Playlist">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="playlist-grid" id="userPlaylistsGrid">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- All Offline Stored Songs Section -->
+          <div class="storage-card" style="margin-top: 16px; margin-bottom: 24px; padding: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px;">
+              <div style="min-width: 0; flex: 1;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <h2 class="section-title" style="margin-bottom: 0; font-size: 16px; font-weight: 700; white-space: nowrap;">All Offline Stored Songs</h2>
+                  <span id="librarySongCountBadge" class="badge" style="background: rgba(99,102,241,0.18); color: var(--accent-primary); font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700; white-space: nowrap;">0 songs</span>
+                </div>
+                <p class="section-subtitle" style="font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">100% on device disk • 0ms gapless offline playback</p>
+              </div>
+              <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(false)" title="Play All Offline" style="background: rgba(99,102,241,0.18); color: var(--accent-primary); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;">
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(true)" title="Shuffle Offline" style="background: rgba(6,182,212,0.18); color: var(--accent-cyan); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4l8 12h4m0 0l-3-3m3 3l-3 3M4 20h4l3-4.5m4-6l1-1.5h4m0 0l-3-3m3 3l-3 3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Filter Input -->
+            <div style="position: relative; margin-bottom: 10px;">
+              <input type="text" id="libraryFilterInput" oninput="filterLibraryTracks(this.value)" placeholder="Search within downloaded songs..." style="width: 100%; min-height: 40px; height: 40px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0 12px 0 38px; color: #fff; font-size: 13px; outline: none; box-sizing: border-box;" />
+              <svg style="position: absolute; left: 12px; top: 12px; color: var(--text-dim); pointer-events: none;" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+
+            <!-- Library Offline Songs Sorting -->
+            <div class="library-sort-container" id="librarySortBar">
+              <span class="library-sort-label">Sort:</span>
+              <div class="library-sort-chips">
+                <button class="library-sort-chip active" id="sortBtn-recent" onclick="setLibrarySort('recent')">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Recently added</span><span class="sort-dir-arrow"> ↓</span>
+                </button>
+                <button class="library-sort-chip" id="sortBtn-title" onclick="setLibrarySort('title')">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                  <span>Title (A-Z)</span><span class="sort-dir-arrow"></span>
+                </button>
+                <button class="library-sort-chip" id="sortBtn-artist" onclick="setLibrarySort('artist')">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                  <span>Artist</span><span class="sort-dir-arrow"></span>
+                </button>
+                <button class="library-sort-chip" id="sortBtn-duration" onclick="setLibrarySort('duration')">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Duration</span><span class="sort-dir-arrow"></span>
+                </button>
+              </div>
+            </div>
+
+            <div class="track-list" id="libraryTracksList">
+              <!-- Populated dynamically -->
+            </div>
+            <div id="libraryPagination" style="margin-top: 10px;"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- 5. SETTINGS & STORAGE MANAGEMENT TAB -->
+      <section id="pane-settings" class="tab-pane">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-title">Settings & Storage</h2>
+            <p class="section-subtitle">Manage offline space and audio quality</p>
+          </div>
+        </div>
+
+        <!-- YouTube Music Account Card -->
+        <div class="storage-card" style="margin-top: 4px; margin-bottom: 14px; padding: 14px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <div class="ytm-logo-box" style="width: 32px; height: 32px; border-radius: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">YouTube Music Account</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="settingsYtmSubtitle">Not Connected • Guest Mode</div>
+              </div>
+            </div>
+            <button class="filter-pill active" onclick="openAuthModal()" style="min-height: 40px; padding: 6px 14px; font-size: 11px; font-weight: 700; flex-shrink: 0;" id="settingsAuthActionBtn">
+              Sign In
+            </button>
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.45;">
+            Sync your personalized YouTube Music recommendations, daily Supermix, and liked songs into Soko offline storage.
+          </div>
+        </div>
+
+        <!-- Telemetry & Recommendation Feedback Sync Card -->
+        <div class="storage-card" style="margin-bottom: 14px; padding: 14px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <div style="width: 32px; height: 32px; border-radius: 10px; background: rgba(99,102,241,0.18); display: flex; align-items: center; justify-content: center; color: var(--accent-primary); flex-shrink: 0;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Recommendation Feedback Sync</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="telemetryStatusSubtitle">Active • Watch Time, Likes &amp; History Syncing</div>
+              </div>
+            </div>
+            <span class="badge" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #10B981; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">● ACTIVE</span>
+          </div>
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); padding: 11px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+            Automatically reports watch time (&gt;50% completion) and skips to YouTube's algorithmic model so your recommendations continuously improve.
+          </div>
+        </div>
+
+        <!-- Offline Disk Storage Card -->
+        <div class="storage-card" style="margin-bottom: 14px; padding: 14px 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <div style="width: 32px; height: 32px; border-radius: 10px; background: rgba(6,182,212,0.18); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); flex-shrink: 0;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <span style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Offline Disk Storage</span>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">High-bitrate local audio store</div>
+              </div>
+            </div>
+            <span id="storageLabel" style="font-size: 11px; font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.25); padding: 3px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">0 MB / 4.0 GB</span>
+          </div>
+
+          <!-- Padded well for progress bar and stats -->
+          <div style="background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-md); padding: 11px 14px; margin-top: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px;">
+              <span style="color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Disk Allocation</span>
+              <span style="color: var(--success); font-weight: 600; font-size: 11px;">● 100% Offline Ready</span>
+            </div>
+            <div class="storage-progress-bg" style="margin: 8px 0 10px 0; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden;">
+              <div id="storageUsedBar" class="storage-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366F1, #06B6D4); transition: width 0.3s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-dim);">
+              <span id="cachedSongStats">0 real songs stored locally</span>
+              <span style="color: var(--text-muted); font-size: 10px;">160k Opus / AAC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="storage-card" style="padding: 16px;">
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Maximum Cache Size</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Automated eviction of oldest unpinned songs</div>
+            </div>
+            <select id="maxCacheSelect" onchange="updateMaxCacheLimit(this.value)" style="background: var(--bg-surface); color: #fff; border: 1px solid var(--border-subtle); min-height: 40px; padding: 6px 12px; border-radius: 8px; font-size: 12px; outline: none;">
+              <option value="2.0">2.0 GB (~500 songs)</option>
+              <option value="4.0" selected>4.0 GB (~1,000 songs)</option>
+              <option value="8.0">8.0 GB (~2,000 songs)</option>
+              <option value="16.0">16.0 GB (~4,000 songs)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Audio Engine</div>
+              <div style="font-size: 11px; color: var(--text-dim);">On-device 128k AAC/Opus native decoder</div>
+            </div>
+            <span style="font-size: 12px; font-weight: 700; color: #10B981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 6px;">Active ✓</span>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div style="font-size: 14px; font-weight: 600;">Look-Ahead Pre-download</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Caches upcoming track in background for 0ms gaps</div>
+            </div>
+            <input type="checkbox" id="chkLookAhead" checked style="width: 20px; height: 20px; accent-color: #6366F1; cursor: pointer;" />
+          </div>
+
+          <div style="padding-top: 16px;">
+            <button onclick="clearUnpinnedCache()" style="width: 100%; min-height: 44px; padding: 12px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #EF4444; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer;">
+              Clear Unpinned Cache (Keep Liked & Bundled)
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Floating Active Download Banner -->
+    <div id="activeDownloadBanner" class="active-download-banner">
+      <div class="dl-banner-content">
+        <span id="dlBannerTitle">Downloading...</span>
+        <span id="dlBannerPercent" style="color: var(--warning); font-family: ui-monospace, monospace;">0%</span>
+      </div>
+      <div class="dl-progress-bar-bg">
+        <div id="dlBannerFill" class="dl-progress-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Mini Bottom Player Bar -->
+    <div class="mini-player" id="miniPlayer" onclick="openNowPlayingModal()">
+      <div class="mini-progress-track">
+        <div id="miniProgressFill" class="mini-progress-fill"></div>
+      </div>
+      <img id="miniArt" class="mini-art" src="assets/logo.png" alt="Cover" onerror="this.onerror=null; this.src='assets/logo.png';" />
+      <div class="mini-info">
+        <div id="miniTitle" class="mini-title">Select a track</div>
+        <div id="miniArtist" class="mini-artist">Soko Offline Engine</div>
+      </div>
+      <div class="mini-controls" onclick="event.stopPropagation()">
+        <button class="mini-btn" onclick="togglePlayPause()" title="Play/Pause">
+          <svg id="miniPlayIcon" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+        </button>
+        <button class="mini-btn" onclick="playNextTrack()" title="Next">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Dock -->
+    <nav class="tab-bar-nav">
+      <div class="nav-tab-item active" onclick="switchNavTab('home', this)">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+        </svg>
+        <span>Home</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('charts', this)">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+        </svg>
+        <span>Charts</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('search', this)">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <span>Search</span>
+      </div>
+
+      <div class="nav-tab-item" onclick="switchNavTab('library', this)">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        <span>Library</span>
+      </div>
+      <div class="nav-tab-item" onclick="switchNavTab('settings', this)">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+        </svg>
+        <span>Settings</span>
+      </div>
+    </nav>
+
+    <!-- Fullscreen Now Playing Modal Sheet -->
+    <div class="now-playing-modal" id="nowPlayingModal">
+      <div class="modal-content-container">
+        <!-- Header -->
+        <div class="modal-header">
+          <button class="action-icon-btn" onclick="closeNowPlayingModal()" title="Collapse">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase;">Now Playing</div>
+          <button class="action-icon-btn" onclick="triggerDownloadCurrentTrack()" title="Download Track">
+            <svg id="modalDownloadIcon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Center Stage -->
+        <div class="modal-center-stage">
+          <div class="modal-hero-art-container">
+            <img id="modalArt" class="modal-hero-art" src="assets/logo.png" alt="Hero Art" onerror="this.onerror=null; this.src='assets/logo.png';" />
+          </div>
+
+          <div class="visualizer-container" id="visualizerBars">
+            <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+            <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+            <div class="v-bar"></div><div class="v-bar"></div><div class="v-bar"></div>
+          </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="modal-bottom-controls">
+          <div class="modal-track-info-row">
+            <div class="modal-track-meta">
+              <div id="modalTitle" class="modal-track-title">Track Title</div>
+              <div id="modalArtist" class="modal-track-artist">Artist Name</div>
+            </div>
+            <button class="action-icon-btn" onclick="toggleCurrentFavorite()" title="Like Song">
+              <svg id="modalHeartIcon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="seek-slider-container">
+            <input type="range" id="modalSeekSlider" class="seek-slider" min="0" max="100" value="0" oninput="handleSeek(this.value)" />
+            <div class="seek-timestamps">
+              <span id="modalTimeCurrent">0:00</span>
+              <span id="modalTimeDuration">0:00</span>
+            </div>
+          </div>
+
+          <div class="modal-controls-row">
+            <button class="action-icon-btn" id="btnShuffle" onclick="toggleShuffle()" title="Shuffle">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+              </svg>
+            </button>
+
+            <button class="action-icon-btn" onclick="playPreviousTrack()" title="Previous Track">
+              <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path>
+              </svg>
+            </button>
+
+            <button class="btn-main-play" onclick="togglePlayPause()" title="Play/Pause">
+              <svg id="modalMainPlayIcon" width="30" height="30" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"></path>
+              </svg>
+            </button>
+
+            <button class="action-icon-btn" onclick="playNextTrack()" title="Next Track">
+              <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path>
+              </svg>
+            </button>
+
+            <button class="action-icon-btn" id="btnRepeat" onclick="toggleRepeat()" title="Repeat">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="queue-preview-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Up Next</span>
+              <span id="preCacheStatus" style="font-size: 11px; color: var(--success); font-weight: 600;">● Offline Ready</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img id="nextArt" src="assets/logo.png" style="width: 32px; height: 32px; border-radius: 4px; object-fit: cover;" onerror="this.onerror=null; this.src='assets/logo.png';" />
+              <div style="flex: 1; min-width: 0;">
+                <div id="nextTitle" style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Song Title</div>
+                <div id="nextArtist" style="font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Next Artist</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth Modal Dialog -->
+    <div id="authModal" class="dialog-backdrop">
+      <div class="dialog-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 class="section-title">YouTube Music Account</h3>
+          <button class="action-icon-btn" onclick="closeAuthModal()">✕</button>
+        </div>
+        <p id="authModalSubtitle" style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+          Connect your YouTube Music account to fetch personal recommendations, history, and playlists.
+        </p>
+
+        <div id="authLoggedOutView">
+          <button onclick="loginWithGoogle()" style="width: 100%; padding: 12px; background: #fff; color: #111; font-weight: 700; font-size: 13px; border-radius: var(--radius-md); border: none; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+            Sign in with Google
+          </button>
+          <button onclick="loginDemoAccount()" style="width: 100%; padding: 10px; background: rgba(99, 102, 241, 0.15); color: var(--accent-primary); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); font-weight: 600; font-size: 12px; margin-bottom: 8px; cursor: pointer;">
+            Use Demo YTM Feed
+          </button>
+          <div style="margin-top: 12px;">
+            <input type="text" id="ytmCookieInput" placeholder="Paste SAPISID cookie..." style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: #fff; font-size: 11px; margin-bottom: 8px;" />
+            <button onclick="loginWithCookie()" style="width: 100%; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;">Connect with Cookie</button>
+          </div>
+        </div>
+
+        <div id="authLoggedInView" style="display: none;">
+          <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px; border: 1px solid rgba(16, 185, 129, 0.3);">
+            <div style="font-size: 11px; color: var(--success); font-weight: 700; margin-bottom: 4px;">✓ CONNECTED</div>
+            <div id="authProfileName" style="font-size: 14px; font-weight: 700;">Account Name</div>
+            <div id="authProfileEmail" style="font-size: 11px; color: var(--text-dim);">Google Account</div>
+          </div>
+          <button onclick="syncYTMFeed()" style="width: 100%; padding: 10px; background: var(--accent-primary); color: #fff; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 12px; margin-bottom: 8px; cursor: pointer;">
+            🔄 Sync Live Feeds Now
+          </button>
+          <button onclick="logoutAccount()" style="width: 100%; padding: 8px; background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: #EF4444; border-radius: var(--radius-md); font-size: 11px; cursor: pointer;">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Playlist Dialog -->
+    <div id="createPlaylistModal" class="dialog-backdrop">
+      <div class="dialog-card">
+        <h3 class="section-title" style="margin-bottom: 8px;">Create New Playlist</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Enter a title for your custom local collection.</p>
+        <input type="text" id="newPlaylistNameInput" class="search-input-box" style="padding-left: 14px; margin-bottom: 16px;" placeholder="Playlist name (e.g. Gym Vibes)" />
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="filter-pill" onclick="closeCreatePlaylistDialog()">Cancel</button>
+          <button class="filter-pill active" onclick="confirmCreatePlaylist()">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add to Playlist Dialog -->
+    <div id="addToPlaylistModal" class="dialog-backdrop">
+      <div class="dialog-card">
+        <h3 class="section-title" style="margin-bottom: 8px;">Add to Playlist</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Choose a playlist for this track:</p>
+        <div id="targetPlaylistsList" class="track-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px;"></div>
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="filter-pill" onclick="closeAddToPlaylistDialog()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Toast -->
+    <div id="globalToast" class="global-toast">
+      <span id="toastIcon">⚡</span>
+      <span id="toastMsg">Ready</span>
+    </div>
+
+    <!-- Real Online YouTube Audio Streaming Sandbox Engine -->
+    <div id="ytOnlinePlayerWrapper" style="position: fixed; bottom: 0; right: 0; width: 200px; height: 200px; opacity: 0.001; pointer-events: none; z-index: -999; overflow: hidden;">
+      <div id="ytOnlinePlayer"></div>
+    </div>
+    <audio id="audioPlayer" preload="auto"></audio>
+  </div>
+
+  <!-- Layer 1: Configuration & Static Data -->
+  <script src="js/config/constants.js"></script>
+  <script src="js/config/catalog.js"></script>
+  <script src="js/data/charts_global_1.js"></script>
+  <script src="js/data/charts_global_2.js"></script>
+  <script src="js/data/charts_india_1.js"></script>
+  <script src="js/data/charts_india_2.js"></script>
+  <script src="js/data/charts_us_1.js"></script>
+  <script src="js/data/charts_us_2.js"></script>
+  <script src="js/data/charts_uk_1.js"></script>
+  <script src="js/data/charts_uk_2.js"></script>
+  <script src="js/data/regional_charts.js"></script>
+
+  <!-- Layer 2: Pure Utilities -->
+  <script src="js/utils/duration.js"></script>
+  <script src="js/utils/text.js"></script>
+  <script src="js/utils/filter.js"></script>
+  <script src="js/utils/crypto.js"></script>
+
+  <!-- Layer 3: State & Storage -->
+  <script src="js/state/store.js"></script>
+  <script src="js/state/storage.js"></script>
+
+  <!-- Layer 4: Cache & Downloader -->
+  <script src="js/cache/lru_cache.js"></script>
+  <script src="js/cache/downloader.js"></script>
+
+  <script src="js/api/innertube.js"></script>
+  <script src="js/api/radio.js"></script>
+  <script src="js/api/browse_parser.js"></script>
+  <script src="js/api/playlist.js"></script>
+  <script src="js/api/browse.js"></script>
+  <script src="js/api/search.js"></script>
+  <script src="js/api/auth.js"></script>
+
+  <script src="js/player/telemetry.js"></script>
+  <script src="js/player/mediasession.js"></script>
+  <script src="js/player/yt_iframe.js"></script>
+  <script src="js/player/queue.js"></script>
+  <script src="js/player/audio_engine.js"></script>
+  <script src="js/player/native_audio_listener.js"></script>
+
+  <!-- Layer 7: UI Components & Screens -->
+  <script src="js/ui/toast.js"></script>
+  <script src="js/ui/visualizer.js"></script>
+  <script src="js/ui/gestures/pull_to_refresh.js"></script>
+  <script src="js/ui/auth_modal.js"></script>
+  <script src="js/ui/navigation.js"></script>
+  <script src="js/ui/player_ui.js"></script>
+  <script src="js/ui/cards.js"></script>
+  <script src="js/ui/library.js"></script>
+  <script src="js/ui/home.js"></script>
+  <script src="js/ui/charts.js"></script>
+  <script src="js/ui/search.js"></script>
+  <script src="js/ui/playlists.js"></script>
+  <script src="js/ui/favorites.js"></script>
+
+  <script>
+        // ============================================================
+    // APPLICATION INITIALIZATION
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      audioEl = document.getElementById('audioPlayer');
+      initPersistentStorage();
+      initYouTubeIframeApi();
+      setupAudioListeners();
+      renderShelves();
+      initPullToRefresh();
+      renderCharts('Global', 1);
+      renderPlaylists();
+      renderLibraryTracks();
+      updateStorageMetrics();
+      setupMediaSession();
+      updateAuthHeaderUI();
+
+      // Check last played track
+      const savedLastTrack = getLastPlayedTrack();
+      const miniPlayer = document.getElementById('miniPlayer');
+      if (savedLastTrack && savedLastTrack.id) {
+        currentTrack = savedLastTrack;
+        isPlaying = false;
+        updatePlayerUI(currentTrack);
+        updatePlayIcons(false);
+        scheduleLookAhead(currentTrack.id);
+        if (miniPlayer) miniPlayer.style.display = 'flex';
+      } else {
+        currentTrack = null;
+        isPlaying = false;
+        if (miniPlayer) miniPlayer.style.display = 'none';
+      }
+
+      // Prevent modal touch events from scrolling background page
+      const modalEl = document.getElementById('nowPlayingModal');
+      if (modalEl) {
+        modalEl.addEventListener('touchmove', (e) => {
+          if (!e.target.closest('#modalSeekSlider')) {
+            e.stopPropagation();
+          }
+        }, { passive: false });
+      }
+
+      if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
+        const storedCookies = window.SokoNative.getStoredYtmCookies();
+        if (storedCookies && storedCookies.length > 20) {
+          if (!userSession) {
+            userSession = {
+              isLoggedIn: true,
+              cookie: storedCookies,
+              name: "YouTube Music Member",
+              email: "Saved Android Session"
+            };
+            localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
+            updateAuthHeaderUI();
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
