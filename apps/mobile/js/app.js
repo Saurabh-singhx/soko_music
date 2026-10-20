@@ -56,6 +56,10 @@ function initApp() {
       }
     }
   }
+
+  if (typeof checkAndSyncNativePlayback === 'function') {
+    checkAndSyncNativePlayback();
+  }
 }
 
 window.addEventListener('DOMContentLoaded', initApp);

@@ -23,7 +23,7 @@ function createYtmLineCardHtml(track) {
   const isCached = isTrackOffline(track.id);
   const isDownloading = activeDownloads.has(track.id);
   return `
-    <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}')">
+    <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}', true)">
       <div class="ytm-line-art-wrapper">
         <img class="ytm-line-art" src="${track.cover || 'assets/logo.png'}" alt="${track.title || 'Track'}" onerror="this.onerror=null; this.src='assets/logo.png';" loading="lazy" />
         ${isCached ? '<div class="offline-chip-mini">⚡</div>' : ''}

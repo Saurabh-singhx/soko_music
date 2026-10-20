@@ -60,13 +60,16 @@ function setLibraryPage(page) {
 }
 
 function playAllOfflineTracks(shuffle = false) {
+  const filterFn = (typeof isPodcastOrLongTrack === 'function')
+    ? isPodcastOrLongTrack
+    : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
   const cached = Array.from(downloadedSet).map(id => {
     let t = findTrackAcrossAllSources(id);
     if (!t) {
       t = { id, title: 'Offline Song', artist: 'Soko Offline', duration: 200, cover: 'assets/logo.png' };
     }
     return t;
-  }).filter(Boolean);
+  }).filter(t => t && !(filterFn ? filterFn(t) : (Number(t.duration) || 0) > 600));
   if (cached.length === 0) {
     showToast('No downloaded songs in offline storage', 'ℹ️');
     return;
@@ -158,13 +161,18 @@ function renderLibraryTracks() {
   const paginationEl = document.getElementById('libraryPagination');
   if (!list) return;
 
+  const filterFn = (typeof isPodcastOrLongTrack === 'function')
+    ? isPodcastOrLongTrack
+    : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
   const seenIds = new Set();
   let cachedTracks = [];
   for (const id of downloadedSet) {
     if (seenIds.has(id)) continue;
     seenIds.add(id);
     const t = findTrackAcrossAllSources(id);
-    if (t) cachedTracks.push(t);
+    if (t && !(filterFn ? filterFn(t) : (Number(t.duration) || 0) > 600)) {
+      cachedTracks.push(t);
+    }
   }
 
   if (badge) {
