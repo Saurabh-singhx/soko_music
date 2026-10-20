@@ -8,8 +8,9 @@ echo "=========================================================="
 echo "📦 Packaging Soko Music Mobile Standalone Assets"
 echo "=========================================================="
 
+rm -rf "${DIST_DIR}"
 mkdir -p "${DIST_DIR}"
-cp -r "${PROJECT_ROOT}/apps/mobile"/* "${DIST_DIR}/"
+cp -rL "${PROJECT_ROOT}/apps/mobile"/* "${DIST_DIR}/"
 mkdir -p "${DIST_DIR}/assets"
 cp -r "${PROJECT_ROOT}/assets"/* "${DIST_DIR}/assets/"
 

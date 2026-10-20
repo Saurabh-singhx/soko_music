@@ -49,3 +49,12 @@ When users rapidly skip 3 or 4 tracks in a row:
 - Download workers run on low-priority background isolates/threads.
 - Audio chunks are piped directly to disk without intermediate memory bloat.
 - CPU power states drop to minimum once the 3.5 MB file is written to flash, allowing the Android OS to enter low-power audio offload mode.
+
+---
+
+## 4. Content Filtering & Look-Ahead Safety Guard
+
+Before triggering look-ahead pre-fetching for Track $N+1$, the candidate track is validated against `isPodcastOrLongTrack(nextTrack)`:
+- If the track duration exceeds 10 minutes (600 seconds) or matches podcast heuristics, background pre-fetching is immediately skipped.
+- This ensures mobile data is never spent caching multi-hour talk shows, full DJ sets, or podcast episodes.
+- For detailed filter rules and implementation specifications, see [06. Content Filtering & Podcast Exclusion Engine](file:///home/saurabh/coding/soko-music-app/docs/architecture/06-content-filtering-and-podcast-exclusion.md).

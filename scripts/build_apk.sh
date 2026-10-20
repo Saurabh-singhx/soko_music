@@ -8,7 +8,8 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build_apk_tmp"
-OUTPUT_DIR="${PROJECT_ROOT}"
+OUTPUT_DIR="${PROJECT_ROOT}/dist"
+mkdir -p "${OUTPUT_DIR}"
 
 # Detect Android SDK Home
 SDK_HOME="${ANDROID_HOME:-/home/saurabh/Android/Sdk}"
@@ -62,7 +63,11 @@ mkdir -p "${WORK}/dex"
 mkdir -p "${WORK}/assets"
 
 # Copy mipmap icons
-cp -r "${PROJECT_ROOT}/res/"* "${WORK}/res/"
+if [ -d "${PROJECT_ROOT}/apps/android/res" ]; then
+  cp -r "${PROJECT_ROOT}/apps/android/res/"* "${WORK}/res/"
+elif [ -d "${PROJECT_ROOT}/res" ]; then
+  cp -r "${PROJECT_ROOT}/res/"* "${WORK}/res/"
+fi
 
 # Copy web assets
 cp "${PROJECT_ROOT}/apps/mobile/index.html" "${WORK}/assets/"
@@ -165,12 +170,19 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.security.MessageDigest;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.File;
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Button;
@@ -178,6 +190,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.graphics.Typeface;
 import android.graphics.Bitmap;
+import android.media.AudioManager;
 
 public class MainActivity extends Activity {
     private static final String TAG = "SokoMusic";
@@ -186,6 +199,11 @@ public class MainActivity extends Activity {
     private WebView webView;
     private MediaSession mediaSession;
     private MediaPlayer mediaPlayer;
+    private AudioManager audioManager;
+    private BroadcastReceiver noisyAudioReceiver;
+    private AudioManager.OnAudioFocusChangeListener audioFocusChangeListener;
+    private volatile String currentActivePlaybackVideoId = "";
+    private static final java.util.concurrent.ConcurrentHashMap<String, Boolean> activeDownloadTasks = new java.util.concurrent.ConcurrentHashMap<>();
     private Handler progressHandler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
     private String currentTrackTitle = "Soko Music";
@@ -193,6 +211,9 @@ public class MainActivity extends Activity {
     private String currentCoverUrl = "";
     private Dialog loginDialog;
     private WebView loginWebView;
+    private static String cachedVisitorData = "";
+    private static int cachedSts = 20739;
+    private static long lastVisitorDataTime = 0;
 
     private BroadcastReceiver mediaActionReceiver = new BroadcastReceiver() {
         @Override
@@ -261,10 +282,47 @@ public class MainActivity extends Activity {
                 public boolean onError(MediaPlayer mp, int what, int extra) {
                     Log.e(TAG, "Native MediaPlayer error: what=" + what + ", extra=" + extra);
                     stopProgressUpdater();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativePlaybackError && window.onNativePlaybackError(" + what + ")", null);
+                            }
+                        }
+                    });
                     return true;
                 }
             });
         }
+    }
+
+    public void stopNativeAudio() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    stopProgressUpdater();
+                    if (mediaPlayer != null) {
+                        if (mediaPlayer.isPlaying()) {
+                            mediaPlayer.stop();
+                        }
+                        mediaPlayer.reset();
+                    }
+                    if (audioManager != null && audioFocusChangeListener != null) {
+                        try { audioManager.abandonAudioFocus(audioFocusChangeListener); } catch (Exception ignored) {}
+                    }
+                    NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                    if (nm != null) {
+                        nm.cancel(MEDIA_NOTIF_ID);
+                    }
+                    if (webView != null) {
+                        webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(false, 0)", null);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "stopNativeAudio error", e);
+                }
+            }
+        });
     }
 
     public void playNativeAudio(final String pathOrUrl, final String title, final String artist, final String coverUrl) {
@@ -279,6 +337,13 @@ public class MainActivity extends Activity {
                     initMediaPlayer();
                     mediaPlayer.reset();
                     mediaPlayer.setVolume(1.0f, 1.0f);
+
+                    if (audioManager == null) {
+                        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    }
+                    if (audioManager != null && audioFocusChangeListener != null) {
+                        try { audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN); } catch (Exception ignored) {}
+                    }
 
                     if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
                         mediaPlayer.setDataSource(pathOrUrl);
@@ -296,6 +361,20 @@ public class MainActivity extends Activity {
                         });
                         mediaPlayer.prepareAsync();
                     } else {
+                        File directFile = new File(pathOrUrl.startsWith("file://") ? pathOrUrl.substring(7) : pathOrUrl);
+                        if (directFile.exists() && directFile.length() > 0) {
+                            mediaPlayer.setDataSource(directFile.getAbsolutePath());
+                            mediaPlayer.prepare();
+                            mediaPlayer.start();
+                            startProgressUpdater();
+                            int durSec = mediaPlayer.getDuration() > 0 ? mediaPlayer.getDuration() / 1000 : 215;
+                            updateNotificationAndSession(title, artist, true, durSec, 0);
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
+                            }
+                            return;
+                        }
+
                         String cleanPath = pathOrUrl;
                         if (cleanPath.startsWith("file:///android_asset/")) {
                             cleanPath = cleanPath.substring("file:///android_asset/".length());
@@ -743,6 +822,355 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    public void downloadAndPlayTrack(final String videoId, final String title, final String artist, final String coverUrl, final boolean autoPlayWhenDone) {
+        if (autoPlayWhenDone) {
+            currentActivePlaybackVideoId = videoId;
+            stopNativeAudio();
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                File musicDir = new File(getFilesDir(), "music");
+                if (!musicDir.exists()) musicDir.mkdirs();
+                final File targetFile = new File(musicDir, videoId + ".m4a");
+
+                if (targetFile.exists() && targetFile.length() > 50000) {
+                    final boolean shouldPlay = autoPlayWhenDone && videoId.equals(currentActivePlaybackVideoId);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativeDownloadProgress && window.onNativeDownloadProgress(" + JSONObject.quote(videoId) + ", 100)", null);
+                                webView.evaluateJavascript("window.onNativeDownloadComplete && window.onNativeDownloadComplete(" + JSONObject.quote(videoId) + ", " + JSONObject.quote(targetFile.getAbsolutePath()) + ", " + shouldPlay + ")", null);
+                            }
+                            if (shouldPlay) {
+                                playNativeAudio(targetFile.getAbsolutePath(), title, artist, coverUrl);
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                if (activeDownloadTasks.putIfAbsent(videoId, Boolean.TRUE) != null) {
+                    return;
+                }
+
+                // Filter out podcasts from native download
+                String lowerTitle = (title != null) ? title.toLowerCase() : "";
+                String lowerArtist = (artist != null) ? artist.toLowerCase() : "";
+                if (lowerTitle.contains("podcast") || lowerArtist.contains("podcast") || lowerTitle.contains("full episode") || lowerTitle.contains("episode") || lowerTitle.contains("ep.")) {
+                    activeDownloadTasks.remove(videoId);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativeDownloadFailed && window.onNativeDownloadFailed(" + JSONObject.quote(videoId) + ", 'Cannot download: podcasts are excluded')", null);
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                try {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (webView != null) {
+                                    webView.evaluateJavascript("window.onNativeDownloadProgress && window.onNativeDownloadProgress(" + JSONObject.quote(videoId) + ", 5)", null);
+                                }
+                            }
+                        });
+
+                    // 1. Fetch visitorData and signatureTimestamp if not cached or expired (4 hours)
+                    String visitorData = cachedVisitorData;
+                    int sts = cachedSts;
+                    long nowTime = System.currentTimeMillis();
+
+                    if (visitorData.isEmpty() || (nowTime - lastVisitorDataTime > 4 * 3600 * 1000L)) {
+                        try {
+                            String pageUrl = "https://www.youtube.com/watch?v=" + videoId;
+                            HttpURLConnection pageConn = (HttpURLConnection) new URL(pageUrl).openConnection();
+                            pageConn.setRequestMethod("GET");
+                            pageConn.setConnectTimeout(8000);
+                            pageConn.setReadTimeout(8000);
+                            pageConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0");
+
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(pageConn.getInputStream()));
+                            StringBuilder pageSb = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                pageSb.append(line);
+                            }
+                            reader.close();
+                            String pageHtml = pageSb.toString();
+
+                            Matcher mVis = Pattern.compile("\"visitorData\":\\\\s*\"([^\"]+)\"").matcher(pageHtml);
+                            if (mVis.find()) {
+                                visitorData = mVis.group(1);
+                                cachedVisitorData = visitorData;
+                            }
+
+                            Matcher mSts = Pattern.compile("\"signatureTimestamp\":\\\\s*(\\\\d+)").matcher(pageHtml);
+                            if (mSts.find()) {
+                                sts = Integer.parseInt(mSts.group(1));
+                                cachedSts = sts;
+                            }
+                            lastVisitorDataTime = nowTime;
+                        } catch (Exception ignored) {}
+                    }
+
+                    // 2. Query InnerTube player API with VISIONOS client
+                    final String visionUa = "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+                    URL playerUrl = new URL("https://www.youtube.com/youtubei/v1/player?prettyPrint=false");
+                    HttpURLConnection playerConn = (HttpURLConnection) playerUrl.openConnection();
+                    playerConn.setRequestMethod("POST");
+                    playerConn.setConnectTimeout(12000);
+                    playerConn.setReadTimeout(12000);
+                    playerConn.setDoOutput(true);
+                    playerConn.setRequestProperty("Content-Type", "application/json");
+                    playerConn.setRequestProperty("X-Youtube-Client-Name", "101");
+                    playerConn.setRequestProperty("X-Youtube-Client-Version", "1.02");
+                    playerConn.setRequestProperty("Origin", "https://www.youtube.com");
+                    playerConn.setRequestProperty("User-Agent", visionUa);
+                    if (!visitorData.isEmpty()) {
+                        playerConn.setRequestProperty("X-Goog-Visitor-Id", visitorData);
+                    }
+
+                    JSONObject clientObj = new JSONObject();
+                    clientObj.put("clientName", "VISIONOS");
+                    clientObj.put("clientVersion", "1.02");
+                    clientObj.put("deviceMake", "Apple");
+                    clientObj.put("deviceModel", "RealityDevice17,1");
+                    clientObj.put("userAgent", visionUa);
+                    clientObj.put("osName", "visionOS");
+                    clientObj.put("osVersion", "26.5.23O471");
+                    clientObj.put("hl", "en");
+                    clientObj.put("timeZone", "UTC");
+                    clientObj.put("utcOffsetMinutes", 0);
+                    if (!visitorData.isEmpty()) {
+                        clientObj.put("visitorData", visitorData);
+                    }
+
+                    JSONObject contextObj = new JSONObject();
+                    contextObj.put("client", clientObj);
+
+                    JSONObject cpContext = new JSONObject();
+                    cpContext.put("html5Preference", "HTML5_PREF_WANTS");
+                    cpContext.put("signatureTimestamp", sts);
+
+                    JSONObject pbContext = new JSONObject();
+                    pbContext.put("contentPlaybackContext", cpContext);
+
+                    JSONObject payload = new JSONObject();
+                    payload.put("context", contextObj);
+                    payload.put("videoId", videoId);
+                    payload.put("playbackContext", pbContext);
+                    payload.put("contentCheckOk", true);
+                    payload.put("racyCheckOk", true);
+
+                    OutputStream pOs = playerConn.getOutputStream();
+                    pOs.write(payload.toString().getBytes("UTF-8"));
+                    pOs.flush();
+                    pOs.close();
+
+                    BufferedReader pReader = new BufferedReader(new InputStreamReader(playerConn.getInputStream()));
+                    StringBuilder pSb = new StringBuilder();
+                    String line;
+                    while ((line = pReader.readLine()) != null) {
+                        pSb.append(line);
+                    }
+                    pReader.close();
+
+                    JSONObject pData = new JSONObject(pSb.toString());
+
+                    // Guard against downloading tracks longer than 10 minutes (600 seconds)
+                    JSONObject videoDetails = pData.optJSONObject("videoDetails");
+                    if (videoDetails != null) {
+                        long lengthSec = videoDetails.optLong("lengthSeconds", 0);
+                        if (lengthSec > 600) {
+                            activeDownloadTasks.remove(videoId);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (webView != null) {
+                                        webView.evaluateJavascript("window.onNativeDownloadFailed && window.onNativeDownloadFailed(" + JSONObject.quote(videoId) + ", 'Cannot download: content exceeds 10 minutes limit')", null);
+                                    }
+                                }
+                            });
+                            return;
+                        }
+                    }
+
+                    JSONObject streamingData = pData.optJSONObject("streamingData");
+                    String directAudioUrl = null;
+                    long totalSize = 0;
+
+                    if (streamingData != null) {
+                        JSONArray adaptiveFormats = streamingData.optJSONArray("adaptiveFormats");
+                        if (adaptiveFormats != null) {
+                            for (int i = 0; i < adaptiveFormats.length(); i++) {
+                                JSONObject f = adaptiveFormats.getJSONObject(i);
+                                int itag = f.optInt("itag");
+                                if (itag == 140 && f.has("url")) {
+                                    directAudioUrl = f.getString("url");
+                                    totalSize = f.optLong("contentLength", 0);
+                                    break;
+                                }
+                            }
+                            if (directAudioUrl == null) {
+                                for (int i = 0; i < adaptiveFormats.length(); i++) {
+                                    JSONObject f = adaptiveFormats.getJSONObject(i);
+                                    String mime = f.optString("mimeType", "");
+                                    if (mime.contains("audio") && f.has("url")) {
+                                        directAudioUrl = f.getString("url");
+                                        totalSize = f.optLong("contentLength", 0);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (directAudioUrl == null) {
+                        throw new Exception("Unable to extract direct audio stream from YouTube");
+                    }
+
+                    // 3. Fast Chunked Range Download (1 MB chunks bypassing 32KB/s throttle)
+                    final File partFile = new File(musicDir, videoId + ".part");
+
+                    if (totalSize <= 0) {
+                        try {
+                            HttpURLConnection headConn = (HttpURLConnection) new URL(directAudioUrl).openConnection();
+                            headConn.setRequestProperty("User-Agent", visionUa);
+                            headConn.setRequestMethod("HEAD");
+                            headConn.setConnectTimeout(8000);
+                            headConn.setReadTimeout(8000);
+                            totalSize = headConn.getContentLengthLong();
+                            headConn.disconnect();
+                        } catch (Exception ignored) {}
+                    }
+
+                    FileOutputStream fos = new FileOutputStream(partFile);
+                    long downloadedBytes = 0;
+
+                    if (totalSize > 0) {
+                        long chunkSize = 1024 * 1024L; // 1 MB per chunk
+                        while (downloadedBytes < totalSize) {
+                            long endByte = Math.min(downloadedBytes + chunkSize - 1, totalSize - 1);
+                            HttpURLConnection cConn = (HttpURLConnection) new URL(directAudioUrl).openConnection();
+                            cConn.setRequestProperty("User-Agent", visionUa);
+                            cConn.setRequestProperty("Range", "bytes=" + downloadedBytes + "-" + endByte);
+                            cConn.setConnectTimeout(12000);
+                            cConn.setReadTimeout(20000);
+
+                            InputStream cIn = cConn.getInputStream();
+                            byte[] cBuf = new byte[32768];
+                            int cLen;
+                            while ((cLen = cIn.read(cBuf)) != -1) {
+                                fos.write(cBuf, 0, cLen);
+                                downloadedBytes += cLen;
+                            }
+                            cIn.close();
+                            cConn.disconnect();
+
+                            final int pct = (int) Math.min(99, (downloadedBytes * 100) / totalSize);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (webView != null) {
+                                        webView.evaluateJavascript("window.onNativeDownloadProgress && window.onNativeDownloadProgress(" + JSONObject.quote(videoId) + ", " + pct + ")", null);
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        // Fallback single stream if totalSize could not be determined
+                        HttpURLConnection audioConn = (HttpURLConnection) new URL(directAudioUrl).openConnection();
+                        audioConn.setRequestProperty("User-Agent", visionUa);
+                        audioConn.setConnectTimeout(15000);
+                        audioConn.setReadTimeout(30000);
+                        totalSize = audioConn.getContentLengthLong();
+
+                        InputStream aIn = audioConn.getInputStream();
+                        byte[] buf = new byte[16384];
+                        int len;
+                        long lastProgressTime = 0;
+
+                        while ((len = aIn.read(buf)) != -1) {
+                            fos.write(buf, 0, len);
+                            downloadedBytes += len;
+                            long now = System.currentTimeMillis();
+                            if (totalSize > 0 && (now - lastProgressTime > 250)) {
+                                lastProgressTime = now;
+                                final int pct = (int) Math.min(99, (downloadedBytes * 100) / totalSize);
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (webView != null) {
+                                            webView.evaluateJavascript("window.onNativeDownloadProgress && window.onNativeDownloadProgress(" + JSONObject.quote(videoId) + ", " + pct + ")", null);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        aIn.close();
+                        audioConn.disconnect();
+                    }
+
+                    fos.flush();
+                    fos.close();
+
+                    if (partFile.length() > 50000) {
+                        partFile.renameTo(targetFile);
+                    } else {
+                        if (partFile.exists()) partFile.delete();
+                        throw new Exception("Downloaded file too small: " + partFile.length() + " bytes");
+                    }
+
+                    // 4. Notify completion and play if still active
+                    final boolean shouldPlay = autoPlayWhenDone && videoId.equals(currentActivePlaybackVideoId);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativeDownloadProgress && window.onNativeDownloadProgress(" + JSONObject.quote(videoId) + ", 100)", null);
+                                webView.evaluateJavascript("window.onNativeDownloadComplete && window.onNativeDownloadComplete(" + JSONObject.quote(videoId) + ", " + JSONObject.quote(targetFile.getAbsolutePath()) + ", " + shouldPlay + ")", null);
+                            }
+                            if (shouldPlay) {
+                                playNativeAudio(targetFile.getAbsolutePath(), title, artist, coverUrl);
+                            }
+                        }
+                    });
+
+                } catch (final Exception e) {
+                    Log.e(TAG, "downloadAndPlayTrack error for " + videoId, e);
+                    File partFile = new File(musicDir, videoId + ".part");
+                    if (partFile.exists()) {
+                        try { partFile.delete(); } catch (Exception ignored) {}
+                    }
+                    final String msg;
+                    if (e instanceof java.net.UnknownHostException || (e.getMessage() != null && e.getMessage().contains("Unable to resolve host"))) {
+                        msg = "No internet connection. Please check Wi-Fi or mobile data.";
+                    } else if (e.getMessage() != null && !e.getMessage().isEmpty()) {
+                        msg = e.getMessage();
+                    } else {
+                        msg = "Network or download error";
+                    }
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativeDownloadFailed && window.onNativeDownloadFailed(" + JSONObject.quote(videoId) + ", " + JSONObject.quote(msg) + ")", null);
+                            }
+                        }
+                    });
+                } finally {
+                    activeDownloadTasks.remove(videoId);
+                }
+            }
+        }).start();
+    }
+
     public class SokoNativeBridge {
         @JavascriptInterface
         public String getAppVersion() {
@@ -756,6 +1184,11 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void launchGoogleLogin() {
+            MainActivity.this.launchGoogleLogin();
+        }
+
+        @JavascriptInterface
+        public void startGoogleLoginFlow() {
             MainActivity.this.launchGoogleLogin();
         }
 
@@ -788,6 +1221,21 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void stopAudio() {
+            MainActivity.this.stopNativeAudio();
+        }
+
+        @JavascriptInterface
+        public void setActivePlaybackId(final String videoId) {
+            MainActivity.this.currentActivePlaybackVideoId = videoId;
+        }
+
+        @JavascriptInterface
+        public String getActivePlaybackId() {
+            return MainActivity.this.currentActivePlaybackVideoId;
+        }
+
+        @JavascriptInterface
         public void resumeAudio() {
             resumeNativeAudio();
         }
@@ -800,6 +1248,126 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void updateNativePlayer(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl) {
             updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec);
+        }
+
+        @JavascriptInterface
+        public void downloadAndPlayTrack(final String videoId, final String title, final String artist, final String coverUrl) {
+            MainActivity.this.downloadAndPlayTrack(videoId, title, artist, coverUrl, true);
+        }
+
+        @JavascriptInterface
+        public void downloadTrack(final String videoId, final String title, final String artist, final String coverUrl) {
+            MainActivity.this.downloadAndPlayTrack(videoId, title, artist, coverUrl, false);
+        }
+
+        @JavascriptInterface
+        public boolean isTrackDownloaded(final String videoId) {
+            File musicDir = new File(getFilesDir(), "music");
+            File targetFile = new File(musicDir, videoId + ".m4a");
+            return targetFile.exists() && targetFile.length() > 50000;
+        }
+
+        @JavascriptInterface
+        public String getDownloadedTrackPath(final String videoId) {
+            File musicDir = new File(getFilesDir(), "music");
+            File targetFile = new File(musicDir, videoId + ".m4a");
+            if (targetFile.exists() && targetFile.length() > 50000) {
+                return targetFile.getAbsolutePath();
+            }
+            return "";
+        }
+
+        @JavascriptInterface
+        public boolean deleteDownloadedTrack(final String videoId) {
+            try {
+                File musicDir = new File(getFilesDir(), "music");
+                File targetFile = new File(musicDir, videoId + ".m4a");
+                File partFile = new File(musicDir, videoId + ".part");
+                boolean deleted = false;
+                if (targetFile.exists()) {
+                    deleted = targetFile.delete();
+                }
+                if (partFile.exists()) {
+                    partFile.delete();
+                }
+                Log.d(TAG, "deleteDownloadedTrack: " + videoId + " -> " + deleted);
+                return deleted;
+            } catch (Exception e) {
+                Log.e(TAG, "Error deleting track: " + videoId, e);
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public int clearAllDownloadedTracks() {
+            int count = 0;
+            try {
+                File musicDir = new File(getFilesDir(), "music");
+                if (musicDir.exists() && musicDir.isDirectory()) {
+                    File[] files = musicDir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile() && (f.getName().endsWith(".m4a") || f.getName().endsWith(".part"))) {
+                                if (f.delete()) count++;
+                            }
+                        }
+                    }
+                }
+                Log.d(TAG, "clearAllDownloadedTracks: removed " + count + " files");
+            } catch (Exception e) {
+                Log.e(TAG, "Error clearing downloaded tracks", e);
+            }
+            return count;
+        }
+
+        @JavascriptInterface
+        public long getDiskStorageUsedBytes() {
+            long total = 0;
+            try {
+                File musicDir = new File(getFilesDir(), "music");
+                if (musicDir.exists() && musicDir.isDirectory()) {
+                    File[] files = musicDir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile()) total += f.length();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error calculating storage used", e);
+            }
+            return total;
+        }
+
+        @JavascriptInterface
+        public void sendTelemetryPing(final String urlString) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        java.net.URL url = new java.net.URL(urlString);
+                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("GET");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(8000);
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+                        conn.setRequestProperty("X-YouTube-Client-Name", "67"); // WEB_REMIX
+                        conn.setRequestProperty("X-YouTube-Client-Version", "1.20240101.01.00");
+                        conn.setRequestProperty("Origin", "https://music.youtube.com");
+                        conn.setRequestProperty("Referer", "https://music.youtube.com/");
+
+                        String cookie = getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).getString("ytm_cookies", "");
+                        if (cookie != null && !cookie.isEmpty()) {
+                            conn.setRequestProperty("Cookie", cookie);
+                        }
+                        int code = conn.getResponseCode();
+                        Log.d("SokoTelemetry", "Telemetry ping [" + code + "] to " + urlString.split("\\\\?")[0]);
+                        conn.disconnect();
+                    } catch (Exception e) {
+                        Log.w("SokoTelemetry", "Telemetry ping notice: " + e.getMessage());
+                    }
+                }
+            }).start();
         }
     }
 
@@ -821,6 +1389,44 @@ public class MainActivity extends Activity {
         }
 
         createMediaNotificationChannel();
+
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                    pauseNativeAudio();
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() { if (webView != null) webView.evaluateJavascript("window.onNativeAudioFocusLost && window.onNativeAudioFocusLost()", null); }
+                    });
+                } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                    if (mediaPlayer != null) {
+                        try { mediaPlayer.setVolume(0.2f, 0.2f); } catch (Exception ignored) {}
+                    }
+                } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                    if (mediaPlayer != null) {
+                        try { mediaPlayer.setVolume(1.0f, 1.0f); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        };
+
+        noisyAudioReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                    pauseNativeAudio();
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() { if (webView != null) webView.evaluateJavascript("window.handleBecomingNoisy && window.handleBecomingNoisy()", null); }
+                    });
+                }
+            }
+        };
+        try {
+            registerReceiver(noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        } catch (Exception e) {
+            Log.w(TAG, "Noisy receiver error: " + e.getMessage());
+        }
 
         try {
             IntentFilter filter = new IntentFilter();
@@ -948,6 +1554,12 @@ public class MainActivity extends Activity {
         try {
             unregisterReceiver(mediaActionReceiver);
         } catch (Exception ignored) {}
+        try {
+            if (noisyAudioReceiver != null) unregisterReceiver(noisyAudioReceiver);
+        } catch (Exception ignored) {}
+        if (audioManager != null && audioFocusChangeListener != null) {
+            try { audioManager.abandonAudioFocus(audioFocusChangeListener); } catch (Exception ignored) {}
+        }
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();
@@ -963,9 +1575,13 @@ public class MainActivity extends Activity {
 EOF
 
 # 4. Keystore
-KEYSTORE="${PROJECT_ROOT}/scripts/soko_music.keystore"
+KEYSTORE="${PROJECT_ROOT}/apps/android/keystore/soko_music.keystore"
+if [ ! -f "${KEYSTORE}" ] && [ -f "${PROJECT_ROOT}/scripts/soko_music.keystore" ]; then
+  KEYSTORE="${PROJECT_ROOT}/scripts/soko_music.keystore"
+fi
 KEY_PASS="sokomusic123"
 if [ ! -f "${KEYSTORE}" ]; then
+  mkdir -p "$(dirname "${KEYSTORE}")"
   echo "Generating persistent keystore at ${KEYSTORE}..."
   keytool -genkeypair -v \
     -keystore "${KEYSTORE}" \
@@ -1026,10 +1642,6 @@ FINAL_APK="${OUTPUT_DIR}/soko-music.apk"
 
 # 11. Verify signature
 "${APKSIGNER}" verify "${FINAL_APK}"
-
-# Also copy to dist directory
-mkdir -p "${PROJECT_ROOT}/dist"
-cp "${FINAL_APK}" "${PROJECT_ROOT}/dist/soko-music.apk"
 
 echo "=========================================================="
 echo "🎉 SUCCESS: Soko Music APK generated at:"

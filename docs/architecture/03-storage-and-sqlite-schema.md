@@ -68,3 +68,13 @@ When available storage falls below the user threshold (e.g. 500 MB remaining or 
    ```
 3. Audio and artwork files are unlinked from disk.
 4. The database row is deleted and the in-memory `Set` is updated.
+
+---
+
+## 4. Duration Ceiling & Storage Protection Invariant
+
+To guarantee flash storage capacity is reserved for music and protected from multi-hour talk files:
+- All downloads enforce a hard duration ceiling: `duration <= 600` seconds (10 minutes).
+- Files exceeding 10 minutes or flagged as podcasts are rejected before file descriptors (`.part` files) are created.
+- This invariant guarantees that storage budgets (default 4.0 GB) reliably store ~1,000–1,200 songs rather than being exhausted by a handful of large podcasts.
+- See [06. Content Filtering & Podcast Exclusion Engine](file:///home/saurabh/coding/soko-music-app/docs/architecture/06-content-filtering-and-podcast-exclusion.md).
