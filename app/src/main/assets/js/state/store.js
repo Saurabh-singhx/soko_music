@@ -11,6 +11,7 @@ if (savedSession) {
 
 const downloadedSet = new Set(BUNDLED_TRACKS.map(t => t.id));
 let personalShelves = null;
+let currentHomeShelves = [];
 
 function isTrackOffline(id) {
       if (!id) return false;
@@ -139,6 +140,7 @@ function findTrackAcrossAllSources(trackId) {
 window.userSession = userSession;
 window.downloadedSet = downloadedSet;
 window.personalShelves = personalShelves;
+window.currentHomeShelves = currentHomeShelves;
 window.userPlaylists = userPlaylists;
 window.currentTrack = currentTrack;
 window.isPlaying = isPlaying;
