@@ -123,7 +123,11 @@ public class MediaNotificationManager {
             filter.addAction("com.soko.music.ACTION_TOGGLE");
             filter.addAction("com.soko.music.ACTION_NEXT");
             filter.addAction("com.soko.music.ACTION_PREV");
-            activity.registerReceiver(mediaActionReceiver, filter);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                activity.registerReceiver(mediaActionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                activity.registerReceiver(mediaActionReceiver, filter);
+            }
             isReceiverRegistered = true;
         }
     }
@@ -210,8 +214,11 @@ public class MediaNotificationManager {
             NotificationManager nm = (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 Intent toggleIntent = new Intent("com.soko.music.ACTION_TOGGLE");
+                toggleIntent.setPackage(activity.getPackageName());
                 Intent nextIntent = new Intent("com.soko.music.ACTION_NEXT");
+                nextIntent.setPackage(activity.getPackageName());
                 Intent prevIntent = new Intent("com.soko.music.ACTION_PREV");
+                prevIntent.setPackage(activity.getPackageName());
 
                 int flags = PendingIntent.FLAG_UPDATE_CURRENT;
                 if (android.os.Build.VERSION.SDK_INT >= 23) {
