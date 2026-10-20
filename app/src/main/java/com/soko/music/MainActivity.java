@@ -2,6 +2,7 @@ package com.soko.music;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -40,6 +41,12 @@ public class MainActivity extends Activity {
     private DiskCacheManager diskCacheManager;
     private TrackDownloader trackDownloader;
     private SokoNativeBridge sokoNativeBridge;
+    private final android.content.ServiceConnection serviceConnection = new android.content.ServiceConnection() {
+        @Override
+        public void onServiceConnected(android.content.ComponentName name, android.os.IBinder service) {}
+        @Override
+        public void onServiceDisconnected(android.content.ComponentName name) {}
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +85,7 @@ public class MainActivity extends Activity {
         mediaNotificationManager = new MediaNotificationManager(this, webView);
         audioFocusManager = new AudioFocusManager(this, webView);
         audioEngine = new AudioEngine(this, webView, audioFocusManager, mediaNotificationManager);
+        mediaNotificationManager.setAudioEngine(audioEngine);
         noisyAudioReceiver = new NoisyAudioReceiver(webView);
         diskCacheManager = new DiskCacheManager(this);
         trackDownloader = new TrackDownloader(this, webView, audioEngine, diskCacheManager);
@@ -90,6 +98,10 @@ public class MainActivity extends Activity {
 
         noisyAudioReceiver.register(this);
         mediaNotificationManager.registerActionReceiver();
+        try {
+            Intent serviceIntent = new Intent(this, com.soko.music.audio.MediaPlaybackService.class);
+            bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+        } catch (Exception ignored) {}
 
         webView.addJavascriptInterface(sokoNativeBridge, "SokoNative");
         webView.setWebViewClient(new WebViewClient() {
@@ -184,11 +196,34 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
+        if (audioEngine != null) {
+            audioEngine.syncPlaybackStateToWebView();
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (audioEngine != null) {
+            audioEngine.syncPlaybackStateToWebView();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (noisyAudioReceiver != null) {
             noisyAudioReceiver.unregister(this);
         }
+        try {
+            unbindService(serviceConnection);
+        } catch (Exception ignored) {}
         if (mediaNotificationManager != null) {
             mediaNotificationManager.release();
         }

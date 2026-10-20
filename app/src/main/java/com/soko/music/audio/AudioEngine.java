@@ -100,7 +100,7 @@ public class AudioEngine {
                         try { audioFocusManager.abandonAudioFocus(); } catch (Exception ignored) {}
                     }
                     if (mediaNotificationManager != null) {
-                        mediaNotificationManager.release();
+                        mediaNotificationManager.clearNotification();
                     }
                     if (webView != null) {
                         webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(false, 0)", null);
@@ -323,6 +323,54 @@ public class AudioEngine {
             progressHandler.removeCallbacks(progressRunnable);
             progressRunnable = null;
         }
+    }
+
+    public boolean isPlaying() {
+        try { return mediaPlayer != null && mediaPlayer.isPlaying(); } catch (Exception e) { return false; }
+    }
+
+    public int getCurrentPositionSec() {
+        try { return mediaPlayer != null ? mediaPlayer.getCurrentPosition() / 1000 : 0; } catch (Exception e) { return 0; }
+    }
+
+    public int getDurationSec() {
+        try { return mediaPlayer != null && mediaPlayer.getDuration() > 0 ? mediaPlayer.getDuration() / 1000 : 215; } catch (Exception e) { return 215; }
+    }
+
+    public String getCurrentTrackTitle() { return currentTrackTitle != null ? currentTrackTitle : ""; }
+    public String getCurrentTrackArtist() { return currentTrackArtist != null ? currentTrackArtist : ""; }
+    public String getCurrentCoverUrl() { return currentCoverUrl != null ? currentCoverUrl : ""; }
+
+    public void syncPlaybackStateToWebView() {
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        int cur = getCurrentPositionSec();
+                        int dur = getDurationSec();
+                        startProgressUpdater();
+                        if (webView != null) {
+                            String script = "if (window.syncNativePlaybackState) { " +
+                                "window.syncNativePlaybackState(true, " + cur + ", " + dur + ", " +
+                                "'" + escapeJs(currentTrackTitle) + "', '" + escapeJs(currentTrackArtist) + "', " +
+                                "'" + escapeJs(currentCoverUrl) + "', '" + escapeJs(currentActivePlaybackVideoId) + "');" +
+                                "} else if (window.onNativePlayerStateChange) { " +
+                                "window.onNativePlayerStateChange(true, " + dur + ");" +
+                                "}";
+                            webView.evaluateJavascript(script, null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "syncPlaybackStateToWebView error: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private String escapeJs(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "");
     }
 
     public void release() {

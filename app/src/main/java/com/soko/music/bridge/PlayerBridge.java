@@ -49,6 +49,45 @@ public class PlayerBridge {
     }
 
     @JavascriptInterface
+    public boolean isAudioPlaying() {
+        return audioEngine != null && audioEngine.isPlaying();
+    }
+
+    @JavascriptInterface
+    public int getAudioPositionSec() {
+        return audioEngine != null ? audioEngine.getCurrentPositionSec() : 0;
+    }
+
+    @JavascriptInterface
+    public int getAudioDurationSec() {
+        return audioEngine != null ? audioEngine.getDurationSec() : 0;
+    }
+
+    @JavascriptInterface
+    public String getPlaybackStatusJson() {
+        if (audioEngine == null) return "{\"isPlaying\":false}";
+        boolean playing = audioEngine.isPlaying();
+        int cur = audioEngine.getCurrentPositionSec();
+        int dur = audioEngine.getDurationSec();
+        String title = audioEngine.getCurrentTrackTitle();
+        String artist = audioEngine.getCurrentTrackArtist();
+        String cover = audioEngine.getCurrentCoverUrl();
+        String id = audioEngine.getActivePlaybackVideoId();
+        return "{\"isPlaying\":" + playing + "," +
+               "\"position\":" + cur + "," +
+               "\"duration\":" + dur + "," +
+               "\"title\":\"" + escapeJson(title) + "\"," +
+               "\"artist\":\"" + escapeJson(artist) + "\"," +
+               "\"cover\":\"" + escapeJson(cover) + "\"," +
+               "\"id\":\"" + escapeJson(id) + "\"}";
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "").replace("\r", "");
+    }
+
+    @JavascriptInterface
     public void updateNativePlayer(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl) {
         if (mediaNotificationManager != null) {
             mediaNotificationManager.updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec, coverUrl, false);
