@@ -71,8 +71,17 @@ const window = {
   location: { origin: 'https://music.youtube.com' }
 };
 
-// Read index.html and extract JavaScript
-const html = fs.readFileSync(path.join(__dirname, '../apps/mobile/index.html'), 'utf8');
+// Read index.html and extract JavaScript & Styles
+let rawHtml = fs.readFileSync(path.join(__dirname, '../apps/mobile/index.html'), 'utf8');
+let html = rawHtml;
+const cssLinkRegex = /<link\s+[^>]*href=["']([^"']+\.css)["'][^>]*>/gi;
+let cssMatch;
+while ((cssMatch = cssLinkRegex.exec(rawHtml)) !== null) {
+  const cssPath = path.join(__dirname, '../apps/mobile', cssMatch[1]);
+  if (fs.existsSync(cssPath)) {
+    html += '\n<style>\n' + fs.readFileSync(cssPath, 'utf8') + '\n</style>\n';
+  }
+}
 const scriptMatch = html.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/i);
 if (!scriptMatch) {
   console.error('FAIL: No script tag found in apps/mobile/index.html');

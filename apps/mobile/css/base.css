@@ -1,0 +1,59 @@
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
+    *::-webkit-scrollbar,
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    .content-scroll::-webkit-scrollbar,
+    .app-viewport::-webkit-scrollbar,
+    .tab-pane::-webkit-scrollbar,
+    .shelf-container::-webkit-scrollbar,
+    .filter-pills-row::-webkit-scrollbar,
+    .now-playing-modal::-webkit-scrollbar,
+    .track-list::-webkit-scrollbar {
+      width: 0px !important;
+      height: 0px !important;
+      display: none !important;
+      background: transparent !important;
+      -webkit-appearance: none !important;
+    }
+
+    html, body {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      box-sizing: border-box;
+      padding-bottom: calc(var(--tab-bar-height) + var(--safe-bottom) + 16px);
+    }
+
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden !important;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      touch-action: none !important;
+    }
+
+    body.modal-open .content-scroll {
+      overflow: hidden !important;
+      touch-action: none !important;
+      pointer-events: none !important;
+    }
+
