@@ -65,3 +65,13 @@
 
 - **Equalizer Soundwaves**: Dynamic frequency bars utilizing hardware-accelerated CSS `transform: scaleY()` to maintain 60fps frame rates with negligible battery overhead.
 - **Glassmorphic Mini-Player**: Smooth slide-up transition when audio begins playing, with quick access to full-screen lyrics and up-next queue drawer.
+
+---
+
+## 5. Visual Verification & Screenshot Catalog
+
+Design system compliance, responsive layout stability, and WCAG accessibility standards are documented in curated screenshot archives:
+- [`docs/screenshots/device/`](file:///home/saurabh/coding/soko-music-app/docs/screenshots/device/): Viewport ergonomics across compact (360px) and large mobile screens.
+- [`docs/screenshots/ui/`](file:///home/saurabh/coding/soko-music-app/docs/screenshots/ui/): Glassmorphic panes, library sorting controls, dynamic carousels, and mini-player states.
+- [`docs/screenshots/audits/`](file:///home/saurabh/coding/soko-music-app/docs/screenshots/audits/): Touch target bounding boxes ($\ge 48\times 48\text{px}$) and safe-area notch insets.
+- [`docs/screenshots/brand/`](file:///home/saurabh/coding/soko-music-app/docs/screenshots/brand/): Vector branding assets, adaptive Android launcher icons, and splash imagery.

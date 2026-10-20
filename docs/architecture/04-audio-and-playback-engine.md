@@ -16,9 +16,73 @@ Soko Music prioritizes **Format 251 Opus**:
 
 ---
 
-## 2. Lock-Screen MediaSession Integration
+## 2. Multi-Tier Playback Hierarchy
 
-The playback engine binds to Android's native `MediaSessionManager`:
+Soko Music uses an intelligent 3-tier playback fall-through hierarchy:
+
+```mermaid
+flowchart TD
+    SelectTrack["Select Track to Play"] --> CheckOffline{"Is Track in Local Storage\nor Bundled Assets?"}
+    CheckOffline -- "YES" --> NativePlay["Tier 1: Native Android MediaPlayer\n(Low-power DSP hardware decoding)"]
+    CheckOffline -- "NO (Desktop / Web)" --> HTML5Play["Tier 2: HTML5 Audio Decoder\n(Local Opus file blob)"]
+    CheckOffline -- "NO (Online Cache Miss)" --> OnlineStream["Tier 3: YouTube IFrame Stream\n(Instant online playback while\nlook-ahead caches in background)"]
+```
+
+---
+
+## 3. Dual-Audio Overlap Immunity Architecture
+
+To guarantee that two songs **never** play simultaneously across fast user skips and out-of-order download completions, Soko Music enforces 3 defensive barriers:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Bridge as Android Native Bridge
+    participant Worker as Download Worker
+    participant Player as Native MediaPlayer
+
+    User->>Bridge: Tap Song A (Download starts in background)
+    User->>Bridge: Rapidly Tap Song B (currentActivePlaybackVideoId = "B")
+    Bridge->>Player: stopNativeAudio() immediately
+    Worker-->>Bridge: Song A finishes downloading late!
+    Bridge->>Bridge: Check: Does "A" == currentActivePlaybackVideoId ("B")?
+    Bridge-->>Worker: NO! Save A to disk cache silently without playing!
+    Worker-->>Bridge: Song B finishes downloading!
+    Bridge->>Bridge: Check: Does "B" == currentActivePlaybackVideoId ("B")?
+    Bridge->>Player: YES! playNativeAudio("B.m4a")
+```
+
+1. **Active Playback Invalidation Token (`currentActivePlaybackVideoId`)**:
+   - Every song selection sets `currentActivePlaybackVideoId = videoId`.
+   - When any asynchronous background download completes, the completion callback executes:
+     ```java
+     if (!videoId.equals(currentActivePlaybackVideoId)) {
+         Log.d(TAG, "Ignoring playback for outdated download: " + videoId);
+         return; // Saved to disk cache, but never starts audio!
+     }
+     ```
+2. **Synchronous Audio Engine Teardown (`stopAllAudioEngines()`)**:
+   - Before any track begins, all three audio engines (YouTube Iframe, Native Android MediaPlayer, HTML5 `<audio>`) are synchronously paused, cleared, and reset.
+3. **In-Flight Colliding Write Protection (`activeDownloadTasks`)**:
+   - Managed via `ConcurrentHashMap<String, Boolean>` to prevent parallel conflicting file-streams to `.part` files if the user taps a track while the look-ahead worker is already caching it.
+
+---
+
+## 4. Hardware Audio Focus & Interruption Handling
+
+1. **Headset Unplug / Bluetooth Disconnect**:
+   - Registered `ACTION_AUDIO_BECOMING_NOISY` BroadcastReceiver instantly pauses playback when wired headphones or Bluetooth earbuds are disconnected, preventing unintended loudspeaker playback in public.
+2. **Phone Calls & Navigation Dips (`OnAudioFocusChangeListener`)**:
+   - `AUDIOFOCUS_LOSS`: Immediately pauses audio and releases lock-screen notification.
+   - `AUDIOFOCUS_LOSS_TRANSIENT`: Pauses playback during incoming phone calls or alarms.
+   - `AUDIOFOCUS_GAIN`: Resumes playback once the interruption clears.
+
+---
+
+## 5. Lock-Screen MediaSession Integration
+
+The playback engine binds to Android's native `MediaSessionManager` and `NotificationManager`:
 
 ```javascript
 if ('mediaSession' in navigator) {
@@ -27,23 +91,25 @@ if ('mediaSession' in navigator) {
     artist: track.artist,
     album: 'Soko Music Library',
     artwork: [
-      { src: track.coverUrl, sizes: '512x512', type: 'image/jpeg' }
+      { src: track.cover, sizes: '512x512', type: 'image/jpeg' }
     ]
   });
 
-  navigator.mediaSession.setActionHandler('play', () => player.play());
-  navigator.mediaSession.setActionHandler('pause', () => player.pause());
-  navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious());
-  navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+  navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
+  navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+  navigator.mediaSession.setActionHandler('previoustrack', () => playPreviousTrack());
+  navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
   navigator.mediaSession.setActionHandler('seekto', (details) => {
-    if (details.seekTime) player.currentTime = details.seekTime;
+    if (details.seekTime) seekTrack(details.seekTime);
   });
 }
 ```
 
 ---
 
-## 3. Audio Equalizer & Crossfade Engine
+## 6. Pre-Playback Duration & Content Validation
 
-- **Crossfade**: Smooth 1.5s volume ramp-down and ramp-up when transitioning between tracks.
-- **Equalizer**: 5-band WebAudio BiquadFilter node chain (Bass 60Hz, Mid-Low 250Hz, Mid 1kHz, Mid-High 4kHz, Treble 12kHz) with custom presets (Bass Boost, Vocal, Electronic, Flat).
+Before initializing playback or background look-ahead caching:
+- Track duration is parsed via `parseDurationStringToSeconds(track.duration)` and validated against the 600-second threshold.
+- Items identified as podcasts or exceeding 10 minutes are prevented from triggering look-ahead downloads or offline caching.
+- See [06. Content Filtering & Podcast Exclusion Engine](file:///home/saurabh/coding/soko-music-app/docs/architecture/06-content-filtering-and-podcast-exclusion.md).

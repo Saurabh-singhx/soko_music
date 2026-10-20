@@ -5,7 +5,9 @@ from PIL import Image
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 LOGO_SRC = os.path.join(PROJECT_ROOT, "assets", "logo.png")
-RES_DIR = os.path.join(PROJECT_ROOT, "res")
+RES_DIR = os.path.join(PROJECT_ROOT, "apps", "android", "res")
+if not os.path.exists(RES_DIR) and os.path.exists(os.path.join(PROJECT_ROOT, "res")):
+    RES_DIR = os.path.join(PROJECT_ROOT, "res")
 
 ICON_SIZES = {
     "mipmap-mdpi": 48,
