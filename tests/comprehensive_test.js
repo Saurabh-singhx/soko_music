@@ -1372,6 +1372,176 @@ window.selectTrackToPlay('rad_track_1');
   assert(parsedFilterShelves[0].tracks[0].id === 'pop_valid11', 'Hits Today contains only valid 3:15 song');
   assert(!parsedFilterShelves[0].tracks.some(t => t.id === 'pop_long_11'), 'Hits Today excluded 15-minute mix');
 
+  // --- Test Suite 14: Verification of Identified Codebase Fixes ---
+  console.log('\n--- Test Suite 14: Verification of Identified Codebase Fixes ---');
+
+  // 14A: Google Sign-in Bridge Callback Synchronization
+  assert(typeof window.onGoogleLoginSuccess === 'function', 'window.onGoogleLoginSuccess is defined on window');
+  assert(window.onGoogleLoginSuccess === window.onLoginSuccess, 'window.onGoogleLoginSuccess matches window.onLoginSuccess');
+  
+  window.onGoogleLoginSuccess('test_sapisid_bridge_cookie', 'Alice Audiophile', 'alice@soko.music');
+  assert(window.userSession && window.userSession.isLoggedIn === true, 'userSession set to loggedIn after onGoogleLoginSuccess');
+  assert(window.userSession.cookie === 'test_sapisid_bridge_cookie', 'userSession has correct cookies');
+
+  // 14B: Settings UI Reactive Updates
+  const settingsYtmSubtitleEl = getEl('settingsYtmSubtitle');
+  const settingsAuthActionBtnEl = getEl('settingsAuthActionBtn');
+  window.updateAuthHeaderUI();
+  assert(settingsYtmSubtitleEl.innerText.includes('Connected • Alice Audiophile'), `Settings subtitle updated for logged in user: "${settingsYtmSubtitleEl.innerText}"`);
+  assert(settingsAuthActionBtnEl.innerText === 'Manage Account', `Settings auth button updated for logged in user: "${settingsAuthActionBtnEl.innerText}"`);
+
+  window.logoutAccount();
+  assert(window.userSession === null, 'userSession is null after logout');
+  assert(settingsYtmSubtitleEl.innerText.includes('Not Connected • Guest Mode'), `Settings subtitle restored after logout: "${settingsYtmSubtitleEl.innerText}"`);
+  assert(settingsAuthActionBtnEl.innerText === 'Sign In / Connect', `Settings auth button restored after logout: "${settingsAuthActionBtnEl.innerText}"`);
+
+  // 14C: Look-Ahead Checkbox Binding
+  const chkLookAheadEl = getEl('chkLookAhead');
+  chkLookAheadEl.checked = false;
+  let testPrefetchId = null;
+  const originalNativeForLookahead = window.SokoNative;
+  window.SokoNative = {
+    ...originalNativeForLookahead,
+    downloadTrack: (id) => { testPrefetchId = id; }
+  };
+  window.activeQueueList = [
+    { id: 'track_curr', title: 'Current Song', duration: 180 },
+    { id: 'track_next', title: 'Next Song', duration: 190 }
+  ];
+  window.autoPrefetchNextTrack('track_curr');
+  assert(testPrefetchId === null, 'autoPrefetchNextTrack skips download when #chkLookAhead is unchecked (checked = false)');
+
+  chkLookAheadEl.checked = true;
+  window.autoPrefetchNextTrack('track_curr');
+  assert(testPrefetchId === 'track_next', 'autoPrefetchNextTrack proceeds when #chkLookAhead is checked (checked = true)');
+  window.SokoNative = originalNativeForLookahead;
+
+  // 14D: LRU Cache Eviction Engine
+  window.maxCacheGB = 0.011; // ~11.8 MB ceiling (fits ~2.5 songs)
+  const prevGetStorage = window.SokoNative ? window.SokoNative.getDiskStorageUsedBytes : null;
+  if (window.SokoNative) {
+    window.SokoNative.getDiskStorageUsedBytes = () => window.downloadedSet.size * 3.5 * 1024 * 1024;
+  }
+  window.downloadedSet.clear();
+  window.downloadedSet.add('lru_song_1');
+  window.downloadedSet.add('lru_fav_2');
+  window.downloadedSet.add('lru_song_3');
+
+  window.lruPlayRegistry.clear();
+  window.lruPlayRegistry.set('lru_song_1', { lastPlayed: 1000 });
+  window.lruPlayRegistry.set('lru_fav_2', { lastPlayed: 2000 });
+  window.lruPlayRegistry.set('lru_song_3', { lastPlayed: 3000 });
+
+  const favPl = window.userPlaylists.find(p => p.id === 'pl_favorites');
+  if (favPl) favPl.songIds.push('lru_fav_2');
+
+  window.enforceLruEviction(1.5 * 1024 * 1024);
+  assert(!window.downloadedSet.has('lru_song_1'), 'Oldest unpinned song (lru_song_1) was evicted by LRU engine');
+  assert(window.downloadedSet.has('lru_fav_2'), 'Favorite song (lru_fav_2) was protected from LRU eviction');
+  assert(window.downloadedSet.has('lru_song_3'), 'Recent song (lru_song_3) was preserved');
+
+  // Reset maxCacheGB and storage getter
+  window.maxCacheGB = 1.0;
+  if (window.SokoNative && prevGetStorage) {
+    window.SokoNative.getDiskStorageUsedBytes = prevGetStorage;
+  }
+  window.downloadedSet.clear();
+  for (const b of window.BUNDLED_TRACKS) window.downloadedSet.add(b.id);
+
+  // 14E: Deleted Track Metadata Cleanup
+  const customTrackId = 'custom_del_test_99';
+  const customTrack = {
+    id: customTrackId,
+    title: 'Deletable Custom Song',
+    artist: 'Independent',
+    duration: 200,
+    cover: 'https://i.ytimg.com/vi/custom_del_test_99/hqdefault.jpg'
+  };
+  window.CATALOG.push(customTrack);
+  window.downloadedSet.add(customTrackId);
+  window.persistDownloadState();
+  let storedCustom = JSON.parse(localStorage.getItem('soko_custom_tracks_v2') || '[]');
+  assert(storedCustom.some(t => t.id === customTrackId), 'Custom track stored in localStorage before deletion');
+
+  window.deleteOfflineTrack(customTrackId);
+  assert(!window.downloadedSet.has(customTrackId), 'customTrackId removed from downloadedSet');
+  assert(!window.CATALOG.some(t => t.id === customTrackId), 'customTrackId purged from in-memory CATALOG');
+  storedCustom = JSON.parse(localStorage.getItem('soko_custom_tracks_v2') || '[]');
+  assert(!storedCustom.some(t => t.id === customTrackId), 'customTrackId purged from soko_custom_tracks_v2 in localStorage (no resurrection on restart)');
+
+  // 14F: Library "Play All / Shuffle All" Queue Integration
+  window.downloadedSet.add('chart_down_1');
+  window.downloadedSet.add('chart_down_2');
+  window.playAllOfflineTracks(false);
+  assert(window.activeQueueList && window.activeQueueList.length >= window.downloadedSet.size, 'playAllOfflineTracks sets activeQueueList from all downloaded tracks');
+  assert(window.isShuffle === false, 'playAllOfflineTracks with shuffle=false sets isShuffle to false');
+
+  window.playAllOfflineTracks(true);
+  assert(window.isShuffle === true, 'playAllOfflineTracks with shuffle=true sets isShuffle to true');
+  window.downloadedSet.delete('chart_down_1');
+  window.downloadedSet.delete('chart_down_2');
+
+  // 14G: Playlist Queue Protection
+  const testPlaylist = {
+    id: 'custom_playlist_protection_test',
+    name: 'Protected Playlist',
+    songIds: ['kPa7bsKwL-c', '4HVhnhpJxr0']
+  };
+  window.activePlaylist = testPlaylist;
+  window.selectTrackToPlay('kPa7bsKwL-c');
+  assert(window.activePlaylist !== null && window.activePlaylist.id === 'custom_playlist_protection_test', 'selectTrackToPlay preserved activePlaylist context');
+
+  // 14H: Search Category Filtering
+  window.downloadedSet.add('custom_search_offline_song');
+  window.filterSearchCategory('offline');
+  assert(window.currentYtmSearchResults.some(t => t.id === 'custom_search_offline_song'), 'filterSearchCategory("offline") queried complete downloadedSet');
+  window.downloadedSet.delete('custom_search_offline_song');
+
+  if (favPl) favPl.songIds.push('custom_fav_search_song');
+  window.filterSearchCategory('favorites');
+  assert(window.currentYtmSearchResults.some(t => t.id === 'custom_fav_search_song'), 'filterSearchCategory("favorites") queried all user favorites');
+
+  // 14I: Previous Track Restart (>3s)
+  let seekCalledSeconds = null;
+  window.SokoNative = {
+    ...originalNativeForLookahead,
+    seekAudio: (sec) => { seekCalledSeconds = sec; }
+  };
+  window.activeQueueList = [
+    { id: 'seq_song_1', title: 'Song 1', duration: 200 },
+    { id: 'seq_song_2', title: 'Song 2', duration: 200 }
+  ];
+  window.currentTrack = window.activeQueueList[1];
+  window.currentPlaybackTime = 12;
+  window.playPreviousTrack();
+  assert(seekCalledSeconds === 0, 'playPreviousTrack restarted current track to 0s when position > 3s');
+  assert(window.currentTrack.id === 'seq_song_2', 'Track did not change to previous song when position > 3s');
+
+  window.currentPlaybackTime = 1;
+  seekCalledSeconds = null;
+  window.playPreviousTrack();
+  assert(window.currentTrack.id === 'seq_song_1', 'Track transitioned to previous song when position <= 3s');
+  window.SokoNative = originalNativeForLookahead;
+
+  // 14J: Authenticated Telemetry Pings
+  let authTelemetryUrl = null;
+  let authTelemetryCookie = null;
+  window.SokoNative = {
+    ...originalNativeForLookahead,
+    sendAuthenticatedTelemetryPing: (url, cookie) => {
+      authTelemetryUrl = url;
+      authTelemetryCookie = cookie;
+    }
+  };
+  window.userSession = {
+    isLoggedIn: true,
+    cookie: 'test_telemetry_auth_cookie_xyz'
+  };
+  window.sendTelemetryPing('https://www.youtube.com/api/stats/watchtime?test=1');
+  assert(authTelemetryUrl !== null, 'sendTelemetryPing invoked sendAuthenticatedTelemetryPing when userSession has cookies');
+  assert(authTelemetryCookie === 'test_telemetry_auth_cookie_xyz', 'sendAuthenticatedTelemetryPing received session cookie');
+  window.SokoNative = originalNativeForLookahead;
+
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);
   console.log('====================================================');

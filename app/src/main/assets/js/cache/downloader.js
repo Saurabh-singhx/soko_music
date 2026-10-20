@@ -78,6 +78,10 @@ window.onNativeDownloadProgress = function(trackId, percent) {
         return;
       }
 
+      if (typeof enforceLruEviction === 'function') {
+        enforceLruEviction(3.5 * 1024 * 1024);
+      }
+
       activeDownloads.set(track.id, 5);
       updateDownloadBannerUI(track, 5, false);
       renderShelves();

@@ -32,11 +32,28 @@ function updateAuthModalContent() {
 
 function updateAuthHeaderUI() {
   const badgeStatusText = document.getElementById('badgeStatusText');
-  if (badgeStatusText) {
-    if (userSession && userSession.isLoggedIn) {
+  const settingsYtmSubtitle = document.getElementById('settingsYtmSubtitle');
+  const settingsAuthActionBtn = document.getElementById('settingsAuthActionBtn');
+
+  if (userSession && userSession.isLoggedIn) {
+    if (badgeStatusText) {
       badgeStatusText.innerText = userSession.name ? userSession.name.split(' ')[0] : 'Synced';
-    } else {
+    }
+    if (settingsYtmSubtitle) {
+      settingsYtmSubtitle.innerText = userSession.name ? `Connected • ${userSession.name}` : 'Connected • Active Session';
+    }
+    if (settingsAuthActionBtn) {
+      settingsAuthActionBtn.innerText = 'Manage Account';
+    }
+  } else {
+    if (badgeStatusText) {
       badgeStatusText.innerText = 'Sync / Login';
+    }
+    if (settingsYtmSubtitle) {
+      settingsYtmSubtitle.innerText = 'Not Connected • Guest Mode';
+    }
+    if (settingsAuthActionBtn) {
+      settingsAuthActionBtn.innerText = 'Sign In / Connect';
     }
   }
 }

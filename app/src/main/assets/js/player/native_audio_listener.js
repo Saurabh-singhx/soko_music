@@ -15,6 +15,7 @@ window.onNativePlayerStateChange = function(playing, durationSec) {
 };
 
 window.onNativePlayerProgress = function(currentSec, durationSec) {
+  window.currentPlaybackTime = currentSec;
   if (isOnlineYtPlaying) return;
   updatePlaybackTelemetry(currentSec, durationSec);
   const slider = document.getElementById('modalSeekSlider');

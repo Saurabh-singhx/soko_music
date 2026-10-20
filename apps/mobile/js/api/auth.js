@@ -95,6 +95,7 @@ window.onLoginSuccess = function(cookies, displayName, email) {
   showToast(`Welcome, ${userSession.name}!`, "🎉");
   loadHomeFeed();
 };
+window.onGoogleLoginSuccess = window.onLoginSuccess;
 
 window.loginWithGoogle = loginWithGoogle;
 window.loginWithCookie = loginWithCookie;

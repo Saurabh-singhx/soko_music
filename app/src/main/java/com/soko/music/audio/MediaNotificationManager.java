@@ -9,11 +9,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.util.Log;
 import android.webkit.WebView;
+import java.io.InputStream;
+import java.net.URL;
 
 public class MediaNotificationManager {
     private static final String TAG = "SokoMusic";
@@ -24,6 +28,8 @@ public class MediaNotificationManager {
     private final WebView webView;
     private MediaSession mediaSession;
     private boolean isReceiverRegistered = false;
+    private Bitmap currentAlbumArt = null;
+    private String currentCoverUrl = "";
 
     private final BroadcastReceiver mediaActionReceiver = new BroadcastReceiver() {
         @Override
@@ -132,6 +138,41 @@ public class MediaNotificationManager {
     }
 
     public void updateNotificationAndSession(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec) {
+        updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec, currentCoverUrl, false);
+    }
+
+    public void updateNotificationAndSession(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl, final boolean isStreaming) {
+        if (coverUrl != null && !coverUrl.isEmpty() && !coverUrl.equals(currentCoverUrl)) {
+            currentCoverUrl = coverUrl;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Bitmap bmp = null;
+                        if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://")) {
+                            InputStream in = new URL(coverUrl).openStream();
+                            bmp = BitmapFactory.decodeStream(in);
+                            in.close();
+                        } else if (coverUrl.startsWith("/")) {
+                            bmp = BitmapFactory.decodeFile(coverUrl);
+                        }
+                        if (bmp != null) {
+                            currentAlbumArt = bmp;
+                            activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    renderNotification(title, artist, isPlaying, durationSec, positionSec, isStreaming);
+                                }
+                            });
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }).start();
+        }
+        renderNotification(title, artist, isPlaying, durationSec, positionSec, isStreaming);
+    }
+
+    private void renderNotification(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final boolean isStreaming) {
         if (mediaSession != null) {
             try {
                 PlaybackState.Builder stateBuilder = new PlaybackState.Builder();
@@ -153,8 +194,11 @@ public class MediaNotificationManager {
                 MediaMetadata.Builder metaBuilder = new MediaMetadata.Builder();
                 metaBuilder.putString(MediaMetadata.METADATA_KEY_TITLE, title);
                 metaBuilder.putString(MediaMetadata.METADATA_KEY_ARTIST, artist);
-                metaBuilder.putString(MediaMetadata.METADATA_KEY_ALBUM, "Soko Offline Storage");
+                metaBuilder.putString(MediaMetadata.METADATA_KEY_ALBUM, isStreaming ? "YouTube Music Stream" : "Soko Offline Storage");
                 metaBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, durationSec * 1000L);
+                if (currentAlbumArt != null) {
+                    metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, currentAlbumArt);
+                }
                 mediaSession.setMetadata(metaBuilder.build());
                 mediaSession.setActive(true);
             } catch (Exception e) {
@@ -188,8 +232,9 @@ public class MediaNotificationManager {
                     nb = new Notification.Builder(activity);
                 }
 
+                String subtitle = artist + (isStreaming ? " • Streaming Online" : " • Soko Offline");
                 nb.setContentTitle(title)
-                  .setContentText(artist + " • Soko Offline")
+                  .setContentText(subtitle)
                   .setSmallIcon(android.R.drawable.ic_media_play)
                   .setContentIntent(pContent)
                   .setOngoing(isPlaying)
@@ -197,6 +242,10 @@ public class MediaNotificationManager {
                   .addAction(android.R.drawable.ic_media_previous, "Prev", pPrev)
                   .addAction(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play, isPlaying ? "Pause" : "Play", pToggle)
                   .addAction(android.R.drawable.ic_media_next, "Next", pNext);
+
+                if (currentAlbumArt != null) {
+                    nb.setLargeIcon(currentAlbumArt);
+                }
 
                 if (android.os.Build.VERSION.SDK_INT >= 21) {
                     Notification.MediaStyle style = new Notification.MediaStyle();

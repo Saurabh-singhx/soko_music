@@ -56,12 +56,27 @@ function filterSearchCategory(cat) {
   const q = input ? input.value : '';
 
   if (cat === 'offline') {
-    const offlineList = CATALOG.filter(t => downloadedSet.has(t.id));
+    const offlineList = Array.from(downloadedSet).map(id => {
+      let t = findTrackAcrossAllSources(id);
+      if (!t) {
+        t = { id, title: 'Offline Song', artist: 'Soko Offline', duration: 200, cover: 'assets/logo.png' };
+      }
+      return t;
+    }).filter(Boolean);
     currentYtmSearchResults = offlineList;
     window.currentYtmSearchResults = offlineList;
     renderSearchResults(document.getElementById('searchResultsList'), offlineList, false);
   } else if (cat === 'favorites') {
-    const favList = CATALOG.filter(t => t.favorite);
+    const favPl = userPlaylists.find(p => p.id === 'pl_favorites');
+    const favIds = favPl ? favPl.songIds : [];
+    const allFavIds = Array.from(new Set([...favIds, ...CATALOG.filter(t => t.favorite).map(t => t.id)]));
+    const favList = allFavIds.map(id => {
+      let t = findTrackAcrossAllSources(id);
+      if (!t) {
+        t = { id, title: 'Favorite Song', artist: 'Soko Music', duration: 200, cover: 'assets/logo.png' };
+      }
+      return t;
+    }).filter(Boolean);
     currentYtmSearchResults = favList;
     window.currentYtmSearchResults = favList;
     renderSearchResults(document.getElementById('searchResultsList'), favList, false);

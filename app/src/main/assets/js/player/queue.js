@@ -3,6 +3,9 @@
 // ============================================================
 function autoPrefetchNextTrack(currentId) {
   try {
+    const chk = document.getElementById('chkLookAhead');
+    if (chk && chk.checked === false) return;
+
     let pool = (window.activeQueueList && window.activeQueueList.length > 1)
       ? window.activeQueueList
       : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
@@ -62,9 +65,31 @@ function playNextTrack() {
   }
 }
 
+function getActivePlaybackCurrentTime() {
+  if (isOnlineYtPlaying && typeof ytPlayer !== 'undefined' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+    try { return ytPlayer.getCurrentTime() || 0; } catch (e) { return 0; }
+  }
+  if (audioEl && !audioEl.paused && audioEl.currentTime > 0) {
+    return audioEl.currentTime;
+  }
+  if (typeof window !== 'undefined' && window.currentPlaybackTime !== undefined && window.currentPlaybackTime > 0) {
+    return window.currentPlaybackTime;
+  }
+  return 0;
+}
+
 function playPreviousTrack() {
-  if (audioEl && audioEl.currentTime > 3) {
-    audioEl.currentTime = 0;
+  const curPos = getActivePlaybackCurrentTime();
+  if (curPos > 3) {
+    if (isOnlineYtPlaying && typeof ytPlayer !== 'undefined' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+      try { ytPlayer.seekTo(0, true); } catch (e) {}
+    } else if (audioEl && audioEl.src) {
+      audioEl.currentTime = 0;
+    }
+    if (typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.seekAudio === 'function') {
+      try { window.SokoNative.seekAudio(0); } catch (e) {}
+    }
+    if (typeof window !== 'undefined') window.currentPlaybackTime = 0;
     return;
   }
   let pool = (window.activeQueueList && window.activeQueueList.length > 1)
@@ -99,4 +124,5 @@ window.toggleShuffle = toggleShuffle;
 window.toggleRepeat = toggleRepeat;
 window.playNextTrack = playNextTrack;
 window.playPreviousTrack = playPreviousTrack;
+window.getActivePlaybackCurrentTime = getActivePlaybackCurrentTime;
 window.scheduleLookAhead = scheduleLookAhead;
