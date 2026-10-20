@@ -97,41 +97,73 @@ public class MainActivity extends Activity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String path = uri.getPath();
-                if (path != null && (path.contains("assets/") || path.contains("music/"))) {
-                    try {
-                        String assetPath = path;
-                        if (assetPath.contains("assets/")) {
-                            assetPath = assetPath.substring(assetPath.indexOf("assets/"));
-                        } else if (assetPath.contains("music/")) {
-                            assetPath = assetPath.substring(assetPath.indexOf("music/"));
-                        }
-                        while (assetPath.startsWith("/")) {
-                            assetPath = assetPath.substring(1);
-                        }
-                        InputStream in = null;
-                        String fileName = new File(assetPath).getName();
-                        String[] candidates = new String[]{
-                            assetPath,
-                            "assets/" + assetPath,
-                            "music/" + fileName,
-                            "assets/music/" + fileName
-                        };
-                        for (String cand : candidates) {
-                            try {
-                                in = getAssets().open(cand);
-                                if (in != null) break;
-                            } catch (Exception ignored) {}
-                        }
-                        if (in != null) {
-                            String mime = assetPath.endsWith(".png") ? "image/png" : (assetPath.endsWith(".jpg") ? "image/jpeg" : (assetPath.endsWith(".opus") ? "audio/opus" : "application/octet-stream"));
-                            return new WebResourceResponse(mime, "UTF-8", in);
-                        }
-                    } catch (Exception ignored) {}
+                if (path != null) {
+                    String assetPath = path;
+                    if (assetPath.contains("assets/")) {
+                        assetPath = assetPath.substring(assetPath.indexOf("assets/"));
+                    } else if (assetPath.contains("music/")) {
+                        assetPath = assetPath.substring(assetPath.indexOf("music/"));
+                    }
+                    while (assetPath.startsWith("/")) {
+                        assetPath = assetPath.substring(1);
+                    }
+
+                    if (assetPath.startsWith("css/") || assetPath.startsWith("js/") ||
+                        assetPath.startsWith("assets/") || assetPath.startsWith("music/") ||
+                        assetPath.endsWith(".css") || assetPath.endsWith(".js") ||
+                        assetPath.endsWith(".png") || assetPath.endsWith(".jpg") || assetPath.endsWith(".jpeg") ||
+                        assetPath.endsWith(".svg") || assetPath.endsWith(".opus") || assetPath.endsWith(".mp3") ||
+                        assetPath.endsWith(".m4a") || assetPath.endsWith(".json") || assetPath.endsWith(".html")) {
+                        try {
+                            InputStream in = null;
+                            String fileName = new File(assetPath).getName();
+                            String[] candidates = new String[]{
+                                assetPath,
+                                "assets/" + assetPath,
+                                "music/" + fileName,
+                                "assets/music/" + fileName
+                            };
+                            for (String cand : candidates) {
+                                try {
+                                    in = getAssets().open(cand);
+                                    if (in != null) break;
+                                } catch (Exception ignored) {}
+                            }
+                            if (in != null) {
+                                String mime = "application/octet-stream";
+                                if (assetPath.endsWith(".css")) mime = "text/css";
+                                else if (assetPath.endsWith(".js")) mime = "application/javascript";
+                                else if (assetPath.endsWith(".png")) mime = "image/png";
+                                else if (assetPath.endsWith(".jpg") || assetPath.endsWith(".jpeg")) mime = "image/jpeg";
+                                else if (assetPath.endsWith(".svg")) mime = "image/svg+xml";
+                                else if (assetPath.endsWith(".opus")) mime = "audio/opus";
+                                else if (assetPath.endsWith(".mp3")) mime = "audio/mpeg";
+                                else if (assetPath.endsWith(".m4a")) mime = "audio/mp4";
+                                else if (assetPath.endsWith(".html")) mime = "text/html";
+                                else if (assetPath.endsWith(".json")) mime = "application/json";
+                                WebResourceResponse response = new WebResourceResponse(mime, "UTF-8", in);
+                                if (android.os.Build.VERSION.SDK_INT >= 21) {
+                                    response.setResponseHeaders(java.util.Collections.singletonMap("Access-Control-Allow-Origin", "*"));
+                                }
+                                return response;
+                            }
+                        } catch (Exception ignored) {}
+                    }
                 }
                 return super.shouldInterceptRequest(view, request);
             }
         });
-        webView.setWebChromeClient(new WebChromeClient());
+        if (android.os.Build.VERSION.SDK_INT >= 19) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
+                Log.d("SokoMusicWeb", "[" + consoleMessage.messageLevel() + "] " + consoleMessage.message() + " (" + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber() + ")");
+                return super.onConsoleMessage(consoleMessage);
+            }
+        });
 
         try {
             InputStream is = getAssets().open("index.html");
