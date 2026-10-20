@@ -82,12 +82,25 @@ while ((cssMatch = cssLinkRegex.exec(rawHtml)) !== null) {
     html += '\n<style>\n' + fs.readFileSync(cssPath, 'utf8') + '\n</style>\n';
   }
 }
-const scriptMatch = html.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/i);
-if (!scriptMatch) {
-  console.error('FAIL: No script tag found in apps/mobile/index.html');
+let jsSource = '';
+const scriptSrcRegex = /<script\s+[^>]*src=["']([^"']+\.js)["'][^>]*>\s*<\/script>/gi;
+let srcMatch;
+while ((srcMatch = scriptSrcRegex.exec(rawHtml)) !== null) {
+  const jsPath = path.join(__dirname, '../apps/mobile', srcMatch[1]);
+  if (fs.existsSync(jsPath)) {
+    jsSource += '\n// Source: ' + srcMatch[1] + '\n' + fs.readFileSync(jsPath, 'utf8') + '\n';
+  }
+}
+const inlineScriptMatches = rawHtml.matchAll(/<script(?![^>]*src=)[\s\S]*?>([\s\S]*?)<\/script>/gi);
+for (const match of inlineScriptMatches) {
+  jsSource += '\n// Inline Script\n' + match[1] + '\n';
+}
+
+if (!jsSource.trim()) {
+  console.error('FAIL: No script content found in apps/mobile/index.html');
   process.exit(1);
 }
-const jsCode = scriptMatch[1] + `
+const jsCode = jsSource + `
 window.REGIONAL_CHARTS = REGIONAL_CHARTS;
 window.CATALOG = CATALOG;
 window.BUNDLED_TRACKS = BUNDLED_TRACKS;
