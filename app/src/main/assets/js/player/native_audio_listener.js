@@ -92,3 +92,78 @@ window.onNativeAudioFocusLost = function() {
   stopRealVisualizer();
   stopOnlineProgressUpdater();
 };
+
+window.syncNativePlaybackState = function(playing, curSec, durSec, title, artist, cover, videoId) {
+  isPlaying = playing;
+  window.isPlaying = playing;
+  if (typeof updatePlayIcons === 'function') {
+    updatePlayIcons(playing);
+  }
+  if (playing && typeof startRealVisualizer === 'function') {
+    startRealVisualizer();
+  } else if (!playing && typeof stopRealVisualizer === 'function') {
+    stopRealVisualizer();
+  }
+
+  let track = (typeof findTrackAcrossAllSources === 'function' && videoId) ? findTrackAcrossAllSources(videoId) : null;
+  if (!track && currentTrack && currentTrack.id === videoId) {
+    track = currentTrack;
+  }
+  if (!track && (title || videoId)) {
+    track = {
+      id: videoId || (currentTrack ? currentTrack.id : 'unknown'),
+      title: title || (currentTrack ? currentTrack.title : 'Soko Music'),
+      artist: artist || (currentTrack ? currentTrack.artist : 'Offline Storage'),
+      cover: cover || (currentTrack ? currentTrack.cover : 'assets/logo.png'),
+      duration: durSec || (currentTrack ? currentTrack.duration : 215)
+    };
+  }
+
+  if (track) {
+    currentTrack = track;
+    window.currentTrack = track;
+    if (typeof updatePlayerUI === 'function') {
+      updatePlayerUI(track);
+    }
+    const miniPlayer = document.getElementById('miniPlayer');
+    if (miniPlayer) miniPlayer.style.display = 'flex';
+  }
+
+  if (durSec > 0 && typeof window.onNativePlayerProgress === 'function') {
+    window.onNativePlayerProgress(curSec, durSec);
+  }
+};
+
+function checkAndSyncNativePlayback() {
+  if (window.SokoNative && typeof window.SokoNative.getPlaybackStatusJson === 'function') {
+    try {
+      const statusJson = window.SokoNative.getPlaybackStatusJson();
+      const status = JSON.parse(statusJson);
+      if (status && status.isPlaying) {
+        window.syncNativePlaybackState(
+          true,
+          status.position || 0,
+          status.duration || 215,
+          status.title,
+          status.artist,
+          status.cover,
+          status.id
+        );
+      }
+    } catch (e) {}
+  }
+}
+window.checkAndSyncNativePlayback = checkAndSyncNativePlayback;
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      checkAndSyncNativePlayback();
+    }
+  });
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('focus', function() {
+    checkAndSyncNativePlayback();
+  });
+}
