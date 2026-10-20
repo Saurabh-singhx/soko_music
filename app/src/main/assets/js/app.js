@@ -60,6 +60,13 @@ function initApp() {
   if (typeof checkAndSyncNativePlayback === 'function') {
     checkAndSyncNativePlayback();
   }
+
+  // Check for mandatory application updates against remote Gist
+  if (typeof checkForAppUpdates === 'function') {
+    checkForAppUpdates();
+    // Periodically re-check every 30 minutes
+    setInterval(checkForAppUpdates, 30 * 60 * 1000);
+  }
 }
 
 window.addEventListener('DOMContentLoaded', initApp);
