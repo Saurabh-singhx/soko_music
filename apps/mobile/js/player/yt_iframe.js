@@ -127,6 +127,14 @@ function onYtPlayerStateChange(event) {
     startRealVisualizer();
     startOnlineProgressUpdater();
     recordPlaybackStateChangeTelemetry(true);
+    if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
+      let cur = 0;
+      let dur = currentTrack.duration || 215;
+      if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        try { cur = ytPlayer.getCurrentTime() || 0; } catch (e) {}
+      }
+      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, true, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+    }
   } else if (event.data === 2) { // PAUSED
     isPlaying = false;
     window.isPlaying = false;
@@ -134,6 +142,14 @@ function onYtPlayerStateChange(event) {
     stopRealVisualizer();
     stopOnlineProgressUpdater();
     recordPlaybackStateChangeTelemetry(false);
+    if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
+      let cur = 0;
+      let dur = currentTrack.duration || 215;
+      if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        try { cur = ytPlayer.getCurrentTime() || 0; } catch (e) {}
+      }
+      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, false, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+    }
   } else if (event.data === 0) { // ENDED
     recordTrackCompletionTelemetry();
     stopOnlineProgressUpdater();
