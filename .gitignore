@@ -9,10 +9,17 @@ build_apk_tmp/
 bin/
 gen/
 obj/
+dist/
 *.dex
 *.class
 *.idsig
 *.apk
+
+# Keystores & Private Signing Keys
+*.keystore
+*.jks
+*.key
+*.p12
 
 # Environment & Local Configuration
 local.properties

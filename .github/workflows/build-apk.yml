@@ -118,10 +118,30 @@ jobs:
         run: |
           chmod +x scripts/*.sh
 
+      - name: Provision Production Release Keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 || secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.KEYSTORE_PASSWORD || secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEYSTORE_AL: ${{ secrets.KEY_ALIAS || secrets.RELEASE_KEY_ALIAS }}
+        run: |
+          if [ -n "${KEYSTORE_B64}" ]; then
+            mkdir -p apps/android/keystore
+            echo "${KEYSTORE_B64}" | base64 -d > apps/android/keystore/soko_music.keystore
+            echo "KEYSTORE_PATH=${GITHUB_WORKSPACE}/apps/android/keystore/soko_music.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=${KEYSTORE_PW}" >> "$GITHUB_ENV"
+            echo "KEYSTORE_ALIAS=${KEYSTORE_AL}" >> "$GITHUB_ENV"
+            echo "Successfully provisioned production release keystore from GitHub Secrets."
+          else
+            echo "No production keystore secret found; build script will generate a transient dev keystore."
+          fi
+
       - name: Compile and Package APK
         env:
           VERSION_NAME: ${{ steps.version_info.outputs.version_name }}
           VERSION_CODE: ${{ steps.version_info.outputs.version_code }}
+          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ env.KEYSTORE_ALIAS }}
         run: |
           bash scripts/build_apk.sh
 
