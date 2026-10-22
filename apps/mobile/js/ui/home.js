@@ -117,7 +117,25 @@ function playAllShelfTracks(shelfId) {
   showToast(`Playing "${shelf.title}"`, '▶️');
 }
 
-function prepareHomeShelves(apiShelves = []) {
+function selectRotatingTracks(pool, count = 16, shouldRotate = false) {
+  if (!pool || pool.length === 0) return [];
+  if (pool.length <= count && !shouldRotate) return pool.slice(0, count);
+
+  if (shouldRotate && pool.length > 2) {
+    // Perform pseudo-randomized Fisher-Yates shuffle on a copy so each refresh yields fresh songs
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+    return shuffled.slice(0, count);
+  }
+  return pool.slice(0, count);
+}
+
+function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   const allShelves = [];
   const claimedShelves = new Set();
 
@@ -136,9 +154,10 @@ function prepareHomeShelves(apiShelves = []) {
 
   if (apiQuick) claimedShelves.add(apiQuick);
 
-  const quickTracks = (apiQuick && apiQuick.tracks && apiQuick.tracks.length > 0)
+  const quickPool = (apiQuick && apiQuick.tracks && apiQuick.tracks.length > 0)
     ? apiQuick.tracks
-    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []).slice(0, 16);
+    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []);
+  const quickTracks = selectRotatingTracks(quickPool, 16, shouldRotate);
   allShelves.push({
     id: 'quick_picks',
     title: 'Quick picks',
@@ -158,9 +177,10 @@ function prepareHomeShelves(apiShelves = []) {
   ));
   if (apiTrending) claimedShelves.add(apiTrending);
 
-  const trendTracks = (apiTrending && apiTrending.tracks && apiTrending.tracks.length > 0)
+  const trendPool = (apiTrending && apiTrending.tracks && apiTrending.tracks.length > 0)
     ? apiTrending.tracks
-    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []).slice(0, 16);
+    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []);
+  const trendTracks = selectRotatingTracks(trendPool, 16, shouldRotate);
   allShelves.push({
     id: 'trending_for_you',
     title: 'Trending songs for you',
@@ -182,7 +202,7 @@ function prepareHomeShelves(apiShelves = []) {
   const trendIds = new Set(trendTracks.map(t => t.id));
   const forgottenPool = [
     ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
-    ...(((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []).slice(0, 16))
+    ...(((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []))
   ];
   const uniqueForgotten = [];
   const seenF = new Set();
@@ -192,9 +212,10 @@ function prepareHomeShelves(apiShelves = []) {
       uniqueForgotten.push(t);
     }
   }
-  const forgottenTracks = (apiForgotten && apiForgotten.tracks && apiForgotten.tracks.length > 0)
+  const sourceForgotten = (apiForgotten && apiForgotten.tracks && apiForgotten.tracks.length > 0)
     ? apiForgotten.tracks
-    : (uniqueForgotten.length >= 8 ? uniqueForgotten.slice(0, 16) : forgottenPool.slice(0, 16));
+    : (uniqueForgotten.length >= 8 ? uniqueForgotten : forgottenPool);
+  const forgottenTracks = selectRotatingTracks(sourceForgotten, 16, shouldRotate);
   allShelves.push({
     id: 'forgotten_favorites',
     title: 'Forgotten favorites',
@@ -230,15 +251,19 @@ function prepareHomeShelves(apiShelves = []) {
     }
   }
 
+  const chosenMixes = (shouldRotate && finalMixes.length > 4)
+    ? [...finalMixes].sort(() => Math.random() - 0.5).slice(0, 10)
+    : finalMixes.slice(0, 10);
+
   allShelves.push({
     id: 'mix_for_you',
     title: 'Mix for you',
     badge: 'PLAYLISTS TAILORED FOR YOU',
     type: 'mix',
-    mixes: finalMixes.slice(0, 10)
+    mixes: chosenMixes
   });
 
-  // 5. Any extra shelves from YouTube Music (e.g. New music videos)
+  // 5. Additional live track shelves from YouTube Music (e.g. New music videos)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.tracks && s.tracks.length > 0) {
       const lower = (s.title || '').toLowerCase();
@@ -250,14 +275,39 @@ function prepareHomeShelves(apiShelves = []) {
       if (!lower.includes('quick') && !lower.includes('trend') && !lower.includes('chart') && !lower.includes('forgot') && !lower.includes('mix')) {
         const filteredTracks = s.tracks.filter(t => !isPodcastOrLongTrack(t));
         if (filteredTracks.length > 0) {
+          claimedShelves.add(s);
           allShelves.push({
-            id: 'shelf_' + Math.random().toString(36).substring(2, 7),
+            id: 'shelf_' + s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
             title: s.title,
             badge: s.badge || 'OFFICIAL YOUTUBE MUSIC',
-            type: 'shelf-card',
-            tracks: filteredTracks
+            type: 'ytm-line',
+            tracks: selectRotatingTracks(filteredTracks, 16, shouldRotate)
           });
         }
+      }
+    }
+  }
+
+  // 6. Additional live mix/playlist shelves from YouTube Music (e.g. Dancing on your own, Easy Evenings)
+  for (const s of apiShelves) {
+    if (!claimedShelves.has(s) && s.mixes && s.mixes.length > 0) {
+      const lower = (s.title || '').toLowerCase();
+      const badgeLower = (s.badge || '').toLowerCase();
+      if (lower.includes('podcast') || lower.includes('episode') ||
+          badgeLower.includes('podcast') || badgeLower.includes('episode')) {
+        continue;
+      }
+      if (!lower.includes('mix for you')) {
+        claimedShelves.add(s);
+        allShelves.push({
+          id: 'shelf_mix_' + s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+          title: s.title,
+          badge: s.badge || 'PLAYLISTS & MIXES',
+          type: 'mix',
+          mixes: (shouldRotate && s.mixes.length > 3)
+            ? [...s.mixes].sort(() => Math.random() - 0.5).slice(0, 8)
+            : s.mixes.slice(0, 8)
+        });
       }
     }
   }
@@ -291,11 +341,11 @@ function updateHomeAuthBanner() {
   }
 }
 
-function renderHomeShelves(rawShelves) {
+function renderHomeShelves(rawShelves, shouldRotate = false) {
   const container = document.getElementById('homeFeedContainer');
   if (!container) return;
 
-  const shelves = prepareHomeShelves(rawShelves);
+  const shelves = prepareHomeShelves(rawShelves, shouldRotate);
   const visibleShelves = shelves.filter(s => (s.tracks && s.tracks.length > 0) || (s.mixes && s.mixes.length > 0));
   currentHomeShelves = visibleShelves;
 
@@ -381,6 +431,7 @@ function renderShelves() {
 
 window.playCuratedMix = playCuratedMix;
 window.playAllShelfTracks = playAllShelfTracks;
+window.selectRotatingTracks = selectRotatingTracks;
 window.prepareHomeShelves = prepareHomeShelves;
 window.updateHomeAuthBanner = updateHomeAuthBanner;
 window.renderHomeShelves = renderHomeShelves;

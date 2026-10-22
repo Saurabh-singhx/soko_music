@@ -8,11 +8,18 @@ async function fetchYouTubeMusicFeed(force = false) {
 
   try {
     if (isDemo) {
+      const getTracks = (region) => {
+        const pool = ((REGIONAL_CHARTS && REGIONAL_CHARTS[region]) || CATALOG || []);
+        return (typeof selectRotatingTracks === 'function')
+          ? selectRotatingTracks(pool, 16, force)
+          : pool.slice(0, 16);
+      };
+
       const demoShelves = [
         {
           title: "Quick picks",
           badge: "START RADIO FROM A SONG",
-          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || CATALOG || []).slice(0, 16),
+          tracks: getTracks('Global'),
           mixes: []
         },
         {
@@ -27,20 +34,25 @@ async function fetchYouTubeMusicFeed(force = false) {
         {
           title: "Trending songs for you",
           badge: "CHARTS & BUZZ",
-          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || CATALOG || []).slice(0, 16),
+          tracks: getTracks('India'),
           mixes: []
         },
         {
           title: "Forgotten favorites",
           badge: "REVISIT PAST FAVORITES",
-          tracks: ((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || CATALOG || []).slice(0, 16),
+          tracks: getTracks('United States'),
           mixes: []
         }
       ];
       personalShelves = demoShelves;
       localStorage.setItem('soko_ytm_cached_feed_v2', JSON.stringify(demoShelves));
-      renderHomeShelves(demoShelves);
+      renderHomeShelves(demoShelves, force);
       return { success: true, shelves: demoShelves };
+    }
+
+    // On force refresh (e.g. pull-to-refresh), proactively update live regional charts in background
+    if (force && typeof fetchLiveRegionalCharts === 'function' && typeof currentChartRegion !== 'undefined' && currentChartRegion) {
+      fetchLiveRegionalCharts(currentChartRegion).catch(() => {});
     }
 
     const homePayload = {
@@ -49,35 +61,44 @@ async function fetchYouTubeMusicFeed(force = false) {
           clientName: "WEB_REMIX",
           clientVersion: "1.20240101.01.00",
           hl: "en",
-          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
+          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US'),
+          visitorData: window.lastYtmVisitorData || undefined
+        },
+        request: {
+          sessionId: force ? 'soko_' + Date.now() : undefined
         }
       },
       browseId: "FEmusic_home"
     };
 
     const homeData = await callInnerTubeApi("youtubei/v1/browse", homePayload, cookie);
+    if (homeData && homeData.responseContext && homeData.responseContext.visitorData) {
+      window.lastYtmVisitorData = homeData.responseContext.visitorData;
+    }
     let extractedShelves = parseBrowseShelves(homeData);
 
-    // If a shelf with title "Quick picks" only contains playlist carousels (e.g. unauthenticated browse),
-    // resolve tracks from its playlist so that Quick picks has authentic song items!
+    // If shelves contain playlist carousels without tracks, resolve tracks from the top mixes
+    // so they contain authentic playable songs
     for (const s of extractedShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
-      if ((sTitleLower.includes('quick') || sTitleLower.includes('listen again') || sTitleLower.includes('start radio')) &&
-          (!s.tracks || s.tracks.length === 0) && s.mixes && s.mixes.length > 0) {
+      const needsTrackResolution = (!s.tracks || s.tracks.length === 0) && s.mixes && s.mixes.length > 0;
+      if (needsTrackResolution) {
         for (let i = 0; i < Math.min(2, s.mixes.length); i++) {
           const pid = s.mixes[i].playlistId;
           if (pid) {
-            const resTracks = await resolvePlaylistTracks(pid);
-            if (resTracks && resTracks.length > 0) {
-              s.tracks = s.tracks || [];
-              for (const rt of resTracks) {
-                if (!s.tracks.some(t => t.id === rt.id)) {
-                  s.tracks.push(rt);
+            try {
+              const resTracks = await resolvePlaylistTracks(pid);
+              if (resTracks && resTracks.length > 0) {
+                s.tracks = s.tracks || [];
+                for (const rt of resTracks) {
+                  if (!s.tracks.some(t => t.id === rt.id)) {
+                    s.tracks.push(rt);
+                  }
                 }
+                s.mixes[i].tracks = resTracks;
+                s.mixes[i].songIds = resTracks.map(t => t.id);
               }
-              s.mixes[i].tracks = resTracks;
-              s.mixes[i].songIds = resTracks.map(t => t.id);
-            }
+            } catch (err) {}
           }
         }
       }
@@ -97,8 +118,8 @@ async function fetchYouTubeMusicFeed(force = false) {
       }
     }
 
-    // Enrich with explore if needed for unauthenticated browse
-    if (!isUser || extractedShelves.length < 2) {
+    // Enrich with explore for unauthenticated browse, when fewer than 3 shelves exist, or on force refresh
+    if (!isUser || extractedShelves.length < 3 || force) {
       try {
         const expPayload = {
           context: {
@@ -106,7 +127,8 @@ async function fetchYouTubeMusicFeed(force = false) {
               clientName: "WEB_REMIX",
               clientVersion: "1.20240101.01.00",
               hl: "en",
-              gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
+              gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US'),
+              visitorData: window.lastYtmVisitorData || undefined
             }
           },
           browseId: "FEmusic_explore"
@@ -124,21 +146,21 @@ async function fetchYouTubeMusicFeed(force = false) {
     if (extractedShelves.length > 0) {
       personalShelves = extractedShelves;
       localStorage.setItem('soko_ytm_cached_feed_v2', JSON.stringify(extractedShelves));
-      renderHomeShelves(extractedShelves);
+      renderHomeShelves(extractedShelves, force);
       return { success: true, shelves: extractedShelves };
     }
   } catch (err) {
     console.warn("YouTube Music feed notice:", err);
     const container = document.getElementById('homeFeedContainer');
     if (container && (!personalShelves || personalShelves.length === 0)) {
-      renderHomeShelves([]);
+      renderHomeShelves([], force);
     }
     return { success: false, error: err };
   }
 
   const container = document.getElementById('homeFeedContainer');
   if (container && (!personalShelves || personalShelves.length === 0)) {
-    renderHomeShelves([]);
+    renderHomeShelves([], force);
   }
   return { success: false, error: new Error("No shelves extracted") };
 }

@@ -211,11 +211,12 @@ public class AuthBridge {
                     is.close();
                     final String respStr = baos.toString("UTF-8");
 
+                    final boolean isSuccess = (responseCode >= 200 && responseCode < 400);
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             if (webView != null) {
-                                String script = "window.onYtmNativeApiResponse && window.onYtmNativeApiResponse(" + JSONObject.quote(callbackId) + ", true, " + JSONObject.quote(respStr) + ")";
+                                String script = "window.onYtmNativeApiResponse && window.onYtmNativeApiResponse(" + JSONObject.quote(callbackId) + ", " + isSuccess + ", " + JSONObject.quote(respStr) + ")";
                                 webView.evaluateJavascript(script, null);
                             }
                         }

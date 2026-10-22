@@ -108,14 +108,14 @@ function initPullToRefresh() {
         res = await fetchYouTubeMusicFeed(true);
       }
 
-      const isSuccess = res ? (res.success !== false && (res.success === true || Array.isArray(res) || (res.shelves && res.shelves.length > 0))) : false;
+      const isSuccess = res ? (res.success === true || Array.isArray(res) || (res.shelves && res.shelves.length > 0)) : false;
 
       if (isSuccess) {
         if (ptrText) ptrText.innerText = 'Feed updated!';
-        showToast('Feed refreshed from YouTube Music', '✓');
+        showToast('Feed refreshed with fresh music', '✓');
       } else {
-        if (ptrText) ptrText.innerText = 'Feed updated!';
-        showToast('Feed refreshed', '✓');
+        if (ptrText) ptrText.innerText = 'Could not refresh';
+        showToast('Could not refresh feed (check connection)', '⚠️');
       }
     } catch (err) {
       if (ptrText) ptrText.innerText = 'Refresh failed';

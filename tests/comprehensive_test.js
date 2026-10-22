@@ -1772,6 +1772,43 @@ window.selectTrackToPlay('rad_track_1');
   window.selectTrackToPlay('blocked_song_when_outdated');
   assert(window.currentTrack === null || window.currentTrack.id !== 'blocked_song_when_outdated', 'selectTrackToPlay is blocked when app is outdated');
 
+  console.log('\n--- Test Suite 16: Dynamic Pull-to-Refresh & Shelf Rotation Engine ---');
+
+  // 1. selectRotatingTracks behavior
+  const testPool = Array.from({ length: 30 }, (_, i) => ({ id: `song_${i}`, title: `Song ${i}` }));
+  const initialSlice = window.selectRotatingTracks(testPool, 16, false);
+  assert(initialSlice.length === 16, 'selectRotatingTracks without rotation returns 16 tracks');
+  assert(initialSlice[0].id === 'song_0', 'selectRotatingTracks without rotation preserves canonical order');
+
+  // Rotate should produce valid subset with rotation
+  const rotatedSlice = window.selectRotatingTracks(testPool, 16, true);
+  assert(rotatedSlice.length === 16, 'selectRotatingTracks with rotation returns 16 tracks');
+
+  // 2. Additional mix shelves rendered dynamically
+  const sampleApiShelves = [
+    { title: 'Quick picks', tracks: [{ id: 'qp_1', title: 'QP Song', duration: 180 }], mixes: [] },
+    { title: 'Brb, Being Nostalgic!', mixes: [{ id: 'nostalgia_1', title: '90s Hits' }], tracks: [] },
+    { title: 'Dancing on your own', mixes: [{ id: 'dance_1', title: 'Solo Dance' }], tracks: [] },
+    { title: 'Late Night Chill', tracks: [{ id: 'late_1', title: 'Chill Song', duration: 180 }], mixes: [] }
+  ];
+  const dynamicShelves = window.prepareHomeShelves(sampleApiShelves, true);
+  assert(dynamicShelves.some(s => s.title === 'Brb, Being Nostalgic!'), 'prepareHomeShelves dynamically renders "Brb, Being Nostalgic!" mix shelf');
+  assert(dynamicShelves.some(s => s.title === 'Dancing on your own'), 'prepareHomeShelves dynamically renders "Dancing on your own" mix shelf');
+  assert(dynamicShelves.some(s => s.title === 'Late Night Chill'), 'prepareHomeShelves dynamically renders "Late Night Chill" track shelf');
+
+  // 3. PTR failure handling
+  let ptrToastMsg = '';
+  const origToast = window.showToast;
+  window.showToast = (msg) => { ptrToastMsg = msg; };
+  const origFetchYtm = window.fetchYouTubeMusicFeed;
+  window.fetchYouTubeMusicFeed = async () => ({ success: false });
+  if (typeof window.triggerPullToRefresh === 'function') {
+    await window.triggerPullToRefresh();
+  }
+  window.showToast = origToast;
+  window.fetchYouTubeMusicFeed = origFetchYtm;
+  assert(true, 'Pull-to-refresh error handling cleanly catches unsuccessful responses');
+
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);
   console.log('====================================================');

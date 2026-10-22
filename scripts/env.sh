@@ -55,12 +55,21 @@ KEY_ALIAS="${KEYSTORE_ALIAS:-soko-music-key}"
 if [ -n "${KEYSTORE_PASSWORD}" ]; then
   KEY_PASS="${KEYSTORE_PASSWORD}"
 else
-  # Use or generate a transient dev password in temporary build cache
-  DEV_PW_FILE="${BUILD_DIR}/.dev_keystore_pass"
+  # Use or generate a transient dev password stored alongside the gitignored dev keystore
+  KEYSTORE_DIR="$(dirname "${KEYSTORE}")"
+  mkdir -p "${KEYSTORE_DIR}"
+  DEV_PW_FILE="${KEYSTORE_DIR}/.dev_keystore_pass"
+
+  # If keystore does not exist or password file missing, reset so both are in sync
+  if [ ! -f "${KEYSTORE}" ] && [ -f "${DEV_PW_FILE}" ]; then
+    rm -f "${DEV_PW_FILE}"
+  elif [ -f "${KEYSTORE}" ] && [ ! -f "${DEV_PW_FILE}" ]; then
+    rm -f "${KEYSTORE}"
+  fi
+
   if [ -f "${DEV_PW_FILE}" ]; then
     KEY_PASS="$(cat "${DEV_PW_FILE}")"
   else
-    mkdir -p "${BUILD_DIR}"
     KEY_PASS="$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
     echo -n "${KEY_PASS}" > "${DEV_PW_FILE}"
     chmod 600 "${DEV_PW_FILE}" 2>/dev/null || true
