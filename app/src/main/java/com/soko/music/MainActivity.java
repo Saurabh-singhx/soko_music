@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -81,6 +82,25 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
+
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
+        try {
+            String savedCookies = getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).getString("ytm_cookies", "");
+            if (savedCookies != null && !savedCookies.isEmpty()) {
+                for (String part : savedCookies.split(";")) {
+                    String trimmed = part.trim();
+                    if (!trimmed.isEmpty()) {
+                        cookieManager.setCookie("https://music.youtube.com", trimmed);
+                        cookieManager.setCookie("https://www.youtube.com", trimmed);
+                    }
+                }
+                cookieManager.flush();
+            }
+        } catch (Exception ignored) {}
 
         mediaNotificationManager = new MediaNotificationManager(this, webView);
         audioFocusManager = new AudioFocusManager(this, webView);

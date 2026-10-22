@@ -53,9 +53,11 @@ public class AuthBridge {
                     ws.setDatabaseEnabled(true);
                     ws.setUseWideViewPort(true);
                     ws.setLoadWithOverviewMode(true);
-                    ws.setUserAgentString("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36");
+                    ws.setJavaScriptCanOpenWindowsAutomatically(true);
+                    ws.setSupportMultipleWindows(false);
+                    ws.setUserAgentString("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
 
-                    CookieManager cookieManager = CookieManager.getInstance();
+                    final CookieManager cookieManager = CookieManager.getInstance();
                     cookieManager.setAcceptCookie(true);
                     if (android.os.Build.VERSION.SDK_INT >= 21) {
                         cookieManager.setAcceptThirdPartyCookies(loginWebView, true);
@@ -64,23 +66,62 @@ public class AuthBridge {
                     final Runnable cookieChecker = new Runnable() {
                         @Override
                         public void run() {
-                            String cookies = CookieManager.getInstance().getCookie("https://music.youtube.com");
-                            if (cookies == null || cookies.isEmpty()) {
-                                cookies = CookieManager.getInstance().getCookie("https://accounts.google.com");
-                            }
-                            if (cookies != null && (cookies.contains("SAPISID=") || cookies.contains("__Secure-3PAPISID="))) {
-                                final String finalCookies = cookies;
-                                activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
-                                    .edit()
-                                    .putString("ytm_cookies", finalCookies)
-                                    .apply();
+                            try {
+                                if (loginWebView == null) return;
+                                String currentUrl = loginWebView.getUrl();
+                                // Only process cookies once navigation has routed to YouTube / YouTube Music
+                                if (currentUrl != null && (currentUrl.contains("music.youtube.com") || currentUrl.contains("youtube.com"))) {
+                                    // Let SetSID finalize without premature dismissal
+                                    if (currentUrl.contains("accounts.youtube.com/accounts/SetSID")) {
+                                        return;
+                                    }
 
-                                if (loginDialog != null && loginDialog.isShowing()) {
-                                    loginDialog.dismiss();
+                                    String ytmCookies = cookieManager.getCookie("https://music.youtube.com");
+                                    if (ytmCookies == null || ytmCookies.isEmpty()) {
+                                        ytmCookies = cookieManager.getCookie("https://www.youtube.com");
+                                    }
+
+                                    boolean hasAuthSid = ytmCookies != null && (
+                                        ytmCookies.contains("SAPISID=") ||
+                                        ytmCookies.contains("__Secure-3PAPISID=") ||
+                                        ytmCookies.contains("__Secure-1PAPISID=")
+                                    );
+                                    boolean hasSession = ytmCookies != null && (
+                                        ytmCookies.contains("LOGIN_INFO=") ||
+                                        ytmCookies.contains("SID=") ||
+                                        ytmCookies.contains("__Secure-3PSID=") ||
+                                        ytmCookies.contains("__Secure-1PSID=")
+                                    );
+
+                                    if (hasAuthSid && hasSession) {
+                                        cookieManager.flush();
+                                        final String finalCookies = ytmCookies;
+                                        activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                                            .edit()
+                                            .putString("ytm_cookies", finalCookies)
+                                            .apply();
+
+                                        if (loginDialog != null && loginDialog.isShowing()) {
+                                            loginDialog.dismiss();
+                                        }
+                                        if (webView != null) {
+                                            webView.evaluateJavascript("window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" + JSONObject.quote(finalCookies) + ")", null);
+                                        }
+                                    }
                                 }
-                                if (webView != null) {
-                                    webView.evaluateJavascript("window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" + JSONObject.quote(finalCookies) + ")", null);
-                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "cookieChecker error", e);
+                            }
+                        }
+                    };
+
+                    final android.os.Handler pollHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+                    final Runnable pollRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            if (loginDialog != null && loginDialog.isShowing()) {
+                                cookieChecker.run();
+                                pollHandler.postDelayed(this, 1000);
                             }
                         }
                     };
@@ -129,6 +170,7 @@ public class AuthBridge {
                     cancelBtn.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+                            pollHandler.removeCallbacksAndMessages(null);
                             if (loginDialog != null && loginDialog.isShowing()) {
                                 loginDialog.dismiss();
                             }
@@ -140,8 +182,16 @@ public class AuthBridge {
                     LinearLayout.LayoutParams wvParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
                     rootLayout.addView(loginWebView, wvParams);
 
+                    loginDialog.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
+                        @Override
+                        public void onDismiss(android.content.DialogInterface dialog) {
+                            pollHandler.removeCallbacksAndMessages(null);
+                        }
+                    });
+
                     loginDialog.setContentView(rootLayout);
                     loginDialog.show();
+                    pollHandler.postDelayed(pollRunnable, 1500);
                     loginWebView.loadUrl("https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fmusic.youtube.com%2F");
                 } catch (Exception e) {
                     Log.e(TAG, "launchGoogleLogin error", e);
@@ -153,6 +203,28 @@ public class AuthBridge {
     @JavascriptInterface
     public void startGoogleLoginFlow() {
         launchGoogleLogin();
+    }
+
+    @JavascriptInterface
+    public void setStoredYtmCookies(final String cookies) {
+        if (cookies != null && !cookies.trim().isEmpty()) {
+            activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putString("ytm_cookies", cookies.trim())
+                .apply();
+            try {
+                CookieManager cm = CookieManager.getInstance();
+                cm.setAcceptCookie(true);
+                for (String part : cookies.split(";")) {
+                    String trimmed = part.trim();
+                    if (!trimmed.isEmpty()) {
+                        cm.setCookie("https://music.youtube.com", trimmed);
+                        cm.setCookie("https://www.youtube.com", trimmed);
+                    }
+                }
+                cm.flush();
+            } catch (Exception ignored) {}
+        }
     }
 
     @JavascriptInterface
@@ -168,31 +240,44 @@ public class AuthBridge {
                     conn.setConnectTimeout(15000);
                     conn.setReadTimeout(25000);
                     conn.setDoOutput(true);
+                    conn.setInstanceFollowRedirects(true);
                     conn.setRequestProperty("Content-Type", "application/json");
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
                     conn.setRequestProperty("X-YouTube-Client-Name", "67"); // WEB_REMIX
-                    conn.setRequestProperty("X-YouTube-Client-Version", "1.20240101.01.00");
+                    conn.setRequestProperty("X-YouTube-Client-Version", "1.20261020.10.00");
+                    conn.setRequestProperty("Origin", "https://music.youtube.com");
+                    conn.setRequestProperty("Referer", "https://music.youtube.com/");
                     conn.setRequestProperty("X-Origin", "https://music.youtube.com");
+                    conn.setRequestProperty("X-Goog-AuthUser", "0");
 
                     String cookieToUse = customCookie;
                     if (cookieToUse == null || cookieToUse.isEmpty()) {
                         cookieToUse = activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).getString("ytm_cookies", "");
+                    }
+                    if (cookieToUse == null || cookieToUse.isEmpty()) {
+                        try {
+                            cookieToUse = CookieManager.getInstance().getCookie("https://music.youtube.com");
+                        } catch (Exception ignored) {}
                     }
                     if (cookieToUse != null && !cookieToUse.isEmpty()) {
                         conn.setRequestProperty("Cookie", cookieToUse);
                         String sapisid = "";
                         for (String part : cookieToUse.split(";")) {
                             String trimmed = part.trim();
-                            if (trimmed.startsWith("SAPISID=")) {
-                                sapisid = trimmed.substring("SAPISID=".length());
-                                break;
-                            } else if (trimmed.startsWith("__Secure-3PAPISID=")) {
+                            if (trimmed.startsWith("__Secure-3PAPISID=")) {
                                 sapisid = trimmed.substring("__Secure-3PAPISID=".length());
+                                break;
+                            } else if (trimmed.startsWith("SAPISID=")) {
+                                sapisid = trimmed.substring("SAPISID=".length());
+                            } else if (sapisid.isEmpty() && trimmed.startsWith("__Secure-1PAPISID=")) {
+                                sapisid = trimmed.substring("__Secure-1PAPISID=".length());
                             }
                         }
                         if (!sapisid.isEmpty()) {
                             String authHeader = CryptoUtil.generateSapisidHash(sapisid);
-                            conn.setRequestProperty("Authorization", authHeader);
+                            if (authHeader != null && !authHeader.isEmpty()) {
+                                conn.setRequestProperty("Authorization", authHeader);
+                            }
                         }
                     }
 
@@ -201,6 +286,21 @@ public class AuthBridge {
                     conn.getOutputStream().flush();
 
                     int responseCode = conn.getResponseCode();
+
+                    // Sync any refreshed session cookies back to CookieManager
+                    try {
+                        java.util.List<String> setCookies = conn.getHeaderFields().get("Set-Cookie");
+                        if (setCookies != null && !setCookies.isEmpty()) {
+                            CookieManager cm = CookieManager.getInstance();
+                            for (String sc : setCookies) {
+                                if (sc != null && !sc.trim().isEmpty()) {
+                                    cm.setCookie("https://music.youtube.com", sc);
+                                }
+                            }
+                            cm.flush();
+                        }
+                    } catch (Exception ignored) {}
+
                     InputStream is = (responseCode >= 200 && responseCode < 400) ? conn.getInputStream() : conn.getErrorStream();
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     byte[] buf = new byte[8192];
@@ -247,6 +347,7 @@ public class AuthBridge {
         activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).edit().remove("ytm_cookies").apply();
         try {
             CookieManager.getInstance().removeAllCookies(null);
+            CookieManager.getInstance().flush();
         } catch (Exception ignored) {}
     }
 }

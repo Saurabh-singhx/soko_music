@@ -2873,7 +2873,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
             }
@@ -2966,7 +2966,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
             }
@@ -3907,7 +3907,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
             }
@@ -3985,7 +3985,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
             }
@@ -4315,7 +4315,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
             }
@@ -4372,7 +4372,7 @@ const htmlContent = `<!DOCTYPE html>
               context: {
                 client: {
                   clientName: "WEB_REMIX",
-                  clientVersion: "1.20240101.01.00",
+                  clientVersion: "1.20261020.10.00",
                   hl: "en",
                   gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
                 }
@@ -4789,7 +4789,7 @@ const htmlContent = `<!DOCTYPE html>
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: "US"
             }
@@ -5673,7 +5673,7 @@ const htmlContent = `<!DOCTYPE html>
           const reqHeaders = {
             'Content-Type': 'application/json',
             'X-YouTube-Client-Name': '67',
-            'X-YouTube-Client-Version': '1.20240101.01.00',
+            'X-YouTube-Client-Version': '1.20261020.10.00',
             'X-Origin': 'https://music.youtube.com'
           };
           if (customCookie) {

@@ -33,6 +33,9 @@ function loginWithCookie() {
   };
   window.userSession = userSession;
   localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
+  if (window.SokoNative && typeof window.SokoNative.setStoredYtmCookies === 'function') {
+    window.SokoNative.setStoredYtmCookies(cookieVal);
+  }
   updateAuthModalContent();
   updateAuthHeaderUI();
   showToast("YouTube Music Connected!", "✓");
@@ -90,6 +93,9 @@ window.onLoginSuccess = function(cookies, displayName, email) {
   };
   window.userSession = userSession;
   localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
+  if (window.SokoNative && typeof window.SokoNative.setStoredYtmCookies === 'function') {
+    window.SokoNative.setStoredYtmCookies(cookies);
+  }
   updateAuthModalContent();
   updateAuthHeaderUI();
   showToast(`Welcome, ${userSession.name}!`, "🎉");

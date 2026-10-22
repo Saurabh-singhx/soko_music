@@ -4,6 +4,23 @@
 function initApp() {
   audioEl = document.getElementById('audioPlayer');
   initPersistentStorage();
+
+  // Restore stored session from native layer before feed rendering
+  if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
+    const storedCookies = window.SokoNative.getStoredYtmCookies();
+    if (storedCookies && storedCookies.length > 20) {
+      if (!userSession) {
+        userSession = {
+          isLoggedIn: true,
+          cookie: storedCookies,
+          name: "YouTube Music Member",
+          email: "Saved Android Session"
+        };
+        localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
+      }
+    }
+  }
+
   initYouTubeIframeApi();
   setupAudioListeners();
   renderShelves();
@@ -39,22 +56,6 @@ function initApp() {
         e.stopPropagation();
       }
     }, { passive: false });
-  }
-
-  if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
-    const storedCookies = window.SokoNative.getStoredYtmCookies();
-    if (storedCookies && storedCookies.length > 20) {
-      if (!userSession) {
-        userSession = {
-          isLoggedIn: true,
-          cookie: storedCookies,
-          name: "YouTube Music Member",
-          email: "Saved Android Session"
-        };
-        localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
-        updateAuthHeaderUI();
-      }
-    }
   }
 
   if (typeof checkAndSyncNativePlayback === 'function') {

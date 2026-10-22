@@ -118,6 +118,11 @@ public class SokoNativeBridge {
     }
 
     @JavascriptInterface
+    public void setStoredYtmCookies(final String cookies) {
+        if (authBridge != null) authBridge.setStoredYtmCookies(cookies);
+    }
+
+    @JavascriptInterface
     public void clearStoredYtmCookies() {
         if (authBridge != null) authBridge.clearStoredYtmCookies();
     }

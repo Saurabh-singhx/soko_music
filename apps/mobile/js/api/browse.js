@@ -60,7 +60,7 @@ async function fetchYouTubeMusicFeed(force = false) {
       context: {
         client: {
           clientName: "WEB_REMIX",
-          clientVersion: "1.20240101.01.00",
+          clientVersion: "1.20261020.10.00",
           hl: "en",
           gl: targetGl,
           visitorData: window.lastYtmVisitorData || undefined
@@ -123,7 +123,7 @@ async function fetchYouTubeMusicFeed(force = false) {
           context: {
             client: {
               clientName: "WEB_REMIX",
-              clientVersion: "1.20240101.01.00",
+              clientVersion: "1.20261020.10.00",
               hl: "en",
               gl: targetGl,
               visitorData: window.lastYtmVisitorData || undefined

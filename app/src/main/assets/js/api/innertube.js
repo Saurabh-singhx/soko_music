@@ -44,7 +44,9 @@ function callInnerTubeApi(endpoint, payload, customCookie) {
       const reqHeaders = {
         'Content-Type': 'application/json',
         'X-YouTube-Client-Name': '67',
-        'X-YouTube-Client-Version': '1.20240101.01.00',
+        'X-YouTube-Client-Version': '1.20261020.10.00',
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/',
         'X-Origin': 'https://music.youtube.com'
       };
       if (customCookie) {
