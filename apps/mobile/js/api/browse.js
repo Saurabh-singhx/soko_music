@@ -62,16 +62,23 @@ async function fetchYouTubeMusicFeed(force = false) {
           clientName: "WEB_REMIX",
           clientVersion: "1.20261020.10.00",
           hl: "en",
-          gl: targetGl,
-          visitorData: window.lastYtmVisitorData || undefined
+          gl: targetGl
         }
       },
       browseId: "FEmusic_home"
     };
 
+    if (isUser && userSession && userSession.visitorData) {
+      homePayload.context.client.visitorData = userSession.visitorData;
+    } else if (!isUser && window.lastYtmVisitorData) {
+      homePayload.context.client.visitorData = window.lastYtmVisitorData;
+    }
+
     const homeData = await callInnerTubeApi("youtubei/v1/browse", homePayload, cookie);
     if (homeData && homeData.responseContext && homeData.responseContext.visitorData) {
-      window.lastYtmVisitorData = homeData.responseContext.visitorData;
+      if (!isUser) {
+        window.lastYtmVisitorData = homeData.responseContext.visitorData;
+      }
     }
     let extractedShelves = parseBrowseShelves(homeData);
 

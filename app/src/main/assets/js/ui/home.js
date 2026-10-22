@@ -347,7 +347,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     mixes: chosenMixes
   });
 
-  // 5. Additional live track shelves from YouTube Music (e.g. New music videos)
+  // 5. Additional live track shelves from YouTube Music (e.g. New music videos, Similar to..., Artist Radios)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.tracks && s.tracks.length > 0) {
       const lower = (s.title || '').toLowerCase();
@@ -356,18 +356,16 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
           badgeLower.includes('podcast') || badgeLower.includes('episode')) {
         continue;
       }
-      if (!lower.includes('quick') && !lower.includes('trend') && !lower.includes('chart') && !lower.includes('forgot') && !lower.includes('mix')) {
-        const filteredTracks = s.tracks.filter(t => !isPodcastOrLongTrack(t));
-        if (filteredTracks.length > 0) {
-          claimedShelves.add(s);
-          allShelves.push({
-            id: 'shelf_' + s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
-            title: s.title,
-            badge: s.badge || 'OFFICIAL YOUTUBE MUSIC',
-            type: 'ytm-line',
-            tracks: selectRotatingTracks(filteredTracks, 16, shouldRotate)
-          });
-        }
+      const filteredTracks = s.tracks.filter(t => !isPodcastOrLongTrack(t));
+      if (filteredTracks.length > 0) {
+        claimedShelves.add(s);
+        allShelves.push({
+          id: 'shelf_' + s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+          title: s.title,
+          badge: s.badge || 'OFFICIAL YOUTUBE MUSIC',
+          type: 'ytm-line',
+          tracks: selectRotatingTracks(filteredTracks, 16, shouldRotate)
+        });
       }
     }
   }

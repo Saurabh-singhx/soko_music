@@ -8,7 +8,7 @@ function initApp() {
   // Restore stored session from native layer before feed rendering
   if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
     const storedCookies = window.SokoNative.getStoredYtmCookies();
-    if (storedCookies && storedCookies.length > 20 && (storedCookies.includes('SAPISID=') || storedCookies.includes('LOGIN_INFO='))) {
+    if (storedCookies && storedCookies.length > 20 && storedCookies.includes('LOGIN_INFO=') && (storedCookies.includes('SAPISID=') || storedCookies.includes('__Secure-3PAPISID='))) {
       userSession = {
         isLoggedIn: true,
         cookie: storedCookies,

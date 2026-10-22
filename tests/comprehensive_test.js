@@ -1837,6 +1837,78 @@ window.selectTrackToPlay('rad_track_1');
   assert(window.REGIONAL_PLAYLIST_IDS['United States'] === 'PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i', 'Regional playlist US points to active Top Videos chart');
   assert(window.REGIONAL_PLAYLIST_IDS['United Kingdom'] === 'PL4fGSI1pDJn688ebB8czINn0_nov50e3A', 'Regional playlist UK points to active Top Videos chart');
 
+  console.log('\n--- Test Suite 17: Authenticated YouTube Music Session & Multi-Shelf Feed Integrity ---');
+  // 1. Verify onLoginSuccess clears previous guest feed cache and captures visitorData
+  localStorage.setItem('soko_ytm_cached_feed_v2', JSON.stringify([{ id: 'guest_shelf', title: 'Old Guest' }]));
+  window.lastYtmVisitorData = 'guest_visitor_token_123';
+  window.personalShelves = [{ id: 'guest_shelf', title: 'Old Guest' }];
+
+  const testAuthCookies = 'LOGIN_INFO=auth_token_xyz; SAPISID=sapisid_xyz; __Secure-3PAPISID=sapisid_xyz; SID=sid_xyz';
+  window.onLoginSuccess(testAuthCookies, 'Test User', 'test@user.com', 'user_visitor_token_456');
+
+  assert(window.userSession && window.userSession.isLoggedIn === true, 'onLoginSuccess establishes isLoggedIn = true');
+  assert(window.userSession.cookie === testAuthCookies, 'onLoginSuccess stores full authentic cookie payload');
+  assert(window.userSession.visitorData === 'user_visitor_token_456', 'onLoginSuccess stores authenticated visitorData');
+  assert(window.lastYtmVisitorData === 'user_visitor_token_456', 'onLoginSuccess updates lastYtmVisitorData with user visitorData');
+  assert(localStorage.getItem('soko_ytm_cached_feed_v2') === null, 'onLoginSuccess purges stale guest cached feed');
+
+  // 2. Verify prepareHomeShelves preserves multiple authentic shelves (e.g. Listen again + Quick picks + Similar to...)
+  const authenticYtmShelves = [
+    {
+      title: 'Listen again',
+      badge: 'LISTEN AGAIN',
+      tracks: [
+        { id: 'la_song_1', title: 'Listen Again 1', duration: 200 },
+        { id: 'la_song_2', title: 'Listen Again 2', duration: 210 }
+      ],
+      mixes: []
+    },
+    {
+      title: 'Quick picks',
+      badge: 'START RADIO FROM A SONG',
+      tracks: [
+        { id: 'qp_live_1', title: 'Quick Pick Live 1', duration: 190 },
+        { id: 'qp_live_2', title: 'Quick Pick Live 2', duration: 220 }
+      ],
+      mixes: []
+    },
+    {
+      title: 'Similar to The Weeknd',
+      badge: 'SIMILAR ARTISTS',
+      tracks: [
+        { id: 'sim_song_1', title: 'Blinding Lights', duration: 200 }
+      ],
+      mixes: []
+    },
+    {
+      title: 'Mixed for you',
+      badge: 'MIXES',
+      tracks: [],
+      mixes: [
+        { id: 'mix_live_1', title: 'My Supermix', playlistId: 'RDTMAK...' }
+      ]
+    }
+  ];
+
+  const renderedAuthShelves = window.prepareHomeShelves(authenticYtmShelves, false);
+  const listenAgainShelf = renderedAuthShelves.find(s => s.title === 'Listen again');
+  assert(listenAgainShelf !== undefined, 'prepareHomeShelves renders "Listen again" as primary shelf');
+  assert(listenAgainShelf.tracks.some(t => t.id === 'la_song_1'), 'Listen again preserves user history track');
+
+  const secondQpShelf = renderedAuthShelves.find(s => s.id === 'shelf_quick_picks' || (s.title === 'Quick picks' && s !== listenAgainShelf));
+  assert(secondQpShelf !== undefined, 'prepareHomeShelves preserves secondary "Quick picks" shelf alongside "Listen again"');
+
+  const similarShelf = renderedAuthShelves.find(s => s.title === 'Similar to The Weeknd');
+  assert(similarShelf !== undefined, 'prepareHomeShelves preserves "Similar to The Weeknd" artist recommendation shelf');
+
+  const mixShelf = renderedAuthShelves.find(s => s.id === 'mix_for_you');
+  assert(mixShelf && mixShelf.mixes.some(m => m.id === 'mix_live_1'), 'prepareHomeShelves preserves authentic user mixes in Mix for you');
+
+  // Clean up test session
+  window.logoutAccount();
+  assert(window.userSession === null, 'logoutAccount resets userSession to null');
+  assert(localStorage.getItem('soko_ytm_session') === null, 'logoutAccount removes soko_ytm_session');
+
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);
   console.log('====================================================');

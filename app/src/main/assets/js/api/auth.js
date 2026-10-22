@@ -84,15 +84,21 @@ async function syncUserData() {
 }
 
 // Native Bridge Hooks
-window.onLoginSuccess = function(cookies, displayName, email) {
+window.onLoginSuccess = function(cookies, displayName, email, visitorData) {
   userSession = {
     isLoggedIn: true,
     cookie: cookies,
     name: displayName || "YouTube Music User",
-    email: email || "Connected Google Account"
+    email: email || "Connected Google Account",
+    visitorData: visitorData || ""
   };
   window.userSession = userSession;
   localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
+  localStorage.removeItem('soko_ytm_cached_feed_v2');
+  personalShelves = null;
+  window.personalShelves = null;
+  window.lastYtmVisitorData = visitorData || null;
+
   if (window.SokoNative && typeof window.SokoNative.setStoredYtmCookies === 'function') {
     window.SokoNative.setStoredYtmCookies(cookies);
   }

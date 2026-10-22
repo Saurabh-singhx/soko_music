@@ -65,120 +65,151 @@ public class AuthBridge {
                     }
 
                     final java.util.concurrent.atomic.AtomicBoolean isLoginHandled = new java.util.concurrent.atomic.AtomicBoolean(false);
+                    final android.os.Handler pollHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
                     final Runnable cookieChecker = new Runnable() {
                         @Override
                         public void run() {
                             try {
                                 if (loginWebView == null || isLoginHandled.get()) return;
                                 String currentUrl = loginWebView.getUrl();
-                                // Only process cookies once navigation has routed to YouTube / YouTube Music
-                                if (currentUrl != null && (currentUrl.contains("music.youtube.com") || currentUrl.contains("youtube.com"))) {
-                                    // Let SetSID finalize without premature dismissal
-                                    if (currentUrl.contains("accounts.youtube.com/accounts/SetSID")) {
-                                        return;
-                                    }
+                                if (currentUrl == null) return;
 
-                                    // Harvest comprehensive cookies across all YouTube auth domains
-                                    java.util.Map<String, String> mergedCookies = new java.util.LinkedHashMap<String, String>();
-                                    String[] harvestUrls = new String[] {
-                                        "https://music.youtube.com",
-                                        "https://www.youtube.com",
-                                        "https://youtube.com",
-                                        "https://accounts.google.com"
-                                    };
-                                    for (String hUrl : harvestUrls) {
-                                        String c = cookieManager.getCookie(hUrl);
-                                        if (c != null && !c.isEmpty()) {
-                                            for (String part : c.split(";")) {
-                                                String trimmed = part.trim();
-                                                int eq = trimmed.indexOf('=');
-                                                if (eq > 0) {
-                                                    String k = trimmed.substring(0, eq).trim();
-                                                    String v = trimmed.substring(eq + 1).trim();
-                                                    if (!mergedCookies.containsKey(k)) {
-                                                        mergedCookies.put(k, v);
-                                                    }
+                                // Navigation MUST have reached YouTube Music domain
+                                if (!currentUrl.startsWith("https://music.youtube.com")) {
+                                    return;
+                                }
+
+                                // Reject intermediate auth, login, or account switcher screens
+                                String lowerUrl = currentUrl.toLowerCase();
+                                if (lowerUrl.contains("servicelogin") || lowerUrl.contains("signin") ||
+                                    lowerUrl.contains("channel_switcher") || lowerUrl.contains("accounts.google") ||
+                                    lowerUrl.contains("accounts.youtube")) {
+                                    return;
+                                }
+
+                                final CookieManager cm = CookieManager.getInstance();
+                                String ytmCookies = cm.getCookie("https://music.youtube.com");
+                                if (ytmCookies == null || ytmCookies.isEmpty()) {
+                                    return;
+                                }
+
+                                // Authentic YouTube Music sessions REQUIRE LOGIN_INFO, SAPISID, and SID
+                                boolean hasLoginInfo = ytmCookies.contains("LOGIN_INFO=");
+                                boolean hasAuthSid = ytmCookies.contains("SAPISID=") ||
+                                                     ytmCookies.contains("__Secure-3PAPISID=") ||
+                                                     ytmCookies.contains("__Secure-1PAPISID=");
+                                boolean hasSession = ytmCookies.contains("SID=") ||
+                                                     ytmCookies.contains("__Secure-3PSID=") ||
+                                                     ytmCookies.contains("__Secure-1PSID=");
+
+                                if (!hasLoginInfo || !hasAuthSid || !hasSession) {
+                                    return;
+                                }
+
+                                // Lock login handler immediately to prevent re-entrancy
+                                if (!isLoginHandled.compareAndSet(false, true)) {
+                                    return;
+                                }
+
+                                cm.flush();
+
+                                // Harvest cookies strictly from YouTube domains (excluding accounts.google.com)
+                                java.util.Map<String, String> mergedCookies = new java.util.LinkedHashMap<String, String>();
+                                String[] harvestUrls = new String[] {
+                                    "https://music.youtube.com",
+                                    "https://www.youtube.com"
+                                };
+                                for (String hUrl : harvestUrls) {
+                                    String c = cm.getCookie(hUrl);
+                                    if (c != null && !c.isEmpty()) {
+                                        for (String part : c.split(";")) {
+                                            String trimmed = part.trim();
+                                            int eq = trimmed.indexOf('=');
+                                            if (eq > 0) {
+                                                String k = trimmed.substring(0, eq).trim();
+                                                String v = trimmed.substring(eq + 1).trim();
+                                                if (!mergedCookies.containsKey(k)) {
+                                                    mergedCookies.put(k, v);
                                                 }
                                             }
                                         }
-                                    }
-
-                                    StringBuilder sb = new StringBuilder();
-                                    for (java.util.Map.Entry<String, String> entry : mergedCookies.entrySet()) {
-                                        if (sb.length() > 0) sb.append("; ");
-                                        sb.append(entry.getKey()).append("=").append(entry.getValue());
-                                    }
-                                    final String ytmCookies = sb.toString();
-
-                                    boolean hasAuthSid = ytmCookies.contains("SAPISID=") ||
-                                                         ytmCookies.contains("__Secure-3PAPISID=") ||
-                                                         ytmCookies.contains("__Secure-1PAPISID=");
-                                    boolean hasSession = ytmCookies.contains("LOGIN_INFO=") ||
-                                                         ytmCookies.contains("SID=") ||
-                                                         ytmCookies.contains("__Secure-3PSID=") ||
-                                                         ytmCookies.contains("__Secure-1PSID=");
-
-                                    if (hasAuthSid && hasSession) {
-                                        if (!isLoginHandled.compareAndSet(false, true)) {
-                                            return;
-                                        }
-                                        cookieManager.flush();
-                                        final String finalCookies = ytmCookies;
-                                        activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
-                                            .edit()
-                                            .putString("ytm_cookies", finalCookies)
-                                            .apply();
-
-                                        loginWebView.evaluateJavascript(
-                                            "(function(){ try { return JSON.stringify({ name: window.ytcfg?.get('USER_DISPLAY_NAME') || '', email: window.ytcfg?.get('USER_EMAIL') || '' }); } catch(e){ return '{}'; } })()",
-                                            new android.webkit.ValueCallback<String>() {
-                                                @Override
-                                                public void onReceiveValue(String value) {
-                                                    String name = "YouTube Music User";
-                                                    String email = "Connected Google Account";
-                                                    try {
-                                                        if (value != null && !value.equals("null")) {
-                                                            String cleanVal = value;
-                                                            if (cleanVal.startsWith("\"") && cleanVal.endsWith("\"")) {
-                                                                cleanVal = new org.json.JSONTokener(cleanVal).nextValue().toString();
-                                                            }
-                                                            JSONObject uObj = new JSONObject(cleanVal);
-                                                            if (uObj.has("name") && !uObj.getString("name").isEmpty()) name = uObj.getString("name");
-                                                            if (uObj.has("email") && !uObj.getString("email").isEmpty()) email = uObj.getString("email");
-                                                        }
-                                                    } catch (Exception ignored) {}
-
-                                                    final String fName = name;
-                                                    final String fEmail = email;
-                                                    activity.runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            if (loginDialog != null && loginDialog.isShowing()) {
-                                                                loginDialog.dismiss();
-                                                            }
-                                                            if (webView != null) {
-                                                                webView.evaluateJavascript(
-                                                                    "window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" +
-                                                                    JSONObject.quote(finalCookies) + ", " +
-                                                                    JSONObject.quote(fName) + ", " +
-                                                                    JSONObject.quote(fEmail) + ")",
-                                                                    null
-                                                                );
-                                                            }
-                                                        }
-                                                    });
-                                                }
-                                            }
-                                        );
                                     }
                                 }
+
+                                StringBuilder sb = new StringBuilder();
+                                for (java.util.Map.Entry<String, String> entry : mergedCookies.entrySet()) {
+                                    if (sb.length() > 0) sb.append("; ");
+                                    sb.append(entry.getKey()).append("=").append(entry.getValue());
+                                }
+                                final String finalCookies = sb.toString();
+
+                                activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putString("ytm_cookies", finalCookies)
+                                    .apply();
+
+                                Log.i(TAG, "Authenticated YouTube Music session captured. LOGIN_INFO present: " + finalCookies.contains("LOGIN_INFO="));
+
+                                loginWebView.evaluateJavascript(
+                                    "(function(){ try { return JSON.stringify({ " +
+                                    "  logged_in: !!(window.ytcfg && (window.ytcfg.get('LOGGED_IN') === true || (window.ytcfg.data_ && window.ytcfg.data_.LOGGED_IN === true))), " +
+                                    "  name: (window.ytcfg && (window.ytcfg.get('USER_DISPLAY_NAME') || (window.ytcfg.data_ && window.ytcfg.data_.USER_DISPLAY_NAME))) || '', " +
+                                    "  email: (window.ytcfg && (window.ytcfg.get('USER_EMAIL') || (window.ytcfg.data_ && window.ytcfg.data_.USER_EMAIL))) || '', " +
+                                    "  visitorData: (window.ytcfg && (window.ytcfg.get('VISITOR_DATA') || (window.ytcfg.data_ && window.ytcfg.data_.VISITOR_DATA))) || '' " +
+                                    "}); } catch(e){ return '{}'; } })()",
+                                    new android.webkit.ValueCallback<String>() {
+                                        @Override
+                                        public void onReceiveValue(String value) {
+                                            String name = "YouTube Music User";
+                                            String email = "Connected Google Account";
+                                            String visitorData = "";
+                                            try {
+                                                if (value != null && !value.equals("null")) {
+                                                    String cleanVal = value;
+                                                    if (cleanVal.startsWith("\"") && cleanVal.endsWith("\"")) {
+                                                        cleanVal = new org.json.JSONTokener(cleanVal).nextValue().toString();
+                                                    }
+                                                    JSONObject uObj = new JSONObject(cleanVal);
+                                                    if (uObj.has("name") && !uObj.getString("name").isEmpty()) name = uObj.getString("name");
+                                                    if (uObj.has("email") && !uObj.getString("email").isEmpty()) email = uObj.getString("email");
+                                                    if (uObj.has("visitorData") && !uObj.getString("visitorData").isEmpty()) visitorData = uObj.getString("visitorData");
+                                                }
+                                            } catch (Exception ignored) {}
+
+                                            final String fName = name;
+                                            final String fEmail = email;
+                                            final String fVisitor = visitorData;
+
+                                            // Small 800ms settling delay so YouTube scripts finish background session sync
+                                            pollHandler.postDelayed(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    pollHandler.removeCallbacksAndMessages(null);
+                                                    if (loginDialog != null && loginDialog.isShowing()) {
+                                                        loginDialog.dismiss();
+                                                    }
+                                                    if (webView != null) {
+                                                        webView.evaluateJavascript(
+                                                            "window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" +
+                                                            JSONObject.quote(finalCookies) + ", " +
+                                                            JSONObject.quote(fName) + ", " +
+                                                            JSONObject.quote(fEmail) + ", " +
+                                                            JSONObject.quote(fVisitor) + ")",
+                                                            null
+                                                        );
+                                                    }
+                                                }
+                                            }, 800);
+                                        }
+                                    }
+                                );
                             } catch (Exception e) {
                                 Log.e(TAG, "cookieChecker error", e);
                             }
                         }
                     };
 
-                    final android.os.Handler pollHandler = new android.os.Handler(android.os.Looper.getMainLooper());
                     final Runnable pollRunnable = new Runnable() {
                         @Override
                         public void run() {
@@ -313,13 +344,26 @@ public class AuthBridge {
                     conn.setRequestProperty("X-Origin", "https://music.youtube.com");
                     conn.setRequestProperty("X-Goog-AuthUser", "0");
 
+                    // Cookie resolution hierarchy prioritizing valid LOGIN_INFO session
                     String cookieToUse = customCookie;
-                    if (cookieToUse == null || cookieToUse.isEmpty()) {
-                        cookieToUse = activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).getString("ytm_cookies", "");
+                    if (cookieToUse == null || cookieToUse.trim().isEmpty() || !cookieToUse.contains("LOGIN_INFO=")) {
+                        String spCookie = activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE).getString("ytm_cookies", "");
+                        if (spCookie != null && spCookie.contains("LOGIN_INFO=")) {
+                            cookieToUse = spCookie;
+                        }
                     }
-                    if (cookieToUse == null || cookieToUse.isEmpty()) {
+                    if (cookieToUse == null || cookieToUse.trim().isEmpty() || !cookieToUse.contains("LOGIN_INFO=")) {
                         try {
-                            cookieToUse = CookieManager.getInstance().getCookie("https://music.youtube.com");
+                            String cmCookie = CookieManager.getInstance().getCookie("https://music.youtube.com");
+                            if (cmCookie != null && cmCookie.contains("LOGIN_INFO=")) {
+                                cookieToUse = cmCookie;
+                                activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putString("ytm_cookies", cmCookie)
+                                    .apply();
+                            } else if (cookieToUse == null || cookieToUse.trim().isEmpty()) {
+                                cookieToUse = (cmCookie != null) ? cmCookie : "";
+                            }
                         } catch (Exception ignored) {}
                     }
                     if (cookieToUse != null && !cookieToUse.isEmpty()) {
@@ -359,8 +403,12 @@ public class AuthBridge {
                     conn.getOutputStream().flush();
 
                     int responseCode = conn.getResponseCode();
+                    Log.i(TAG, "fetchYtmApi " + endpoint + " status=" + responseCode +
+                               " hasLoginInfo=" + (cookieToUse != null && cookieToUse.contains("LOGIN_INFO=")) +
+                               " hasSapisid=" + (cookieToUse != null && (cookieToUse.contains("SAPISID=") || cookieToUse.contains("__Secure-3PAPISID="))) +
+                               " authUser=" + conn.getRequestProperty("X-Goog-AuthUser"));
 
-                    // Sync only positive refreshed session cookies back to CookieManager (never wipe cookies on guest/401)
+                    // Sync only positive refreshed session cookies back to CookieManager and soko_prefs
                     if (responseCode >= 200 && responseCode < 300) {
                         try {
                             java.util.List<String> setCookies = conn.getHeaderFields().get("Set-Cookie");
@@ -378,6 +426,13 @@ public class AuthBridge {
                                     }
                                 }
                                 cm.flush();
+                                String refreshed = cm.getCookie("https://music.youtube.com");
+                                if (refreshed != null && refreshed.contains("LOGIN_INFO=")) {
+                                    activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                                        .edit()
+                                        .putString("ytm_cookies", refreshed)
+                                        .apply();
+                                }
                             }
                         } catch (Exception ignored) {}
                     }
