@@ -22,7 +22,7 @@ public class TelemetryBridge {
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(5000);
                     conn.setReadTimeout(5000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+                    conn.setRequestProperty("User-Agent", AuthBridge.APP_USER_AGENT);
                     conn.setRequestProperty("X-YouTube-Client-Name", "67");
                     conn.setRequestProperty("X-YouTube-Client-Version", "1.20261020.10.00");
                     conn.setRequestProperty("Origin", "https://music.youtube.com");
@@ -34,13 +34,21 @@ public class TelemetryBridge {
                         String sapisid = "";
                         for (String part : cookies.split(";")) {
                             String trimmed = part.trim();
-                            if (trimmed.startsWith("__Secure-3PAPISID=")) {
-                                sapisid = trimmed.substring("__Secure-3PAPISID=".length());
-                                break;
-                            } else if (trimmed.startsWith("SAPISID=")) {
+                            if (trimmed.startsWith("SAPISID=")) {
                                 sapisid = trimmed.substring("SAPISID=".length());
-                            } else if (sapisid.isEmpty() && trimmed.startsWith("__Secure-1PAPISID=")) {
-                                sapisid = trimmed.substring("__Secure-1PAPISID=".length());
+                                break;
+                            }
+                        }
+                        if (sapisid.isEmpty()) {
+                            for (String part : cookies.split(";")) {
+                                String trimmed = part.trim();
+                                if (trimmed.startsWith("__Secure-3PAPISID=")) {
+                                    sapisid = trimmed.substring("__Secure-3PAPISID=".length());
+                                    break;
+                                } else if (trimmed.startsWith("__Secure-1PAPISID=")) {
+                                    sapisid = trimmed.substring("__Secure-1PAPISID=".length());
+                                    break;
+                                }
                             }
                         }
                         if (!sapisid.isEmpty()) {

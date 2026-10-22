@@ -159,6 +159,8 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
 
   if (apiQuick) claimedShelves.add(apiQuick);
 
+  const isUserLoggedIn = userSession && userSession.isLoggedIn && !userSession.isDemo;
+
   const quickPool = [];
   const quickSeen = new Set();
   if (apiQuick && apiQuick.tracks) {
@@ -170,7 +172,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Guarantee Quick picks has at least 16 tracks (4x4 horizontal columns) by backfilling from rich sources
+  // Guarantee Quick picks has at least 16 tracks (4x4 horizontal columns)
   if (quickPool.length < 16) {
     const fallbackSources = [
       ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
@@ -195,7 +197,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
           if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
             quickSeen.add(t.id);
             quickPool.push(t);
-            if (quickPool.length >= 24) break;
+            if (quickPool.length >= 16) break;
           }
         }
       }
@@ -206,8 +208,8 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   const quickTracks = selectRotatingTracks(quickPool, 16, shouldRotate);
   allShelves.push({
     id: 'quick_picks',
-    title: 'Quick picks',
-    badge: 'START RADIO FROM A SONG',
+    title: (apiQuick && apiQuick.title) ? apiQuick.title : 'Quick picks',
+    badge: (apiQuick && apiQuick.badge) ? apiQuick.badge : 'START RADIO FROM A SONG',
     type: 'ytm-line',
     tracks: quickTracks
   });
@@ -234,7 +236,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  if (trendPool.length < 16) {
+  if (trendPool.length < 16 && !isUserLoggedIn) {
     const fallbackTrend = [
       ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []),
       ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
@@ -250,11 +252,11 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  const trendTracks = selectRotatingTracks(trendPool, 16, shouldRotate);
+  const trendTracks = trendPool.length > 0 ? selectRotatingTracks(trendPool, 16, shouldRotate) : [];
   allShelves.push({
     id: 'trending_for_you',
-    title: 'Trending songs for you',
-    badge: 'CHARTS & BUZZ',
+    title: (apiTrending && apiTrending.title) ? apiTrending.title : 'Trending songs for you',
+    badge: (apiTrending && apiTrending.badge) ? apiTrending.badge : 'CHARTS & BUZZ',
     type: 'ytm-line',
     tracks: trendTracks
   });
@@ -281,25 +283,27 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  const forgottenFallbacks = [
-    ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
-    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
-    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
-    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || [])
-  ];
-  for (const t of forgottenFallbacks) {
-    if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
-      forgottenSeen.add(t.id);
-      forgottenPool.push(t);
-      if (forgottenPool.length >= 24) break;
+  if (forgottenPool.length < 16 && !isUserLoggedIn) {
+    const forgottenFallbacks = [
+      ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || [])
+    ];
+    for (const t of forgottenFallbacks) {
+      if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+        forgottenSeen.add(t.id);
+        forgottenPool.push(t);
+        if (forgottenPool.length >= 24) break;
+      }
     }
   }
 
-  const forgottenTracks = selectRotatingTracks(forgottenPool, 16, shouldRotate);
+  const forgottenTracks = forgottenPool.length > 0 ? selectRotatingTracks(forgottenPool, 16, shouldRotate) : [];
   allShelves.push({
     id: 'forgotten_favorites',
-    title: 'Forgotten favorites',
-    badge: 'REVISIT PAST FAVORITES',
+    title: (apiForgotten && apiForgotten.title) ? apiForgotten.title : 'Forgotten favorites',
+    badge: (apiForgotten && apiForgotten.badge) ? apiForgotten.badge : 'REVISIT PAST FAVORITES',
     type: 'ytm-line',
     tracks: forgottenTracks
   });

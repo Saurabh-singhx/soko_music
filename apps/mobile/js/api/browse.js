@@ -116,8 +116,8 @@ async function fetchYouTubeMusicFeed(force = false) {
       }
     }
 
-    // Enrich with explore for unauthenticated browse, when fewer than 3 shelves exist, or on force refresh
-    if (!isUser || extractedShelves.length < 3 || force) {
+    // Enrich with explore only for unauthenticated browse or when fewer than 3 shelves exist
+    if (!isUser || extractedShelves.length < 3) {
       try {
         const expPayload = {
           context: {

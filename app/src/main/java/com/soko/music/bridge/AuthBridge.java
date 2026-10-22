@@ -26,6 +26,7 @@ import java.net.URL;
 
 public class AuthBridge {
     private static final String TAG = "SokoMusic";
+    public static final String APP_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36";
     private final Activity activity;
     private final WebView webView;
     private Dialog loginDialog;
@@ -55,7 +56,7 @@ public class AuthBridge {
                     ws.setLoadWithOverviewMode(true);
                     ws.setJavaScriptCanOpenWindowsAutomatically(true);
                     ws.setSupportMultipleWindows(false);
-                    ws.setUserAgentString("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36");
+                    ws.setUserAgentString(APP_USER_AGENT);
 
                     final CookieManager cookieManager = CookieManager.getInstance();
                     cookieManager.setAcceptCookie(true);
@@ -63,11 +64,12 @@ public class AuthBridge {
                         cookieManager.setAcceptThirdPartyCookies(loginWebView, true);
                     }
 
+                    final java.util.concurrent.atomic.AtomicBoolean isLoginHandled = new java.util.concurrent.atomic.AtomicBoolean(false);
                     final Runnable cookieChecker = new Runnable() {
                         @Override
                         public void run() {
                             try {
-                                if (loginWebView == null) return;
+                                if (loginWebView == null || isLoginHandled.get()) return;
                                 String currentUrl = loginWebView.getUrl();
                                 // Only process cookies once navigation has routed to YouTube / YouTube Music
                                 if (currentUrl != null && (currentUrl.contains("music.youtube.com") || currentUrl.contains("youtube.com"))) {
@@ -76,24 +78,50 @@ public class AuthBridge {
                                         return;
                                     }
 
-                                    String ytmCookies = cookieManager.getCookie("https://music.youtube.com");
-                                    if (ytmCookies == null || ytmCookies.isEmpty()) {
-                                        ytmCookies = cookieManager.getCookie("https://www.youtube.com");
+                                    // Harvest comprehensive cookies across all YouTube auth domains
+                                    java.util.Map<String, String> mergedCookies = new java.util.LinkedHashMap<String, String>();
+                                    String[] harvestUrls = new String[] {
+                                        "https://music.youtube.com",
+                                        "https://www.youtube.com",
+                                        "https://youtube.com",
+                                        "https://accounts.google.com"
+                                    };
+                                    for (String hUrl : harvestUrls) {
+                                        String c = cookieManager.getCookie(hUrl);
+                                        if (c != null && !c.isEmpty()) {
+                                            for (String part : c.split(";")) {
+                                                String trimmed = part.trim();
+                                                int eq = trimmed.indexOf('=');
+                                                if (eq > 0) {
+                                                    String k = trimmed.substring(0, eq).trim();
+                                                    String v = trimmed.substring(eq + 1).trim();
+                                                    if (!mergedCookies.containsKey(k)) {
+                                                        mergedCookies.put(k, v);
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
-                                    boolean hasAuthSid = ytmCookies != null && (
-                                        ytmCookies.contains("SAPISID=") ||
-                                        ytmCookies.contains("__Secure-3PAPISID=") ||
-                                        ytmCookies.contains("__Secure-1PAPISID=")
-                                    );
-                                    boolean hasSession = ytmCookies != null && (
-                                        ytmCookies.contains("LOGIN_INFO=") ||
-                                        ytmCookies.contains("SID=") ||
-                                        ytmCookies.contains("__Secure-3PSID=") ||
-                                        ytmCookies.contains("__Secure-1PSID=")
-                                    );
+                                    StringBuilder sb = new StringBuilder();
+                                    for (java.util.Map.Entry<String, String> entry : mergedCookies.entrySet()) {
+                                        if (sb.length() > 0) sb.append("; ");
+                                        sb.append(entry.getKey()).append("=").append(entry.getValue());
+                                    }
+                                    final String ytmCookies = sb.toString();
+
+                                    boolean hasAuthSid = ytmCookies.contains("SAPISID=") ||
+                                                         ytmCookies.contains("__Secure-3PAPISID=") ||
+                                                         ytmCookies.contains("__Secure-1PAPISID=");
+                                    boolean hasSession = ytmCookies.contains("LOGIN_INFO=") ||
+                                                         ytmCookies.contains("SID=") ||
+                                                         ytmCookies.contains("__Secure-3PSID=") ||
+                                                         ytmCookies.contains("__Secure-1PSID=");
 
                                     if (hasAuthSid && hasSession) {
+                                        if (!isLoginHandled.compareAndSet(false, true)) {
+                                            return;
+                                        }
                                         cookieManager.flush();
                                         final String finalCookies = ytmCookies;
                                         activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
@@ -101,12 +129,47 @@ public class AuthBridge {
                                             .putString("ytm_cookies", finalCookies)
                                             .apply();
 
-                                        if (loginDialog != null && loginDialog.isShowing()) {
-                                            loginDialog.dismiss();
-                                        }
-                                        if (webView != null) {
-                                            webView.evaluateJavascript("window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" + JSONObject.quote(finalCookies) + ")", null);
-                                        }
+                                        loginWebView.evaluateJavascript(
+                                            "(function(){ try { return JSON.stringify({ name: window.ytcfg?.get('USER_DISPLAY_NAME') || '', email: window.ytcfg?.get('USER_EMAIL') || '' }); } catch(e){ return '{}'; } })()",
+                                            new android.webkit.ValueCallback<String>() {
+                                                @Override
+                                                public void onReceiveValue(String value) {
+                                                    String name = "YouTube Music User";
+                                                    String email = "Connected Google Account";
+                                                    try {
+                                                        if (value != null && !value.equals("null")) {
+                                                            String cleanVal = value;
+                                                            if (cleanVal.startsWith("\"") && cleanVal.endsWith("\"")) {
+                                                                cleanVal = new org.json.JSONTokener(cleanVal).nextValue().toString();
+                                                            }
+                                                            JSONObject uObj = new JSONObject(cleanVal);
+                                                            if (uObj.has("name") && !uObj.getString("name").isEmpty()) name = uObj.getString("name");
+                                                            if (uObj.has("email") && !uObj.getString("email").isEmpty()) email = uObj.getString("email");
+                                                        }
+                                                    } catch (Exception ignored) {}
+
+                                                    final String fName = name;
+                                                    final String fEmail = email;
+                                                    activity.runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            if (loginDialog != null && loginDialog.isShowing()) {
+                                                                loginDialog.dismiss();
+                                                            }
+                                                            if (webView != null) {
+                                                                webView.evaluateJavascript(
+                                                                    "window.onGoogleLoginSuccess && window.onGoogleLoginSuccess(" +
+                                                                    JSONObject.quote(finalCookies) + ", " +
+                                                                    JSONObject.quote(fName) + ", " +
+                                                                    JSONObject.quote(fEmail) + ")",
+                                                                    null
+                                                                );
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        );
                                     }
                                 }
                             } catch (Exception e) {
@@ -242,7 +305,7 @@ public class AuthBridge {
                     conn.setDoOutput(true);
                     conn.setInstanceFollowRedirects(true);
                     conn.setRequestProperty("Content-Type", "application/json");
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+                    conn.setRequestProperty("User-Agent", APP_USER_AGENT);
                     conn.setRequestProperty("X-YouTube-Client-Name", "67"); // WEB_REMIX
                     conn.setRequestProperty("X-YouTube-Client-Version", "1.20261020.10.00");
                     conn.setRequestProperty("Origin", "https://music.youtube.com");
@@ -262,15 +325,25 @@ public class AuthBridge {
                     if (cookieToUse != null && !cookieToUse.isEmpty()) {
                         conn.setRequestProperty("Cookie", cookieToUse);
                         String sapisid = "";
+                        // Step 1: Look for exact SAPISID for SAPISIDHASH signature
                         for (String part : cookieToUse.split(";")) {
                             String trimmed = part.trim();
-                            if (trimmed.startsWith("__Secure-3PAPISID=")) {
-                                sapisid = trimmed.substring("__Secure-3PAPISID=".length());
-                                break;
-                            } else if (trimmed.startsWith("SAPISID=")) {
+                            if (trimmed.startsWith("SAPISID=")) {
                                 sapisid = trimmed.substring("SAPISID=".length());
-                            } else if (sapisid.isEmpty() && trimmed.startsWith("__Secure-1PAPISID=")) {
-                                sapisid = trimmed.substring("__Secure-1PAPISID=".length());
+                                break;
+                            }
+                        }
+                        // Step 2: Fallback only if SAPISID is not found
+                        if (sapisid.isEmpty()) {
+                            for (String part : cookieToUse.split(";")) {
+                                String trimmed = part.trim();
+                                if (trimmed.startsWith("__Secure-3PAPISID=")) {
+                                    sapisid = trimmed.substring("__Secure-3PAPISID=".length());
+                                    break;
+                                } else if (trimmed.startsWith("__Secure-1PAPISID=")) {
+                                    sapisid = trimmed.substring("__Secure-1PAPISID=".length());
+                                    break;
+                                }
                             }
                         }
                         if (!sapisid.isEmpty()) {
@@ -287,19 +360,27 @@ public class AuthBridge {
 
                     int responseCode = conn.getResponseCode();
 
-                    // Sync any refreshed session cookies back to CookieManager
-                    try {
-                        java.util.List<String> setCookies = conn.getHeaderFields().get("Set-Cookie");
-                        if (setCookies != null && !setCookies.isEmpty()) {
-                            CookieManager cm = CookieManager.getInstance();
-                            for (String sc : setCookies) {
-                                if (sc != null && !sc.trim().isEmpty()) {
-                                    cm.setCookie("https://music.youtube.com", sc);
+                    // Sync only positive refreshed session cookies back to CookieManager (never wipe cookies on guest/401)
+                    if (responseCode >= 200 && responseCode < 300) {
+                        try {
+                            java.util.List<String> setCookies = conn.getHeaderFields().get("Set-Cookie");
+                            if (setCookies != null && !setCookies.isEmpty()) {
+                                CookieManager cm = CookieManager.getInstance();
+                                for (String sc : setCookies) {
+                                    if (sc != null && !sc.trim().isEmpty()) {
+                                        String scLower = sc.toLowerCase();
+                                        // Ignore cookie deletion headers (Expires=1970 or Max-Age=0)
+                                        if (!scLower.contains("expires=thu, 01 jan 1970") &&
+                                            !scLower.contains("expires=thu, 01-jan-1970") &&
+                                            !scLower.contains("max-age=0;")) {
+                                            cm.setCookie("https://music.youtube.com", sc);
+                                        }
+                                    }
                                 }
+                                cm.flush();
                             }
-                            cm.flush();
-                        }
-                    } catch (Exception ignored) {}
+                        } catch (Exception ignored) {}
+                    }
 
                     InputStream is = (responseCode >= 200 && responseCode < 400) ? conn.getInputStream() : conn.getErrorStream();
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();

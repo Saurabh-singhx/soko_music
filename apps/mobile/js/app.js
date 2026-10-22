@@ -8,16 +8,15 @@ function initApp() {
   // Restore stored session from native layer before feed rendering
   if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
     const storedCookies = window.SokoNative.getStoredYtmCookies();
-    if (storedCookies && storedCookies.length > 20) {
-      if (!userSession) {
-        userSession = {
-          isLoggedIn: true,
-          cookie: storedCookies,
-          name: "YouTube Music Member",
-          email: "Saved Android Session"
-        };
-        localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
-      }
+    if (storedCookies && storedCookies.length > 20 && (storedCookies.includes('SAPISID=') || storedCookies.includes('LOGIN_INFO='))) {
+      userSession = {
+        isLoggedIn: true,
+        cookie: storedCookies,
+        name: (userSession && userSession.name) || "YouTube Music Member",
+        email: (userSession && userSession.email) || "Saved Android Session"
+      };
+      window.userSession = userSession;
+      localStorage.setItem('soko_ytm_session', JSON.stringify(userSession));
     }
   }
 
