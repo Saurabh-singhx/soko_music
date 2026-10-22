@@ -100,7 +100,9 @@ async function resolvePlaylistTracks(playlistId) {
       browseId: "VL" + cleanId
     };
     const bRes = await callInnerTubeApi("youtubei/v1/browse", browsePayload, cookie);
-    const secList = bRes?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+    const secList = bRes?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents ||
+                    bRes?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ||
+                    bRes?.contents?.sectionListRenderer?.contents || [];
     const bTracks = [];
     for (const s of secList) {
       const shelf = s.musicPlaylistShelfRenderer || s.musicShelfRenderer;
@@ -154,7 +156,9 @@ async function resolvePlaylistTracks(playlistId) {
     console.warn("Failed resolving playlist via browse:", err2);
   }
 
-  const curatedMatch = CURATED_MIXES.find(m => m.id === playlistId || m.id === cleanId || m.playlistId === playlistId);
+  const curatedMatch = (typeof CURATED_MIXES !== 'undefined' && Array.isArray(CURATED_MIXES))
+    ? CURATED_MIXES.find(m => m.id === playlistId || m.id === cleanId || m.playlistId === playlistId)
+    : null;
   if (curatedMatch && curatedMatch.songIds && curatedMatch.songIds.length > 0) {
     const curTracks = curatedMatch.songIds.map(id => findTrackAcrossAllSources(id)).filter(t => t && !isPodcastOrLongTrack(t));
     if (curTracks.length > 0) return curTracks;

@@ -1809,6 +1809,34 @@ window.selectTrackToPlay('rad_track_1');
   window.fetchYouTubeMusicFeed = origFetchYtm;
   assert(true, 'Pull-to-refresh error handling cleanly catches unsuccessful responses');
 
+  // 4. Quick picks 4-song fallback auto-backfill & rotation immunity
+  const fourSongShelf = [
+    {
+      title: 'Quick picks',
+      tracks: [
+        { id: 'qp_sub_1', title: 'QP Song 1', duration: 180 },
+        { id: 'qp_sub_2', title: 'QP Song 2', duration: 190 },
+        { id: 'qp_sub_3', title: 'QP Song 3', duration: 200 },
+        { id: 'qp_sub_4', title: 'QP Song 4', duration: 210 }
+      ],
+      mixes: []
+    }
+  ];
+  const backfilledShelves = window.prepareHomeShelves(fourSongShelf, false);
+  const qpBackfilled = backfilledShelves.find(s => s.id === 'quick_picks');
+  assert(qpBackfilled && qpBackfilled.tracks.length >= 16, `Quick picks with 4 initial tracks is auto-backfilled to >= 16 tracks (actual: ${qpBackfilled?.tracks?.length})`);
+  assert(qpBackfilled.tracks.some(t => t.id === 'qp_sub_1'), 'Quick picks preserves original API songs during backfill');
+
+  const rotatedQpShelves = window.prepareHomeShelves(fourSongShelf, true);
+  const qpRotated = rotatedQpShelves.find(s => s.id === 'quick_picks');
+  assert(qpRotated && qpRotated.tracks.length >= 16, `Quick picks during pull-to-refresh rotation maintains >= 16 tracks (actual: ${qpRotated?.tracks?.length})`);
+
+  // 5. Verify active Regional Playlist IDs
+  assert(window.REGIONAL_PLAYLIST_IDS['Global'] === 'PL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv', 'Regional playlist Global points to active Top Videos chart');
+  assert(window.REGIONAL_PLAYLIST_IDS['India'] === 'PL4fGSI1pDJn40WjZ6utkIuj2rNg-7iGsq', 'Regional playlist India points to active Top Videos chart');
+  assert(window.REGIONAL_PLAYLIST_IDS['United States'] === 'PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i', 'Regional playlist US points to active Top Videos chart');
+  assert(window.REGIONAL_PLAYLIST_IDS['United Kingdom'] === 'PL4fGSI1pDJn688ebB8czINn0_nov50e3A', 'Regional playlist UK points to active Top Videos chart');
+
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);
   console.log('====================================================');

@@ -2,10 +2,10 @@
 // CHARTS TAB (Dynamic Live Charts with Pagination)
 // ============================================================
 const REGIONAL_PLAYLIST_IDS = {
-  "Global": "PL4fGSI1pDJn5kI81J1fYWK5eZRl1zJ5kK",
-  "India": "PL4fGSI1pDJn6OPO0FT8P2vHWmWZxCE56q",
+  "Global": "PL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv",
+  "India": "PL4fGSI1pDJn40WjZ6utkIuj2rNg-7iGsq",
   "United States": "PL4fGSI1pDJn6puJdseH2Rt9sMvt9E2M4i",
-  "United Kingdom": "PL4fGSI1pDJn69On1PS-xwbT4zW8L8tQDn"
+  "United Kingdom": "PL4fGSI1pDJn688ebB8czINn0_nov50e3A"
 };
 
 let isFetchingCharts = false;
@@ -145,6 +145,7 @@ function renderCharts(region, page = 1) {
   paginationContainer.innerHTML = pHtml;
 }
 
+window.REGIONAL_PLAYLIST_IDS = REGIONAL_PLAYLIST_IDS;
 window.fetchLiveRegionalCharts = fetchLiveRegionalCharts;
 window.switchChartRegion = switchChartRegion;
 window.setChartPage = setChartPage;

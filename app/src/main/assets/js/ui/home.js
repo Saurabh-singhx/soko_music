@@ -140,23 +140,69 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   const claimedShelves = new Set();
 
   // 1. Quick picks (YouTube Music horizontal line-like cards)
-  const apiQuick = apiShelves.find(s => !claimedShelves.has(s) && s.title && (
+  let apiQuick = apiShelves.find(s => !claimedShelves.has(s) && s.title && (
     s.title.toLowerCase().includes('quick') ||
     s.title.toLowerCase().includes('listen again') ||
     s.title.toLowerCase().includes('start radio') ||
     s.title.toLowerCase().includes('songs you might like')
-  )) || apiShelves.find(s => !claimedShelves.has(s) && s.tracks && s.tracks.length > 0 &&
-    !s.title.toLowerCase().includes('trend') &&
-    !s.title.toLowerCase().includes('chart') &&
-    !s.title.toLowerCase().includes('mix') &&
-    !s.title.toLowerCase().includes('forgot')
-  );
+  ));
+
+  // If no explicit Quick picks title, look for another track shelf that is not trending/charts/mixes/favorites
+  if (!apiQuick) {
+    apiQuick = apiShelves.find(s => !claimedShelves.has(s) && s.tracks && s.tracks.length >= 8 &&
+      !s.title.toLowerCase().includes('trend') &&
+      !s.title.toLowerCase().includes('chart') &&
+      !s.title.toLowerCase().includes('mix') &&
+      !s.title.toLowerCase().includes('forgot')
+    );
+  }
 
   if (apiQuick) claimedShelves.add(apiQuick);
 
-  const quickPool = (apiQuick && apiQuick.tracks && apiQuick.tracks.length > 0)
-    ? apiQuick.tracks
-    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []);
+  const quickPool = [];
+  const quickSeen = new Set();
+  if (apiQuick && apiQuick.tracks) {
+    for (const t of apiQuick.tracks) {
+      if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        quickSeen.add(t.id);
+        quickPool.push(t);
+      }
+    }
+  }
+
+  // Guarantee Quick picks has at least 16 tracks (4x4 horizontal columns) by backfilling from rich sources
+  if (quickPool.length < 16) {
+    const fallbackSources = [
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
+      ...CATALOG
+    ];
+    for (const t of fallbackSources) {
+      if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        quickSeen.add(t.id);
+        quickPool.push(t);
+        if (quickPool.length >= 24) break;
+      }
+    }
+  }
+
+  // If still under 16, merge from unclaimed API shelves with tracks
+  if (quickPool.length < 16) {
+    for (const s of apiShelves) {
+      if (!claimedShelves.has(s) && s.tracks) {
+        for (const t of s.tracks) {
+          if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+            quickSeen.add(t.id);
+            quickPool.push(t);
+            if (quickPool.length >= 24) break;
+          }
+        }
+      }
+      if (quickPool.length >= 16) break;
+    }
+  }
+
   const quickTracks = selectRotatingTracks(quickPool, 16, shouldRotate);
   allShelves.push({
     id: 'quick_picks',
@@ -177,9 +223,33 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   ));
   if (apiTrending) claimedShelves.add(apiTrending);
 
-  const trendPool = (apiTrending && apiTrending.tracks && apiTrending.tracks.length > 0)
-    ? apiTrending.tracks
-    : ((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []);
+  const trendPool = [];
+  const trendSeen = new Set();
+  if (apiTrending && apiTrending.tracks) {
+    for (const t of apiTrending.tracks) {
+      if (!trendSeen.has(t.id) && !quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        trendSeen.add(t.id);
+        trendPool.push(t);
+      }
+    }
+  }
+
+  if (trendPool.length < 16) {
+    const fallbackTrend = [
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
+      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
+      ...CATALOG
+    ];
+    for (const t of fallbackTrend) {
+      if (!trendSeen.has(t.id) && !quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        trendSeen.add(t.id);
+        trendPool.push(t);
+        if (trendPool.length >= 24) break;
+      }
+    }
+  }
+
   const trendTracks = selectRotatingTracks(trendPool, 16, shouldRotate);
   allShelves.push({
     id: 'trending_for_you',
@@ -200,22 +270,32 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
 
   const quickIds = new Set(quickTracks.map(t => t.id));
   const trendIds = new Set(trendTracks.map(t => t.id));
-  const forgottenPool = [
-    ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
-    ...(((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []))
-  ];
-  const uniqueForgotten = [];
-  const seenF = new Set();
-  for (const t of forgottenPool) {
-    if (!seenF.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id)) {
-      seenF.add(t.id);
-      uniqueForgotten.push(t);
+  const forgottenPool = [];
+  const forgottenSeen = new Set();
+  if (apiForgotten && apiForgotten.tracks) {
+    for (const t of apiForgotten.tracks) {
+      if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+        forgottenSeen.add(t.id);
+        forgottenPool.push(t);
+      }
     }
   }
-  const sourceForgotten = (apiForgotten && apiForgotten.tracks && apiForgotten.tracks.length > 0)
-    ? apiForgotten.tracks
-    : (uniqueForgotten.length >= 8 ? uniqueForgotten : forgottenPool);
-  const forgottenTracks = selectRotatingTracks(sourceForgotten, 16, shouldRotate);
+
+  const forgottenFallbacks = [
+    ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
+    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
+    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
+    ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || [])
+  ];
+  for (const t of forgottenFallbacks) {
+    if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+      forgottenSeen.add(t.id);
+      forgottenPool.push(t);
+      if (forgottenPool.length >= 24) break;
+    }
+  }
+
+  const forgottenTracks = selectRotatingTracks(forgottenPool, 16, shouldRotate);
   allShelves.push({
     id: 'forgotten_favorites',
     title: 'Forgotten favorites',

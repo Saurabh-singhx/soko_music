@@ -55,17 +55,15 @@ async function fetchYouTubeMusicFeed(force = false) {
       fetchLiveRegionalCharts(currentChartRegion).catch(() => {});
     }
 
+    const targetGl = currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : (currentChartRegion === 'United States' ? 'US' : 'IN'));
     const homePayload = {
       context: {
         client: {
           clientName: "WEB_REMIX",
           clientVersion: "1.20240101.01.00",
           hl: "en",
-          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US'),
+          gl: targetGl,
           visitorData: window.lastYtmVisitorData || undefined
-        },
-        request: {
-          sessionId: force ? 'soko_' + Date.now() : undefined
         }
       },
       browseId: "FEmusic_home"
@@ -83,7 +81,7 @@ async function fetchYouTubeMusicFeed(force = false) {
       const sTitleLower = (s.title || '').toLowerCase();
       const needsTrackResolution = (!s.tracks || s.tracks.length === 0) && s.mixes && s.mixes.length > 0;
       if (needsTrackResolution) {
-        for (let i = 0; i < Math.min(2, s.mixes.length); i++) {
+        for (let i = 0; i < Math.min(3, s.mixes.length); i++) {
           const pid = s.mixes[i].playlistId;
           if (pid) {
             try {
@@ -127,7 +125,7 @@ async function fetchYouTubeMusicFeed(force = false) {
               clientName: "WEB_REMIX",
               clientVersion: "1.20240101.01.00",
               hl: "en",
-              gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US'),
+              gl: targetGl,
               visitorData: window.lastYtmVisitorData || undefined
             }
           },
