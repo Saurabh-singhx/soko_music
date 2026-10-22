@@ -8,6 +8,14 @@ BUILD_DIR="${PROJECT_ROOT}/build_apk_tmp"
 WORK="${BUILD_DIR}/work"
 OUTPUT_DIR="${PROJECT_ROOT}/dist"
 
+# Safely load local .env if present (gitignored)
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "${PROJECT_ROOT}/.env" 2>/dev/null || true
+  set +a
+fi
+
 # Detect Android SDK Home
 SDK_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
 if [ ! -d "${SDK_HOME}" ] && [ -d "/home/saurabh/Android/Sdk" ]; then
@@ -41,5 +49,20 @@ KEYSTORE="${KEYSTORE_PATH:-${PROJECT_ROOT}/apps/android/keystore/soko_music.keys
 if [ ! -f "${KEYSTORE}" ] && [ -f "${PROJECT_ROOT}/scripts/soko_music.keystore" ]; then
   KEYSTORE="${PROJECT_ROOT}/scripts/soko_music.keystore"
 fi
-KEY_PASS="${KEYSTORE_PASSWORD:-sokomusic123}"
 KEY_ALIAS="${KEYSTORE_ALIAS:-soko-music-key}"
+
+# Keystore password handling (Zero hardcoded secrets committed)
+if [ -n "${KEYSTORE_PASSWORD}" ]; then
+  KEY_PASS="${KEYSTORE_PASSWORD}"
+else
+  # Use or generate a transient dev password in temporary build cache
+  DEV_PW_FILE="${BUILD_DIR}/.dev_keystore_pass"
+  if [ -f "${DEV_PW_FILE}" ]; then
+    KEY_PASS="$(cat "${DEV_PW_FILE}")"
+  else
+    mkdir -p "${BUILD_DIR}"
+    KEY_PASS="$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
+    echo -n "${KEY_PASS}" > "${DEV_PW_FILE}"
+    chmod 600 "${DEV_PW_FILE}" 2>/dev/null || true
+  fi
+fi

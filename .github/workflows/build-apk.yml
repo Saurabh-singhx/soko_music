@@ -172,14 +172,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync Auto-Update Gist
-        if: steps.version_info.outputs.is_release == 'true' && env.GIST_PAT != ''
+        if: steps.version_info.outputs.is_release == 'true'
         env:
           GIST_PAT: ${{ secrets.GIST_TOKEN }}
-          GIST_ID: "04c5db7f1bed9206d1b858cd44bfb8eb"
+          GIST_ID: ${{ secrets.GIST_ID || vars.GIST_ID }}
           VERSION: ${{ steps.version_info.outputs.version_name }}
           BUILD_NUM: ${{ steps.version_info.outputs.version_code }}
           TAG: ${{ steps.version_info.outputs.tag }}
         run: |
+          if [ -z "${GIST_PAT}" ] || [ -z "${GIST_ID}" ]; then
+            echo "::notice ::GIST_TOKEN or GIST_ID secret not configured in GitHub repository secrets; skipping remote Gist auto-update sync."
+            exit 0
+          fi
           echo "Syncing Gist version metadata for ${TAG}..."
           JSON_PAYLOAD=$(cat << EOF
           {
@@ -189,11 +193,16 @@ jobs:
               }
             }
           }
-          EOF
+EOF
           )
-          curl -s -X PATCH \
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
             -H "Authorization: token ${GIST_PAT}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/gists/${GIST_ID}" \
-            -d "${JSON_PAYLOAD}" > /dev/null
-          echo "Gist synchronization complete."
+            -d "${JSON_PAYLOAD}")
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Gist synchronization complete (HTTP ${HTTP_STATUS})."
+          else
+            echo "::warning ::Gist synchronization returned HTTP ${HTTP_STATUS}."
+          fi

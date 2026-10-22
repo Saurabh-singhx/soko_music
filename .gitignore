@@ -14,17 +14,43 @@ dist/
 *.class
 *.idsig
 *.apk
+*.aab
 
-# Keystores & Private Signing Keys
+# Keystores, Certificates & Private Signing Keys
 *.keystore
 *.jks
 *.key
 *.p12
+*.pem
+*.crt
+*.cer
+*.der
+*.pk8
+*.pfx
+apps/android/keystore/
+scripts/*.keystore
 
-# Environment & Local Configuration
-local.properties
+# Environment & Local Configuration Files
 .env
-.env.local
+.env.*
+*.env
+local.properties
+!*.env.example
+!*.env.sample
+
+# Credentials, Secrets & Token Manifests
+*credentials*.json
+*secret*.json
+google-services.json
+token.json
+tokens/
+secrets/
+private/
+auth.json
+session.json
+session_cookies.txt
+.git-credentials
+.netrc
 
 # Operating System Files
 .DS_Store
