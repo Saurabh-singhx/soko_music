@@ -1,6 +1,6 @@
 {
   "name": "soko-music-app",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Offline-First Mobile AI Companion using YouTube Music recommendations with look-ahead local caching",
   "main": "apps/mobile/index.html",
   "scripts": {
