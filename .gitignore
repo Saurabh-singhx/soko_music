@@ -61,3 +61,10 @@ Thumbs.db
 # Logs & Temporary Scratch Files
 *.log
 *.tmp
+
+# Playwright Test Artifacts & Auth Sessions
+.playwright-session/
+playwright/
+playwright.config.js
+playwright-report/
+test-results/

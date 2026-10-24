@@ -1508,6 +1508,7 @@ window.selectTrackToPlay('rad_track_1');
 
   window.playAllOfflineTracks(true);
   assert(window.isShuffle === true, 'playAllOfflineTracks with shuffle=true sets isShuffle to true');
+  window.playAllOfflineTracks(false);
   window.downloadedSet.delete('chart_down_1');
   window.downloadedSet.delete('chart_down_2');
 
@@ -1809,7 +1810,7 @@ window.selectTrackToPlay('rad_track_1');
   window.fetchYouTubeMusicFeed = origFetchYtm;
   assert(true, 'Pull-to-refresh error handling cleanly catches unsuccessful responses');
 
-  // 4. Quick picks 4-song fallback auto-backfill & rotation immunity
+  // 4. Quick picks authentic tracks preservation & zero chart fallback
   const fourSongShelf = [
     {
       title: 'Quick picks',
@@ -1824,12 +1825,14 @@ window.selectTrackToPlay('rad_track_1');
   ];
   const backfilledShelves = window.prepareHomeShelves(fourSongShelf, false);
   const qpBackfilled = backfilledShelves.find(s => s.id === 'quick_picks');
-  assert(qpBackfilled && qpBackfilled.tracks.length >= 16, `Quick picks with 4 initial tracks is auto-backfilled to >= 16 tracks (actual: ${qpBackfilled?.tracks?.length})`);
-  assert(qpBackfilled.tracks.some(t => t.id === 'qp_sub_1'), 'Quick picks preserves original API songs during backfill');
+  assert(qpBackfilled && qpBackfilled.tracks.length >= 4, `Quick picks preserves authentic tracks (actual: ${qpBackfilled?.tracks?.length})`);
+  assert(qpBackfilled.tracks.some(t => t.id === 'qp_sub_1'), 'Quick picks preserves original API songs');
+  assert(!qpBackfilled.tracks.some(t => t.id === 'kPa7bsKwL-c'), 'Quick picks NEVER falls back to chart tracks');
 
   const rotatedQpShelves = window.prepareHomeShelves(fourSongShelf, true);
   const qpRotated = rotatedQpShelves.find(s => s.id === 'quick_picks');
-  assert(qpRotated && qpRotated.tracks.length >= 16, `Quick picks during pull-to-refresh rotation maintains >= 16 tracks (actual: ${qpRotated?.tracks?.length})`);
+  assert(qpRotated && qpRotated.tracks.length >= 4, `Quick picks during rotation maintains authentic tracks (actual: ${qpRotated?.tracks?.length})`);
+  assert(!qpRotated.tracks.some(t => t.id === 'kPa7bsKwL-c'), 'Quick picks rotation NEVER introduces chart tracks');
 
   // 5. Verify active Regional Playlist IDs
   assert(window.REGIONAL_PLAYLIST_IDS['Global'] === 'PL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv', 'Regional playlist Global points to active Top Videos chart');
@@ -1873,6 +1876,33 @@ window.selectTrackToPlay('rad_track_1');
       mixes: []
     },
     {
+      title: 'Forgotten favorites',
+      badge: 'REVISIT PAST FAVORITES',
+      tracks: [
+        { id: 'ff_live_1', title: 'Past Favorite 1', duration: 215 },
+        { id: 'ff_live_2', title: 'Past Favorite 2', duration: 230 }
+      ],
+      mixes: []
+    },
+    {
+      title: 'Trending songs for you',
+      badge: 'CHARTS & BUZZ',
+      tracks: [
+        { id: 'tr_live_1', title: 'Trending Live 1', duration: 180 },
+        { id: 'tr_live_2', title: 'Trending Live 2', duration: 205 }
+      ],
+      mixes: []
+    },
+    {
+      title: 'Listen together',
+      badge: 'GROUP SESSION & PARTY PICKS',
+      tracks: [
+        { id: 'lt_live_1', title: 'Together Live 1', duration: 240 },
+        { id: 'lt_live_2', title: 'Together Live 2', duration: 195 }
+      ],
+      mixes: []
+    },
+    {
       title: 'Similar to The Weeknd',
       badge: 'SIMILAR ARTISTS',
       tracks: [
@@ -1891,12 +1921,19 @@ window.selectTrackToPlay('rad_track_1');
   ];
 
   const renderedAuthShelves = window.prepareHomeShelves(authenticYtmShelves, false);
-  const listenAgainShelf = renderedAuthShelves.find(s => s.title === 'Listen again');
-  assert(listenAgainShelf !== undefined, 'prepareHomeShelves renders "Listen again" as primary shelf');
-  assert(listenAgainShelf.tracks.some(t => t.id === 'la_song_1'), 'Listen again preserves user history track');
+  const listenAgainShelf = renderedAuthShelves.find(s => (s.title && s.title.toLowerCase().includes('listen again')));
+  assert(listenAgainShelf === undefined, 'prepareHomeShelves removes "Listen again" section');
 
-  const secondQpShelf = renderedAuthShelves.find(s => s.id === 'shelf_quick_picks' || (s.title === 'Quick picks' && s !== listenAgainShelf));
-  assert(secondQpShelf !== undefined, 'prepareHomeShelves preserves secondary "Quick picks" shelf alongside "Listen again"');
+  assert(renderedAuthShelves[0].id === 'quick_picks', '1st shelf is Quick picks');
+  assert(renderedAuthShelves[1].id === 'mix_for_you', '2nd shelf is Mix for you');
+  assert(renderedAuthShelves[2].id === 'forgotten_favorites', '3rd shelf is Forgotten favorites');
+  assert(renderedAuthShelves[3].id === 'trending_for_you', '4th shelf is Trending songs for you');
+  assert(renderedAuthShelves[4].id === 'listen_together', '5th shelf is Listen together');
+
+  assert(renderedAuthShelves[2].tracks.some(t => t.id === 'ff_live_1'), 'Forgotten favorites populated with authentic YouTube Music song');
+  assert(renderedAuthShelves[3].tracks.some(t => t.id === 'tr_live_1'), 'Trending songs for you populated with authentic YouTube Music song');
+  assert(renderedAuthShelves[4].tracks.some(t => t.id === 'lt_live_1'), 'Listen together populated with authentic YouTube Music song');
+  assert(!renderedAuthShelves.some(s => s.tracks && s.tracks.some(t => t.id === 'kPa7bsKwL-c')), 'All sections have ZERO chart fallback');
 
   const similarShelf = renderedAuthShelves.find(s => s.title === 'Similar to The Weeknd');
   assert(similarShelf !== undefined, 'prepareHomeShelves preserves "Similar to The Weeknd" artist recommendation shelf');
@@ -1908,6 +1945,221 @@ window.selectTrackToPlay('rad_track_1');
   window.logoutAccount();
   assert(window.userSession === null, 'logoutAccount resets userSession to null');
   assert(localStorage.getItem('soko_ytm_session') === null, 'logoutAccount removes soko_ytm_session');
+
+  console.log('\n--- Test Suite 18: "Mix for You" Authenticity, Exact Song Playback & Zero Chart Fallback ---');
+  window.__isAppOutdated = false;
+  const outdatedModal = getEl('appOutdatedModal');
+  if (outdatedModal) outdatedModal.style.display = 'none';
+
+  // 1. Verify authentic YouTube Music "Mixed for you" shelf is claimed and used
+  const ytmShelvesWithMix = [
+    {
+      title: 'Mixed for you',
+      badge: 'PLAYLISTS TAILORED FOR YOU',
+      tracks: [],
+      mixes: [
+        {
+          id: 'live_ytm_supermix',
+          playlistId: 'RDTMAK_live_123',
+          videoId: 'orig_supermix_song_1',
+          title: 'My Supermix',
+          subtitle: 'Dua Lipa, The Weeknd',
+          cover: 'https://i.ytimg.com/vi/orig_supermix_song_1/hqdefault.jpg'
+        },
+        {
+          id: 'live_ytm_chill',
+          playlistId: 'RDTMAK_live_456',
+          videoId: 'orig_chill_song_2',
+          title: 'Chill Mix',
+          subtitle: 'Lo-Fi Beats',
+          cover: 'https://i.ytimg.com/vi/orig_chill_song_2/hqdefault.jpg'
+        }
+      ]
+    }
+  ];
+
+  const preparedHome = window.prepareHomeShelves(ytmShelvesWithMix, false);
+  const homeMixShelf = preparedHome.find(s => s.id === 'mix_for_you');
+  assert(homeMixShelf !== undefined, '"Mix for you" shelf is present in prepared shelves');
+  assert(homeMixShelf.title === 'Mixed for you', '"Mix for you" uses authentic YouTube Music section title');
+  assert(homeMixShelf.mixes.length === 2, 'Authentic YTM mixes are preserved');
+  assert(homeMixShelf.mixes[0].videoId === 'orig_supermix_song_1', 'Mix preserves original seed song videoId');
+  assert(homeMixShelf.mixes[0].tracks[0].id === 'orig_supermix_song_1', 'Mix tracks contain the original seed song');
+
+  // 2. Verify createMixCardHtml renders original song title and artist
+  const cardHtml = window.createMixCardHtml(homeMixShelf.mixes[0]);
+  assert(cardHtml.includes('My Supermix'), 'Card HTML renders mix title');
+  assert(cardHtml.includes('Dua Lipa, The Weeknd'), 'Card HTML renders artist subtitle');
+  assert(cardHtml.includes('orig_supermix_song_1'), 'Card HTML uses original song cover art');
+
+  // 3. Verify clicking mix plays its exact original song immediately
+  window.currentHomeShelves = preparedHome;
+  let mixToastMsg = '';
+  const origToastFn = window.showToast;
+  window.showToast = (msg, ic) => { mixToastMsg = msg; if (origToastFn) origToastFn(msg, ic); };
+
+  await window.playCuratedMix('live_ytm_supermix');
+  assert(window.currentTrack && window.currentTrack.id === 'orig_supermix_song_1', 'playCuratedMix played exact original song from the mix card');
+  assert(window.currentTrack && window.currentTrack.id !== 'kPa7bsKwL-c', 'playCuratedMix did NOT fall back to chart song (Die With A Smile)');
+
+  // 4. Verify clicking second mix plays its own original song
+  await window.playCuratedMix('live_ytm_chill');
+  assert(window.currentTrack && window.currentTrack.id === 'orig_chill_song_2', 'playCuratedMix played Chill Mix original song');
+
+  // 5. Verify unresolvable mix without seed videoId shows error toast and NEVER falls back to charts
+  const brokenMix = {
+    id: 'broken_mix_no_tracks',
+    playlistId: 'RDTMAK_nonexistent_999',
+    videoId: null,
+    title: 'Broken Ghost Mix',
+    subtitle: 'Unknown',
+    tracks: []
+  };
+  window.currentHomeShelves = [{ id: 'mix_for_you', mixes: [brokenMix] }];
+  const prevApi = window.callInnerTubeApi;
+  window.callInnerTubeApi = async () => null; // Simulate network or resolution failure
+  await window.playCuratedMix('broken_mix_no_tracks');
+  window.callInnerTubeApi = prevApi;
+  const toastMsgEl = getEl('toastMsg');
+  assert(toastMsgEl.innerText.includes('Unable to play') || toastMsgEl.innerText.includes('try again'), 'Error toast was displayed when mix resolution failed');
+  assert(!window.currentTrack || (window.currentTrack.id !== 'kPa7bsKwL-c' && window.currentTrack.id !== 'yJg-Y5byMMw'), 'Unresolvable mix NEVER falls back to chart songs');
+  window.showToast = origToastFn;
+
+  console.log('\n--- Test Suite 19: YouTube Music Radio Timing & Shelf Queue Integrity ---');
+  window.isShuffle = false;
+  isShuffle = false;
+  window.isRepeat = false;
+  isRepeat = false;
+
+  // 19A: Starting song from "Quick picks" launches radio immediately
+  const mockRadioApiResponses = async (endpoint, payload) => {
+    return {
+      contents: {
+        singleColumnMusicWatchNextResultsRenderer: {
+          tabbedRenderer: {
+            watchNextTabbedResultsRenderer: {
+              tabs: [{
+                tabRenderer: {
+                  content: {
+                    musicQueueRenderer: {
+                      content: {
+                        playlistPanelRenderer: {
+                          contents: [
+                            { playlistPanelVideoRenderer: { videoId: 'qp_seed_track', title: { runs: [{ text: 'Quick Pick Seed' }] }, shortBylineText: { runs: [{ text: 'Artist' }] } } },
+                            { playlistPanelVideoRenderer: { videoId: 'rad_next_1', title: { runs: [{ text: 'Radio Song 1' }] }, shortBylineText: { runs: [{ text: 'Artist 1' }] } } },
+                            { playlistPanelVideoRenderer: { videoId: 'rad_next_2', title: { runs: [{ text: 'Radio Song 2' }] }, shortBylineText: { runs: [{ text: 'Artist 2' }] } } }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }]
+            }
+          }
+        }
+      }
+    };
+  };
+  window.callInnerTubeApi = mockRadioApiResponses;
+
+  // Simulate Quick Picks click
+  window.currentHomeShelves = [
+    {
+      id: 'quick_picks',
+      title: 'Quick picks',
+      badge: 'START RADIO FROM A SONG',
+      tracks: [
+        { id: 'qp_seed_track', title: 'Quick Pick Seed', artist: 'Artist', cover: '', duration: 200 },
+        { id: 'qp_track_2', title: 'Quick Pick 2', artist: 'Artist', cover: '', duration: 200 }
+      ]
+    },
+    {
+      id: 'forgotten_favorites',
+      title: 'Forgotten favorites',
+      badge: 'REVISIT PAST FAVORITES',
+      tracks: Array.from({ length: 16 }, (_, i) => ({
+        id: `ff_track_${i + 1}`,
+        title: `Forgotten Song ${i + 1}`,
+        artist: 'Favorite Artist',
+        cover: '',
+        duration: 210
+      }))
+    }
+  ];
+
+  window.selectTrackToPlay('qp_seed_track', true, 'quick_picks');
+  assert(window.isRadioActive === true, 'Quick picks card starts in radio mode');
+  await window.fetchAndApplyYtmRadioQueue('qp_seed_track', 'replace');
+  assert(window.activeQueueList.some(t => t.id === 'rad_next_1'), 'Quick picks radio queue contains dynamic radio recommendations');
+
+  // 19B: Starting song from "Forgotten favorites" MUST preserve all 16 tracks and NOT wipe queue
+  window.selectTrackToPlay('ff_track_1', false, 'forgotten_favorites');
+  assert(window.isRadioActive === false, 'Forgotten favorites song does NOT start in radio mode');
+  assert(window.activeQueueList.length === 16, `Active queue preserves all 16 Forgotten favorites songs (actual: ${window.activeQueueList.length})`);
+  assert(window.activeQueueList[0].id === 'ff_track_1', 'First track is ff_track_1');
+  assert(window.activeQueueList[15].id === 'ff_track_16', 'Last track is ff_track_16');
+  assert(window.lookAheadNextTrack && window.lookAheadNextTrack.id === 'ff_track_2', 'Look-ahead correctly predicted next song in section: ff_track_2');
+
+  // 19C: Advancing next track in middle of section does NOT trigger radio or wipe queue
+  window.playNextTrack();
+  assert(window.currentTrack.id === 'ff_track_2', 'playNextTrack advanced to ff_track_2');
+  assert(window.activeQueueList.length === 16, 'Active queue remains untouched with 16 songs in middle of section');
+  assert(window.isRadioActive === false, 'isRadioActive remains false in middle of section');
+
+  // 19D: Previous track navigates backwards and does NOT trigger radio
+  window.playPreviousTrack();
+  assert(window.currentTrack.id === 'ff_track_1', 'playPreviousTrack returned to ff_track_1');
+  assert(window.activeQueueList.length === 16, 'Active queue remains 16 songs on previous track');
+
+  // 19E: Approaching end of section (e.g. at track 15 of 16) seamlessly appends radio recommendations
+  window.selectTrackToPlay('ff_track_15'); // Select track 15
+  window.callInnerTubeApi = async () => ({
+    contents: {
+      singleColumnMusicWatchNextResultsRenderer: {
+        tabbedRenderer: {
+          watchNextTabbedResultsRenderer: {
+            tabs: [{
+              tabRenderer: {
+                content: {
+                  musicQueueRenderer: {
+                    content: {
+                      playlistPanelRenderer: {
+                        contents: [
+                          { playlistPanelVideoRenderer: { videoId: 'seamless_radio_1', title: { runs: [{ text: 'Radio Infinite 1' }] } } },
+                          { playlistPanelVideoRenderer: { videoId: 'seamless_radio_2', title: { runs: [{ text: 'Radio Infinite 2' }] } } }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }]
+          }
+        }
+      }
+    }
+  });
+
+  // Call playNextTrack to move to track 16 (approaching/at end)
+  window.playNextTrack();
+  assert(window.currentTrack.id === 'ff_track_16', 'Advanced to final track of section: ff_track_16');
+  await window.fetchAndApplyYtmRadioQueue('ff_track_16', 'append');
+  assert(window.activeQueueList.length > 16, `Active queue seamlessly expanded with radio recommendations (total: ${window.activeQueueList.length})`);
+  assert(window.activeQueueList.some(t => t.id === 'seamless_radio_1'), 'Queue contains seamless appended radio track 1');
+  assert(window.activeQueueList.some(t => t.id === 'seamless_radio_2'), 'Queue contains seamless appended radio track 2');
+
+  // 19F: When track 16 ends, playback seamlessly flows into the appended radio recommendations
+  window.playNextTrack();
+  assert(window.currentTrack.id === 'seamless_radio_1', 'Playback seamlessly transitioned into first radio recommendation without stopping');
+
+  // 19G: Single isolated track with no queue starts radio on launch
+  window.currentHomeShelves = [];
+  window.activePlaylist = null;
+  window.activeQueueList = null;
+  window.selectTrackToPlay('solitary_seed_track', false);
+  assert(window.activeQueueList.length >= 1, 'Solitary track initialized queue');
+  assert(window.currentTrack.id === 'solitary_seed_track', 'Solitary track started playback immediately');
 
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${testsPassed} Passed, ${testsFailed} Failed`);

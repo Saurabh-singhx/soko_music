@@ -11,11 +11,14 @@ async function playCuratedMix(mixId) {
       }
     }
   }
-  if (!mix) {
+  if (!mix && typeof CURATED_MIXES !== 'undefined') {
     mix = CURATED_MIXES.find(m => m.id === mixId || m.playlistId === mixId);
   }
 
-  if (!mix) return;
+  if (!mix) {
+    showToast('Unable to find this mix', '⚠️');
+    return;
+  }
 
   // 1. If mix already has multiple fully resolved tracks
   if (mix.tracks && mix.tracks.length > 1) {
@@ -24,6 +27,7 @@ async function playCuratedMix(mixId) {
       name: mix.title,
       songIds: mix.tracks.map(t => t.id)
     };
+    window.activePlaylist = activePlaylist;
     window.activeQueueList = mix.tracks;
     radioQueue = [];
     currentTrackIndex = 0;
@@ -41,6 +45,7 @@ async function playCuratedMix(mixId) {
         name: mix.title,
         songIds: validTracks.map(t => t.id)
       };
+      window.activePlaylist = activePlaylist;
       window.activeQueueList = validTracks;
       radioQueue = [];
       currentTrackIndex = 0;
@@ -50,56 +55,78 @@ async function playCuratedMix(mixId) {
     }
   }
 
-  // 3. If mix has a YouTube Music playlistId, resolve tracks dynamically
-  if (mix.playlistId) {
-    showToast(`Loading "${mix.title}"...`, '⏳');
-    const resolved = await resolvePlaylistTracks(mix.playlistId);
-    if (resolved && resolved.length > 0) {
-      mix.tracks = resolved;
-      mix.songIds = resolved.map(t => t.id);
-      activePlaylist = {
-        id: mix.id,
-        name: mix.title,
-        songIds: mix.songIds
-      };
-      window.activeQueueList = resolved;
-      radioQueue = [];
-      currentTrackIndex = 0;
-      selectTrackToPlay(resolved[0].id);
-      showToast(`Playing "${mix.title}"`, '🔀');
-      return;
+  // 3. If mix has an original song / videoId, play that exact song immediately!
+  const origVid = mix.videoId || (mix.tracks && mix.tracks[0] && mix.tracks[0].id);
+  if (origVid) {
+    const origTrack = (mix.tracks && mix.tracks.find(t => t.id === origVid)) || {
+      id: origVid,
+      title: mix.title,
+      artist: (mix.subtitle && mix.subtitle !== 'YouTube Music') ? mix.subtitle : 'YouTube Music',
+      cover: mix.cover || `https://i.ytimg.com/vi/${origVid}/hqdefault.jpg`,
+      duration: 215,
+      plays: 0
+    };
+    if (!CATALOG.some(t => t.id === origTrack.id)) {
+      CATALOG.push(origTrack);
     }
-  }
+    mix.tracks = [origTrack];
+    mix.songIds = [origTrack.id];
 
-  // 4. If single track exists in mix.tracks
-  if (mix.tracks && mix.tracks.length === 1) {
     activePlaylist = {
       id: mix.id,
       name: mix.title,
-      songIds: mix.tracks.map(t => t.id)
+      songIds: [origTrack.id]
     };
-    window.activeQueueList = mix.tracks;
+    window.activePlaylist = activePlaylist;
+    window.activeQueueList = [origTrack];
     radioQueue = [];
     currentTrackIndex = 0;
-    selectTrackToPlay(mix.tracks[0].id);
-    showToast(`Playing "${mix.title}"`, '🔀');
+    selectTrackToPlay(origTrack.id);
+    showToast(`Playing "${origTrack.title}"`, '▶️');
+
+    // In background, if mix has a playlistId, resolve the rest of the playlist queue
+    if (mix.playlistId && typeof resolvePlaylistTracks === 'function') {
+      resolvePlaylistTracks(mix.playlistId, origVid).then(resolved => {
+        if (resolved && resolved.length > 1) {
+          mix.tracks = resolved;
+          mix.songIds = resolved.map(t => t.id);
+          activePlaylist.songIds = mix.songIds;
+          window.activePlaylist = activePlaylist;
+          window.activeQueueList = resolved;
+        }
+      }).catch(() => {});
+    }
     return;
   }
 
-  // 5. Fallback if offline
-  const fallbackPool = (REGIONAL_CHARTS['Global'] || CATALOG).slice(0, 10);
-  if (fallbackPool.length > 0) {
-    activePlaylist = {
-      id: mix.id,
-      name: mix.title,
-      songIds: fallbackPool.map(t => t.id)
-    };
-    window.activeQueueList = fallbackPool;
-    radioQueue = [];
-    currentTrackIndex = 0;
-    selectTrackToPlay(fallbackPool[0].id);
-    showToast(`Playing "${mix.title}"`, '🔀');
+  // 4. If mix only has a playlistId (no seed videoId), resolve tracks dynamically
+  if (mix.playlistId) {
+    showToast(`Loading "${mix.title}"...`, '⏳');
+    try {
+      const resolved = await resolvePlaylistTracks(mix.playlistId);
+      if (resolved && resolved.length > 0) {
+        mix.tracks = resolved;
+        mix.songIds = resolved.map(t => t.id);
+        activePlaylist = {
+          id: mix.id,
+          name: mix.title,
+          songIds: mix.songIds
+        };
+        window.activePlaylist = activePlaylist;
+        window.activeQueueList = resolved;
+        radioQueue = [];
+        currentTrackIndex = 0;
+        selectTrackToPlay(resolved[0].id);
+        showToast(`Playing "${mix.title}"`, '🔀');
+        return;
+      }
+    } catch (err) {
+      console.warn("Failed resolving playlist tracks:", err);
+    }
   }
+
+  // 5. If there is any problem, show error toast. DO NOT FALL BACK TO CHARTS!
+  showToast(`Unable to play "${mix.title}". Please try again.`, '⚠️');
 }
 
 function playAllShelfTracks(shelfId) {
@@ -139,28 +166,91 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   const allShelves = [];
   const claimedShelves = new Set();
 
-  // 1. Quick picks (YouTube Music horizontal line-like cards)
-  let apiQuick = apiShelves.find(s => !claimedShelves.has(s) && s.title && (
+  // 1. Identify Quick picks (YouTube Music horizontal line-like cards)
+  let apiQuick = apiShelves.find(s => s.title && (
     s.title.toLowerCase().includes('quick') ||
-    s.title.toLowerCase().includes('listen again') ||
     s.title.toLowerCase().includes('start radio') ||
     s.title.toLowerCase().includes('songs you might like')
-  ));
+  ) && !s.title.toLowerCase().includes('listen again'));
 
-  // If no explicit Quick picks title, look for another track shelf that is not trending/charts/mixes/favorites
+  // 2. Identify Mix for you (Authentic YouTube Music Mixed for you shelf)
+  let apiMix = apiShelves.find(s => s.title && (
+    s.title.toLowerCase().includes('mixed for you') ||
+    s.title.toLowerCase().includes('mix for you') ||
+    s.title.toLowerCase().includes('mixes for you') ||
+    s.title.toLowerCase().includes('your mix') ||
+    s.title.toLowerCase().trim() === 'mixed for you' ||
+    s.title.toLowerCase().trim() === 'mix for you'
+  ) && !s.title.toLowerCase().includes('listen again'));
+
+  if (!apiMix) {
+    apiMix = apiShelves.find(s => (
+      (s.title && s.title.toLowerCase().includes('mix')) ||
+      (s.badge && s.badge.toLowerCase().includes('mix')) ||
+      (s.mixes && s.mixes.length > 0)
+    ) && !s.title.toLowerCase().includes('listen again') &&
+         !s.title.toLowerCase().includes('quick') &&
+         !s.title.toLowerCase().includes('forgot') &&
+         !s.title.toLowerCase().includes('trend') &&
+         !s.title.toLowerCase().includes('together'));
+  }
+
+  // 3. Identify Forgotten favorites (YouTube Music horizontal line-like cards)
+  let apiForgotten = apiShelves.find(s => s.title && (
+    s.title.toLowerCase().includes('forgot') ||
+    s.title.toLowerCase().includes('revisit') ||
+    s.title.toLowerCase().includes('rediscover') ||
+    s.title.toLowerCase().includes('replay') ||
+    s.title.toLowerCase().includes('past favorite') ||
+    s.title.toLowerCase().includes('throwback') ||
+    s.title.toLowerCase().includes('feel good') ||
+    s.title.toLowerCase().includes('feel-good')
+  ) && !s.title.toLowerCase().includes('listen again'));
+
+  if (!apiForgotten) {
+    apiForgotten = apiShelves.find(s => s.title && (
+      s.title.toLowerCase().includes('listen again') ||
+      s.title.toLowerCase().includes('recent') ||
+      s.title.toLowerCase().includes('history')
+    ));
+  }
+
+  // 4. Identify Trending songs for you (YouTube Music horizontal line-like cards)
+  let apiTrending = apiShelves.find(s => s.title && (
+    s.title.toLowerCase().includes('trend') ||
+    s.title.toLowerCase().includes('chart') ||
+    s.title.toLowerCase().includes('buzz') ||
+    s.title.toLowerCase().includes('hit') ||
+    s.title.toLowerCase().includes('popular') ||
+    s.title.toLowerCase().includes('video')
+  ) && !s.title.toLowerCase().includes('listen again'));
+
+  // 5. Identify Listen together (Party, Social & Communal Picks)
+  let apiTogether = apiShelves.find(s => s.title && (
+    s.title.toLowerCase().includes('together') ||
+    s.title.toLowerCase().includes('party') ||
+    s.title.toLowerCase().includes('hangout') ||
+    s.title.toLowerCase().includes('group') ||
+    s.title.toLowerCase().includes('friends') ||
+    s.title.toLowerCase().includes('communal') ||
+    s.title.toLowerCase().includes('dance')
+  ) && !s.title.toLowerCase().includes('listen again'));
+
+  // If no explicit Quick picks title, look for another track shelf that wasn't claimed
   if (!apiQuick) {
-    apiQuick = apiShelves.find(s => !claimedShelves.has(s) && s.tracks && s.tracks.length >= 8 &&
-      !s.title.toLowerCase().includes('trend') &&
-      !s.title.toLowerCase().includes('chart') &&
-      !s.title.toLowerCase().includes('mix') &&
-      !s.title.toLowerCase().includes('forgot')
+    apiQuick = apiShelves.find(s => s !== apiMix && s !== apiForgotten && s !== apiTrending && s !== apiTogether && s.tracks && s.tracks.length >= 4 &&
+      !s.title.toLowerCase().includes('listen again')
     );
   }
 
+  // Claim all identified core shelves up front so none steals tracks from another
   if (apiQuick) claimedShelves.add(apiQuick);
+  if (apiMix) claimedShelves.add(apiMix);
+  if (apiForgotten) claimedShelves.add(apiForgotten);
+  if (apiTrending) claimedShelves.add(apiTrending);
+  if (apiTogether) claimedShelves.add(apiTogether);
 
-  const isUserLoggedIn = userSession && userSession.isLoggedIn && !userSession.isDemo;
-
+  // --- Populate 1. Quick picks ---
   const quickPool = [];
   const quickSeen = new Set();
   if (apiQuick && apiQuick.tracks) {
@@ -172,27 +262,11 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Guarantee Quick picks has at least 16 tracks (4x4 horizontal columns)
-  if (quickPool.length < 16) {
-    const fallbackSources = [
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
-      ...CATALOG
-    ];
-    for (const t of fallbackSources) {
-      if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
-        quickSeen.add(t.id);
-        quickPool.push(t);
-        if (quickPool.length >= 24) break;
-      }
-    }
-  }
-
-  // If still under 16, merge from unclaimed API shelves with tracks
+  // Merge authentic tracks from unclaimed YouTube Music shelves
   if (quickPool.length < 16) {
     for (const s of apiShelves) {
-      if (!claimedShelves.has(s) && s.tracks) {
+      const sTitleLower = (s.title || '').toLowerCase();
+      if (!claimedShelves.has(s) && !sTitleLower.includes('listen again') && s.tracks) {
         for (const t of s.tracks) {
           if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
             quickSeen.add(t.id);
@@ -205,155 +279,274 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
+  // If still under 16, draw from user's authentic library or history
+  if (quickPool.length < 16 && typeof downloadedSet !== 'undefined') {
+    for (const id of downloadedSet) {
+      const t = findTrackAcrossAllSources(id);
+      if (t && !quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        quickSeen.add(t.id);
+        quickPool.push(t);
+        if (quickPool.length >= 16) break;
+      }
+    }
+  }
+
+  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
+  if (quickPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
+    for (const t of CATALOG) {
+      if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        quickSeen.add(t.id);
+        quickPool.push(t);
+        if (quickPool.length >= 16) break;
+      }
+    }
+  }
+
   const quickTracks = selectRotatingTracks(quickPool, 16, shouldRotate);
   allShelves.push({
     id: 'quick_picks',
-    title: (apiQuick && apiQuick.title) ? apiQuick.title : 'Quick picks',
-    badge: (apiQuick && apiQuick.badge) ? apiQuick.badge : 'START RADIO FROM A SONG',
+    title: 'Quick picks',
+    badge: (apiQuick && apiQuick.badge && !apiQuick.badge.toLowerCase().includes('listen again')) ? apiQuick.badge : 'START RADIO FROM A SONG',
     type: 'ytm-line',
     tracks: quickTracks
   });
 
-  // 2. Trending songs for you (YouTube Music horizontal line-like cards)
-  const apiTrending = apiShelves.find(s => !claimedShelves.has(s) && s.title && (
-    s.title.toLowerCase().includes('trend') ||
-    s.title.toLowerCase().includes('chart') ||
-    s.title.toLowerCase().includes('buzz') ||
-    s.title.toLowerCase().includes('hit') ||
-    s.title.toLowerCase().includes('popular') ||
-    s.title.toLowerCase().includes('video')
-  ));
-  if (apiTrending) claimedShelves.add(apiTrending);
+  // --- Populate 2. Mix for you (Authentic YouTube Music Mixed for you shelf) ---
+  let mixShelfMixes = [];
+  let mixShelfTracks = [];
 
-  const trendPool = [];
-  const trendSeen = new Set();
-  if (apiTrending && apiTrending.tracks) {
-    for (const t of apiTrending.tracks) {
-      if (!trendSeen.has(t.id) && !quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
-        trendSeen.add(t.id);
-        trendPool.push(t);
-      }
+  if (apiMix) {
+    if (apiMix.mixes && apiMix.mixes.length > 0) {
+      mixShelfMixes = [...apiMix.mixes];
+    }
+    if (apiMix.tracks && apiMix.tracks.length > 0) {
+      mixShelfTracks = apiMix.tracks.filter(t => !isPodcastOrLongTrack(t));
     }
   }
 
-  if (trendPool.length < 16 && !isUserLoggedIn) {
-    const fallbackTrend = [
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
-      ...CATALOG
-    ];
-    for (const t of fallbackTrend) {
-      if (!trendSeen.has(t.id) && !quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
-        trendSeen.add(t.id);
-        trendPool.push(t);
-        if (trendPool.length >= 24) break;
-      }
-    }
-  }
-
-  const trendTracks = trendPool.length > 0 ? selectRotatingTracks(trendPool, 16, shouldRotate) : [];
-  allShelves.push({
-    id: 'trending_for_you',
-    title: (apiTrending && apiTrending.title) ? apiTrending.title : 'Trending songs for you',
-    badge: (apiTrending && apiTrending.badge) ? apiTrending.badge : 'CHARTS & BUZZ',
-    type: 'ytm-line',
-    tracks: trendTracks
-  });
-
-  // 3. Forgotten favorites (YouTube Music horizontal line-like cards)
-  const apiForgotten = apiShelves.find(s => !claimedShelves.has(s) && s.title && (
-    s.title.toLowerCase().includes('forgot') ||
-    s.title.toLowerCase().includes('revisit') ||
-    s.title.toLowerCase().includes('rediscover') ||
-    s.title.toLowerCase().includes('replay')
-  ));
-  if (apiForgotten) claimedShelves.add(apiForgotten);
-
-  const quickIds = new Set(quickTracks.map(t => t.id));
-  const trendIds = new Set(trendTracks.map(t => t.id));
-  const forgottenPool = [];
-  const forgottenSeen = new Set();
-  if (apiForgotten && apiForgotten.tracks) {
-    for (const t of apiForgotten.tracks) {
-      if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
-        forgottenSeen.add(t.id);
-        forgottenPool.push(t);
-      }
-    }
-  }
-
-  if (forgottenPool.length < 16 && !isUserLoggedIn) {
-    const forgottenFallbacks = [
-      ...CATALOG.filter(t => t.favorite || downloadedSet.has(t.id)),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['United States']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['Global']) || []),
-      ...((REGIONAL_CHARTS && REGIONAL_CHARTS['India']) || [])
-    ];
-    for (const t of forgottenFallbacks) {
-      if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
-        forgottenSeen.add(t.id);
-        forgottenPool.push(t);
-        if (forgottenPool.length >= 24) break;
-      }
-    }
-  }
-
-  const forgottenTracks = forgottenPool.length > 0 ? selectRotatingTracks(forgottenPool, 16, shouldRotate) : [];
-  allShelves.push({
-    id: 'forgotten_favorites',
-    title: (apiForgotten && apiForgotten.title) ? apiForgotten.title : 'Forgotten favorites',
-    badge: (apiForgotten && apiForgotten.badge) ? apiForgotten.badge : 'REVISIT PAST FAVORITES',
-    type: 'ytm-line',
-    tracks: forgottenTracks
-  });
-
-  // 4. Mix for you (Personalized Mixes with even-height cards)
-  let liveMixes = [];
+  // Also collect any authentic mixes from other live shelves that weren't claimed
   for (const s of apiShelves) {
-    if (s.mixes && s.mixes.length > 0) {
-      for (const m of s.mixes) {
-        if (!liveMixes.some(existing => existing.id === m.id || existing.title.toLowerCase() === m.title.toLowerCase())) {
-          liveMixes.push(m);
+    if (!claimedShelves.has(s) && s.mixes && s.mixes.length > 0) {
+      const sLower = (s.title || '').toLowerCase();
+      if (!sLower.includes('listen again')) {
+        for (const m of s.mixes) {
+          if (!mixShelfMixes.some(existing => existing.id === m.id || existing.title.toLowerCase() === m.title.toLowerCase())) {
+            mixShelfMixes.push(m);
+          }
         }
       }
     }
   }
 
-  const finalMixes = [];
-  const seenMixKeys = new Set();
-  for (const m of liveMixes) {
-    if (!seenMixKeys.has(m.id)) {
-      seenMixKeys.add(m.id);
-      finalMixes.push(m);
-    }
-  }
-  for (const m of CURATED_MIXES) {
-    if (!seenMixKeys.has(m.id) && !seenMixKeys.has(m.title.toLowerCase())) {
-      seenMixKeys.add(m.id);
-      finalMixes.push(m);
+  // If mixes have videoId, ensure original tracks are available
+  for (const m of mixShelfMixes) {
+    if (m.videoId && (!m.tracks || m.tracks.length === 0)) {
+      const t = { id: m.videoId, title: m.title, artist: m.subtitle || 'YouTube Music', cover: m.cover, duration: 215, plays: 0 };
+      m.tracks = [t];
+      m.songIds = [m.videoId];
+      if (!mixShelfTracks.some(existing => existing.id === m.videoId)) {
+        mixShelfTracks.push(t);
+      }
     }
   }
 
-  const chosenMixes = (shouldRotate && finalMixes.length > 4)
-    ? [...finalMixes].sort(() => Math.random() - 0.5).slice(0, 10)
-    : finalMixes.slice(0, 10);
+  // Only if no authentic mixes were found at all (e.g. offline launch), use CURATED_MIXES
+  if (mixShelfMixes.length === 0 && typeof CURATED_MIXES !== 'undefined') {
+    for (const m of CURATED_MIXES) {
+      mixShelfMixes.push(m);
+    }
+  }
+
+  const chosenMixes = (shouldRotate && mixShelfMixes.length > 4)
+    ? [...mixShelfMixes].sort(() => Math.random() - 0.5).slice(0, 10)
+    : mixShelfMixes.slice(0, 10);
+
+  const chosenMixTracks = selectRotatingTracks(mixShelfTracks, 16, shouldRotate);
 
   allShelves.push({
     id: 'mix_for_you',
-    title: 'Mix for you',
-    badge: 'PLAYLISTS TAILORED FOR YOU',
+    title: (apiMix && apiMix.title && !apiMix.title.toLowerCase().includes('listen again')) ? apiMix.title : 'Mix for you',
+    badge: (apiMix && apiMix.badge) ? apiMix.badge : 'PLAYLISTS TAILORED FOR YOU',
     type: 'mix',
-    mixes: chosenMixes
+    mixes: chosenMixes,
+    tracks: chosenMixTracks
   });
 
-  // 5. Additional live track shelves from YouTube Music (e.g. New music videos, Similar to..., Artist Radios)
+  // --- Populate 3. Forgotten favorites (YouTube Music horizontal line-like cards) ---
+  const quickIds = new Set(quickTracks.map(t => t.id));
+  const forgottenPool = [];
+  const forgottenSeen = new Set();
+  if (apiForgotten && apiForgotten.tracks) {
+    for (const t of apiForgotten.tracks) {
+      if (!forgottenSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        forgottenSeen.add(t.id);
+        forgottenPool.push(t);
+      }
+    }
+  }
+
+  // Pull authentic past listening tracks from YouTube Music history / listen again shelves
+  if (forgottenPool.length < 16) {
+    for (const s of apiShelves) {
+      const sTitleLower = (s.title || '').toLowerCase();
+      if ((sTitleLower.includes('listen again') || sTitleLower.includes('recent') || sTitleLower.includes('history') || sTitleLower.includes('replay') || sTitleLower.includes('revisit') || sTitleLower.includes('feel good') || sTitleLower.includes('feel-good') || sTitleLower.includes('throwback')) && s.tracks) {
+        for (const t of s.tracks) {
+          if (!forgottenSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+            forgottenSeen.add(t.id);
+            forgottenPool.push(t);
+            if (forgottenPool.length >= 16) break;
+          }
+        }
+      }
+      if (forgottenPool.length >= 16) break;
+    }
+  }
+
+  // Merge authentic tracks from unclaimed YouTube Music shelves
+  if (forgottenPool.length < 16) {
+    for (const s of apiShelves) {
+      const sTitleLower = (s.title || '').toLowerCase();
+      if (!claimedShelves.has(s) && !sTitleLower.includes('listen again') && s.tracks) {
+        for (const t of s.tracks) {
+          if (!forgottenSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+            forgottenSeen.add(t.id);
+            forgottenPool.push(t);
+            if (forgottenPool.length >= 16) break;
+          }
+        }
+      }
+      if (forgottenPool.length >= 16) break;
+    }
+  }
+
+  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
+  if (forgottenPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
+    for (const t of CATALOG) {
+      if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+        forgottenSeen.add(t.id);
+        forgottenPool.push(t);
+        if (forgottenPool.length >= 16) break;
+      }
+    }
+  }
+
+  const forgottenTracks = selectRotatingTracks(forgottenPool, 16, shouldRotate);
+  allShelves.push({
+    id: 'forgotten_favorites',
+    title: (apiForgotten && (apiForgotten.title.toLowerCase().includes('forgot') || apiForgotten.title.toLowerCase().includes('past favorite'))) ? apiForgotten.title : 'Forgotten favorites',
+    badge: (apiForgotten && apiForgotten.badge) ? apiForgotten.badge : 'REVISIT PAST FAVORITES',
+    type: 'ytm-line',
+    tracks: forgottenTracks
+  });
+
+  // --- Populate 4. Trending songs for you (YouTube Music horizontal line-like cards) ---
+  const forgottenIds = new Set(forgottenTracks.map(t => t.id));
+  const trendPool = [];
+  const trendSeen = new Set();
+  if (apiTrending && apiTrending.tracks) {
+    for (const t of apiTrending.tracks) {
+      if (!trendSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        trendSeen.add(t.id);
+        trendPool.push(t);
+      }
+    }
+  }
+
+  // Merge authentic tracks from unclaimed YouTube Music shelves
+  if (trendPool.length < 16) {
+    for (const s of apiShelves) {
+      const sTitleLower = (s.title || '').toLowerCase();
+      if (!claimedShelves.has(s) && !sTitleLower.includes('listen again') && s.tracks) {
+        for (const t of s.tracks) {
+          if (!trendSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+            trendSeen.add(t.id);
+            trendPool.push(t);
+            if (trendPool.length >= 16) break;
+          }
+        }
+      }
+      if (trendPool.length >= 16) break;
+    }
+  }
+
+  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
+  if (trendPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
+    for (const t of CATALOG) {
+      if (!trendSeen.has(t.id) && !quickIds.has(t.id) && !forgottenIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+        trendSeen.add(t.id);
+        trendPool.push(t);
+        if (trendPool.length >= 16) break;
+      }
+    }
+  }
+
+  const trendTracks = selectRotatingTracks(trendPool, 16, shouldRotate);
+  allShelves.push({
+    id: 'trending_for_you',
+    title: (apiTrending && apiTrending.title.toLowerCase().includes('trend')) ? apiTrending.title : 'Trending songs for you',
+    badge: (apiTrending && apiTrending.badge) ? apiTrending.badge : 'CHARTS & BUZZ',
+    type: 'ytm-line',
+    tracks: trendTracks
+  });
+
+  // --- Populate 5. Listen together (Party, Social & Communal Picks) ---
+  const trendIds = new Set(trendTracks.map(t => t.id));
+  const togetherPool = [];
+  const togetherSeen = new Set();
+  if (apiTogether && apiTogether.tracks) {
+    for (const t of apiTogether.tracks) {
+      if (!togetherSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+        togetherSeen.add(t.id);
+        togetherPool.push(t);
+      }
+    }
+  }
+
+  // Merge authentic tracks from unclaimed YouTube Music shelves
+  if (togetherPool.length < 16) {
+    for (const s of apiShelves) {
+      const sTitleLower = (s.title || '').toLowerCase();
+      if (!claimedShelves.has(s) && !sTitleLower.includes('listen again') && s.tracks) {
+        for (const t of s.tracks) {
+          if (!togetherSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
+            togetherSeen.add(t.id);
+            togetherPool.push(t);
+            if (togetherPool.length >= 16) break;
+          }
+        }
+      }
+      if (togetherPool.length >= 16) break;
+    }
+  }
+
+  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
+  if (togetherPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
+    for (const t of CATALOG) {
+      if (!togetherSeen.has(t.id) && !quickIds.has(t.id) && !forgottenIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
+        togetherSeen.add(t.id);
+        togetherPool.push(t);
+        if (togetherPool.length >= 16) break;
+      }
+    }
+  }
+
+  const togetherTracks = selectRotatingTracks(togetherPool, 16, shouldRotate);
+  allShelves.push({
+    id: 'listen_together',
+    title: (apiTogether && apiTogether.title.toLowerCase().includes('together')) ? apiTogether.title : 'Listen together',
+    badge: (apiTogether && apiTogether.badge) ? apiTogether.badge : 'GROUP SESSION & PARTY PICKS',
+    type: 'ytm-line',
+    tracks: togetherTracks
+  });
+
+  // 6. Additional live track shelves from YouTube Music (e.g. Similar to..., Artist Radios)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.tracks && s.tracks.length > 0) {
       const lower = (s.title || '').toLowerCase();
       const badgeLower = (s.badge || '').toLowerCase();
       if (lower.includes('podcast') || lower.includes('episode') ||
-          badgeLower.includes('podcast') || badgeLower.includes('episode')) {
+          badgeLower.includes('podcast') || badgeLower.includes('episode') ||
+          lower.includes('listen again') || badgeLower.includes('listen again')) {
         continue;
       }
       const filteredTracks = s.tracks.filter(t => !isPodcastOrLongTrack(t));
@@ -370,16 +563,17 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // 6. Additional live mix/playlist shelves from YouTube Music (e.g. Dancing on your own, Easy Evenings)
+  // 7. Additional live mix/playlist shelves from YouTube Music (e.g. Dancing on your own, Easy Evenings)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.mixes && s.mixes.length > 0) {
       const lower = (s.title || '').toLowerCase();
       const badgeLower = (s.badge || '').toLowerCase();
       if (lower.includes('podcast') || lower.includes('episode') ||
-          badgeLower.includes('podcast') || badgeLower.includes('episode')) {
+          badgeLower.includes('podcast') || badgeLower.includes('episode') ||
+          lower.includes('listen again') || badgeLower.includes('listen again')) {
         continue;
       }
-      if (!lower.includes('mix for you')) {
+      if (!lower.includes('mix for you') && !lower.includes('mixed for you')) {
         claimedShelves.add(s);
         allShelves.push({
           id: 'shelf_mix_' + s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
@@ -453,10 +647,16 @@ function renderHomeShelves(rawShelves, shouldRotate = false) {
           <button class="filter-pill shelf-play-all-btn" onclick="playAllShelfTracks('${shelf.id}')">Play all</button>
         </div>
         <div class="ytm-grid-shelf">
-          ${shelf.tracks.map(createYtmLineCardHtml).join('')}
+          ${shelf.tracks.map(t => createYtmLineCardHtml(t, shelf.id)).join('')}
         </div>
       `;
     } else if (shelf.type === 'mix') {
+      const mixesHtml = (shelf.mixes && shelf.mixes.length > 0)
+        ? `<div class="shelf-container">${shelf.mixes.map(createMixCardHtml).join('')}</div>`
+        : '';
+      const tracksHtml = (shelf.tracks && shelf.tracks.length > 0)
+        ? `<div class="ytm-grid-shelf" style="margin-top: 12px;">${shelf.tracks.map(t => createYtmLineCardHtml(t, shelf.id)).join('')}</div>`
+        : '';
       return `
         <div class="section-title-row" style="margin-top: 22px;">
           <div>
@@ -464,9 +664,8 @@ function renderHomeShelves(rawShelves, shouldRotate = false) {
             <h2 class="section-title">${shelf.title}</h2>
           </div>
         </div>
-        <div class="shelf-container">
-          ${shelf.mixes.map(createMixCardHtml).join('')}
-        </div>
+        ${mixesHtml}
+        ${tracksHtml}
       `;
     } else {
       return `

@@ -41,6 +41,11 @@ function callInnerTubeApi(endpoint, payload, customCookie) {
     if (window.SokoNative && typeof window.SokoNative.fetchYtmApi === 'function') {
       window.SokoNative.fetchYtmApi(endpoint, JSON.stringify(payload), customCookie || '', cbId);
     } else {
+      const isLocal = typeof window !== 'undefined' && window.location && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
+      const targetUrl = isLocal
+        ? ('/' + (endpoint.startsWith('/') ? endpoint.slice(1) : endpoint))
+        : (endpoint.startsWith('http') ? endpoint : 'https://music.youtube.com/' + endpoint);
+
       const reqHeaders = {
         'Content-Type': 'application/json',
         'X-YouTube-Client-Name': '67',
@@ -51,8 +56,9 @@ function callInnerTubeApi(endpoint, payload, customCookie) {
       };
       if (customCookie) {
         reqHeaders['Cookie'] = customCookie;
+        reqHeaders['X-Custom-Cookie'] = customCookie;
       }
-      fetch((endpoint.startsWith('http') ? endpoint : 'https://music.youtube.com/' + endpoint), {
+      fetch(targetUrl, {
         method: 'POST',
         headers: reqHeaders,
         body: JSON.stringify(payload)

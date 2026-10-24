@@ -52,6 +52,14 @@ function setupYtPlayer() {
         'onStateChange': onYtPlayerStateChange,
         'onError': (event) => {
           console.warn("YouTube player notice (code " + event.data + ")");
+          if (typeof showToast === 'function') {
+            showToast('⚠️ Stream error, skipping to next track...', '⏭️');
+          }
+          setTimeout(() => {
+            if (typeof playNextTrack === 'function') {
+              playNextTrack();
+            }
+          }, 1200);
         }
       }
     });

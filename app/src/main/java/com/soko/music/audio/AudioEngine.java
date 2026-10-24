@@ -26,6 +26,7 @@ public class AudioEngine {
     private String currentTrackArtist = "Offline Storage";
     private String currentCoverUrl = "";
     private volatile String currentActivePlaybackVideoId = "";
+    private volatile String currentTrackPath = "";
 
     public AudioEngine(Activity activity, WebView webView, AudioFocusManager audioFocusManager, MediaNotificationManager mediaNotificationManager) {
         this.activity = activity;
@@ -70,6 +71,11 @@ public class AudioEngine {
                 public boolean onError(MediaPlayer mp, int what, int extra) {
                     Log.e(TAG, "Native MediaPlayer error: what=" + what + ", extra=" + extra);
                     stopProgressUpdater();
+                    try {
+                        if (mp != null) {
+                            mp.reset();
+                        }
+                    } catch (Exception ignored) {}
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -116,13 +122,16 @@ public class AudioEngine {
         currentTrackTitle = title;
         currentTrackArtist = artist;
         currentCoverUrl = coverUrl;
+        currentTrackPath = pathOrUrl;
 
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
                     initMediaPlayer();
-                    mediaPlayer.reset();
+                    try {
+                        mediaPlayer.reset();
+                    } catch (Exception ignored) {}
                     mediaPlayer.setVolume(1.0f, 1.0f);
 
                     if (audioFocusManager != null) {
@@ -219,10 +228,21 @@ public class AudioEngine {
                             }
                         } else {
                             Log.e(TAG, "Audio asset not found for " + cleanPath);
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativePlaybackError && window.onNativePlaybackError(-404)", null);
+                            }
                         }
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error playing audio: " + pathOrUrl, e);
+                    try {
+                        if (mediaPlayer != null) {
+                            mediaPlayer.reset();
+                        }
+                    } catch (Exception ignored) {}
+                    if (webView != null) {
+                        webView.evaluateJavascript("window.onNativePlaybackError && window.onNativePlaybackError(-1)", null);
+                    }
                 }
             }
         });
@@ -258,16 +278,26 @@ public class AudioEngine {
             public void run() {
                 try {
                     if (mediaPlayer != null) {
-                        mediaPlayer.start();
-                        startProgressUpdater();
-                        int cur = mediaPlayer.getCurrentPosition() / 1000;
-                        int dur = mediaPlayer.getDuration() / 1000;
-                        if (mediaNotificationManager != null) {
-                            mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, true, dur, cur);
+                        try {
+                            mediaPlayer.start();
+                            startProgressUpdater();
+                            int cur = mediaPlayer.getCurrentPosition() / 1000;
+                            int dur = mediaPlayer.getDuration() / 1000;
+                            if (mediaNotificationManager != null) {
+                                mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, true, dur, cur);
+                            }
+                            if (webView != null) {
+                                webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + dur + ")", null);
+                            }
+                            return;
+                        } catch (IllegalStateException ise) {
+                            Log.w(TAG, "mediaPlayer.start() failed in resume, re-initializing track", ise);
                         }
-                        if (webView != null) {
-                            webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + dur + ")", null);
-                        }
+                    }
+                    if (currentTrackPath != null && !currentTrackPath.isEmpty()) {
+                        playNativeAudio(currentTrackPath, currentTrackTitle, currentTrackArtist, currentCoverUrl);
+                    } else if (webView != null) {
+                        webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(false, 0)", null);
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "resumeNativeAudio error", e);

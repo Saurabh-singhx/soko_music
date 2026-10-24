@@ -3,14 +3,14 @@
 // ============================================================
 function isRadioHomeShelf(shelf) {
   if (!shelf) return false;
-  if (shelf.id === 'quick_picks' || shelf.id === 'trending_for_you') return true;
+  if (shelf.id === 'quick_picks') return true;
   const title = (shelf.title || '').toLowerCase();
   const badge = (shelf.badge || '').toLowerCase();
-  return title.includes('quick') || title.includes('trend') || title.includes('radio') ||
-         title.includes('listen again') || badge.includes('radio') || badge.includes('buzz');
+  return (title.includes('quick') || badge.includes('start radio')) &&
+         !title.includes('forgot') && !title.includes('together') && !title.includes('trend');
 }
 
-function selectTrackToPlay(trackId, startRadio = false) {
+function selectTrackToPlay(trackId, startRadio = false, contextShelfId = null) {
   if (typeof window !== 'undefined' && window.__isAppOutdated) {
     if (typeof showToast === 'function') {
       showToast('⚠️ App is outdated. Please update to continue.', '⛔');
@@ -47,58 +47,98 @@ function selectTrackToPlay(trackId, startRadio = false) {
     return;
   }
 
-  const homeShelves = (typeof window !== 'undefined' && window.currentHomeShelves) || currentHomeShelves;
-  const matchingShelf = (homeShelves && homeShelves.length > 0)
-    ? homeShelves.find(s => s.tracks && s.tracks.some(t => t.id === track.id))
-    : null;
-  const isRadioShelf = startRadio || isRadioHomeShelf(matchingShelf);
+  const curPlaylist = (typeof window !== 'undefined' && window.activePlaylist) || activePlaylist;
+  const isPlayingActivePlaylist = !startRadio && curPlaylist && curPlaylist.songIds && curPlaylist.songIds.includes(track.id);
 
-  if (!startRadio && activePlaylist && activePlaylist.songIds && activePlaylist.songIds.includes(track.id)) {
+  const homeShelves = (typeof window !== 'undefined' && window.currentHomeShelves) || currentHomeShelves;
+  let matchingShelf = null;
+  if (!isPlayingActivePlaylist && homeShelves && homeShelves.length > 0) {
+    if (contextShelfId) {
+      matchingShelf = homeShelves.find(s => s.id === contextShelfId);
+    }
+    if (!matchingShelf) {
+      matchingShelf = homeShelves.find(s => s.tracks && s.tracks.some(t => t.id === track.id));
+    }
+  }
+  const isRadioShelf = !isPlayingActivePlaylist && startRadio;
+
+  if (isPlayingActivePlaylist) {
+    activePlaylist = curPlaylist;
+    window.activePlaylist = curPlaylist;
     if (!window.activeQueueList || !window.activeQueueList.some(t => t.id === track.id)) {
-      window.activeQueueList = activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean);
+      window.activeQueueList = curPlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean);
     }
     window.isRadioActive = false;
   } else if (!startRadio && window.activeQueueList && window.activeQueueList.length > 1 && window.activeQueueList.some(t => t.id === track.id)) {
-    // Track is already part of the active queue - keep queue progression intact
-  } else if (matchingShelf) {
+    // Track is already part of the active queue - keep queue progression intact!
+  } else if (isRadioShelf) {
+    // Quick picks or explicit radio launch
     activePlaylist = null;
     window.activePlaylist = null;
+    window.activeQueueList = [track];
+    window.isRadioActive = true;
+  } else if (matchingShelf && matchingShelf.tracks && matchingShelf.tracks.length > 0) {
+    // Multi-track home shelf (e.g. Forgotten favorites, Trending songs for you, Listen together)
+    // Queue MUST preserve all 16 tracks from this shelf!
+    activePlaylist = {
+      id: 'shelf_' + matchingShelf.id,
+      name: matchingShelf.title,
+      songIds: matchingShelf.tracks.map(t => t.id)
+    };
+    window.activePlaylist = activePlaylist;
     window.activeQueueList = matchingShelf.tracks;
-    window.isRadioActive = isRadioShelf;
+    window.isRadioActive = false;
   } else if (currentYtmSearchResults && currentYtmSearchResults.some(t => t.id === track.id)) {
     activePlaylist = null;
     window.activePlaylist = null;
     window.activeQueueList = currentYtmSearchResults;
-    window.isRadioActive = isRadioShelf;
+    window.isRadioActive = false;
   } else if (REGIONAL_CHARTS && currentChartRegion && REGIONAL_CHARTS[currentChartRegion]?.some(t => t.id === track.id)) {
-    activePlaylist = null;
-    window.activePlaylist = null;
+    activePlaylist = {
+      id: 'chart_' + currentChartRegion,
+      name: currentChartRegion + ' Chart',
+      songIds: REGIONAL_CHARTS[currentChartRegion].map(t => t.id)
+    };
+    window.activePlaylist = activePlaylist;
     window.activeQueueList = REGIONAL_CHARTS[currentChartRegion];
-    window.isRadioActive = isRadioShelf;
+    window.isRadioActive = false;
   } else if (personalShelves && personalShelves.length > 0) {
     let foundInShelf = false;
     for (const shelf of personalShelves) {
       if (shelf.items && shelf.items.some(t => t.id === track.id)) {
-        activePlaylist = null;
-        window.activePlaylist = null;
+        activePlaylist = {
+          id: 'shelf_' + (shelf.id || 'personal'),
+          name: shelf.title || 'Personal Shelf',
+          songIds: shelf.items.map(t => t.id)
+        };
+        window.activePlaylist = activePlaylist;
         window.activeQueueList = shelf.items;
-        window.isRadioActive = isRadioShelf;
+        window.isRadioActive = false;
         foundInShelf = true;
         break;
       }
     }
-    if (!foundInShelf && !activePlaylist) {
+    if (!foundInShelf) {
+      activePlaylist = null;
+      window.activePlaylist = null;
       window.activeQueueList = [track];
       window.isRadioActive = isRadioShelf;
     }
-  } else if (!activePlaylist) {
+  } else {
+    activePlaylist = null;
+    window.activePlaylist = null;
     window.activeQueueList = [track];
     window.isRadioActive = isRadioShelf;
   }
 
   playRealTrack(track);
   scheduleLookAhead(track.id);
-  fetchAndApplyYtmRadioQueue(track.id, isRadioShelf);
+
+  // Trigger YouTube Music Radio:
+  // ONLY if this is a radio launch (Quick picks or startRadio=true) OR single isolated track with no queue!
+  if (isRadioShelf || (window.activeQueueList && window.activeQueueList.length <= 1)) {
+    fetchAndApplyYtmRadioQueue(track.id, 'replace');
+  }
 }
 
 function playRealTrack(track) {
@@ -215,9 +255,9 @@ function stopAllAudioEngines() {
 function togglePlayPause() {
   if (currentTrack && activeDownloads.has(currentTrack.id)) {
     if (window.SokoNative && typeof window.SokoNative.setActivePlaybackId === 'function') {
-      window.SokoNative.setActivePlaybackId('');
+      window.SokoNative.setActivePlaybackId(currentTrack.id);
     }
-    showToast('Auto-play cancelled', '⏸️');
+    showToast(`Loading "${currentTrack.title}"...`, '⏳');
     return;
   }
 
@@ -256,11 +296,19 @@ function togglePlayPause() {
       updatePlayIcons(false);
       stopRealVisualizer();
     } else {
-      window.SokoNative.resumeAudio();
-      isPlaying = true;
-      window.isPlaying = true;
-      updatePlayIcons(true);
-      startRealVisualizer();
+      let isNativeRunning = false;
+      if (typeof window.SokoNative.isAudioPlaying === 'function') {
+        try { isNativeRunning = window.SokoNative.isAudioPlaying(); } catch (e) {}
+      }
+      if (!isNativeRunning && currentTrack && isTrackOffline(currentTrack.id)) {
+        playRealTrack(currentTrack);
+      } else {
+        window.SokoNative.resumeAudio();
+        isPlaying = true;
+        window.isPlaying = true;
+        updatePlayIcons(true);
+        startRealVisualizer();
+      }
     }
   } else if (audioEl) {
     if (audioEl.paused) {

@@ -45,7 +45,7 @@ public class TrackDownloader {
                 final File targetFile = new File(musicDir, videoId + ".m4a");
 
                 if (targetFile.exists() && targetFile.length() > 50000) {
-                    final boolean shouldPlay = autoPlayWhenDone && videoId.equals(audioEngine.getActivePlaybackVideoId());
+                    final boolean shouldPlay = videoId.equals(audioEngine.getActivePlaybackVideoId());
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -209,6 +209,78 @@ public class TrackDownloader {
                     }
 
                     if (directAudioUrl == null) {
+                        try {
+                            URL fallbackUrl = new URL("https://www.youtube.com/youtubei/v1/player?prettyPrint=false");
+                            HttpURLConnection fConn = (HttpURLConnection) fallbackUrl.openConnection();
+                            fConn.setRequestMethod("POST");
+                            fConn.setConnectTimeout(10000);
+                            fConn.setReadTimeout(10000);
+                            fConn.setDoOutput(true);
+                            fConn.setRequestProperty("Content-Type", "application/json");
+                            fConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android 12; Mobile; Oculus Quest 3)");
+
+                            JSONObject fClient = new JSONObject();
+                            fClient.put("clientName", "ANDROID_VR");
+                            fClient.put("clientVersion", "1.56.21");
+                            fClient.put("deviceMake", "Oculus");
+                            fClient.put("deviceModel", "Quest 3");
+                            fClient.put("osName", "Android");
+                            fClient.put("osVersion", "12");
+                            fClient.put("hl", "en");
+
+                            JSONObject fContext = new JSONObject();
+                            fContext.put("client", fClient);
+
+                            JSONObject fPayload = new JSONObject();
+                            fPayload.put("context", fContext);
+                            fPayload.put("videoId", videoId);
+                            fPayload.put("contentCheckOk", true);
+                            fPayload.put("racyCheckOk", true);
+
+                            OutputStream fOs = fConn.getOutputStream();
+                            fOs.write(fPayload.toString().getBytes("UTF-8"));
+                            fOs.flush();
+                            fOs.close();
+
+                            BufferedReader fReader = new BufferedReader(new InputStreamReader(fConn.getInputStream()));
+                            StringBuilder fSb = new StringBuilder();
+                            String fLine;
+                            while ((fLine = fReader.readLine()) != null) {
+                                fSb.append(fLine);
+                            }
+                            fReader.close();
+
+                            JSONObject fData = new JSONObject(fSb.toString());
+                            JSONObject fStreaming = fData.optJSONObject("streamingData");
+                            if (fStreaming != null) {
+                                JSONArray fFormats = fStreaming.optJSONArray("adaptiveFormats");
+                                if (fFormats != null) {
+                                    for (int i = 0; i < fFormats.length(); i++) {
+                                        JSONObject f = fFormats.getJSONObject(i);
+                                        int itag = f.optInt("itag");
+                                        if (itag == 140 && f.has("url")) {
+                                            directAudioUrl = f.getString("url");
+                                            totalSize = f.optLong("contentLength", 0);
+                                            break;
+                                        }
+                                    }
+                                    if (directAudioUrl == null) {
+                                        for (int i = 0; i < fFormats.length(); i++) {
+                                            JSONObject f = fFormats.getJSONObject(i);
+                                            String mime = f.optString("mimeType", "");
+                                            if (mime.contains("audio") && f.has("url")) {
+                                                directAudioUrl = f.getString("url");
+                                                totalSize = f.optLong("contentLength", 0);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+
+                    if (directAudioUrl == null) {
                         throw new Exception("Unable to extract direct audio stream from YouTube");
                     }
 
@@ -297,15 +369,20 @@ public class TrackDownloader {
                     fos.flush();
                     fos.close();
 
-                    if (partFile.length() > 50000) {
+                    if (totalSize > 0 && downloadedBytes < totalSize) {
+                        if (partFile.exists()) partFile.delete();
+                        throw new Exception("Download incomplete: received " + downloadedBytes + " of " + totalSize + " bytes");
+                    }
+
+                    if (partFile.length() > 80000) {
                         partFile.renameTo(targetFile);
                     } else {
                         if (partFile.exists()) partFile.delete();
                         throw new Exception("Downloaded file too small: " + partFile.length() + " bytes");
                     }
 
-                    // 4. Notify completion and play if still active
-                    final boolean shouldPlay = autoPlayWhenDone && videoId.equals(audioEngine.getActivePlaybackVideoId());
+                    // 4. Notify completion and play if this is the active track
+                    final boolean shouldPlay = videoId.equals(audioEngine.getActivePlaybackVideoId());
                     activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {

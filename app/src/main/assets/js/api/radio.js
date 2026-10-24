@@ -1,9 +1,15 @@
 // ============================================================
 // YOUTUBE MUSIC RADIO QUEUE GENERATOR
 // ============================================================
-async function fetchAndApplyYtmRadioQueue(trackId, force = false) {
+async function fetchAndApplyYtmRadioQueue(trackId, mode = 'auto') {
   try {
-    if (!force && window.activeQueueList && window.activeQueueList.length > 5 && window.activeQueueList.some(t => t.id === trackId)) {
+    if (!trackId) return;
+
+    // Check if we are in append/auto mode and queue already has plenty of songs
+    const isReplace = (mode === true || mode === 'replace');
+    const isAppend = (mode === false || mode === 'append');
+
+    if (!isReplace && window.activeQueueList && window.activeQueueList.length > 5 && window.activeQueueList.some(t => t.id === trackId)) {
       const cIdx = window.activeQueueList.findIndex(t => t.id === trackId);
       if (cIdx >= 0 && cIdx < window.activeQueueList.length - 3) {
         // Active queue already contains this track and has plenty of upcoming recommendations
@@ -25,7 +31,7 @@ async function fetchAndApplyYtmRadioQueue(trackId, force = false) {
           clientName: "WEB_REMIX",
           clientVersion: "1.20261020.10.00",
           hl: "en",
-          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
+          gl: (typeof currentChartRegion !== 'undefined' && currentChartRegion === 'India') ? 'IN' : ((typeof currentChartRegion !== 'undefined' && currentChartRegion === 'United Kingdom') ? 'GB' : 'US')
         }
       },
       videoId: trackId,
@@ -65,34 +71,41 @@ async function fetchAndApplyYtmRadioQueue(trackId, force = false) {
       }
     }
 
-    if (queueTracks.length > 1 && currentTrack && currentTrack.id === trackId) {
-      const isChartActive = REGIONAL_CHARTS && currentChartRegion && window.activeQueueList === REGIONAL_CHARTS[currentChartRegion];
-      const homeShelves = (typeof window !== 'undefined' && window.currentHomeShelves) || currentHomeShelves;
-      const isShelfActive = !force && !window.isRadioActive && homeShelves && homeShelves.some(s => s.tracks && s.tracks === window.activeQueueList);
-      if (!activePlaylist && !isChartActive && !isShelfActive) {
-        if (!force && window.isRadioActive && window.activeQueueList && window.activeQueueList.length > 1 && window.activeQueueList.some(t => t.id === trackId)) {
-          // If radio is already active and we are near the end, append fresh unique recommendations
-          const existingIds = new Set(window.activeQueueList.map(t => t.id));
-          const freshTracks = queueTracks.filter(t => !existingIds.has(t.id));
-          if (freshTracks.length > 0) {
-            window.activeQueueList = [...window.activeQueueList, ...freshTracks];
-            console.log(`[YTM-Radio] Appended ${freshTracks.length} fresh radio songs (total queue: ${window.activeQueueList.length})`);
+    if (queueTracks.length > 1) {
+      const shouldAppend = isAppend || (!isReplace && window.activeQueueList && window.activeQueueList.length > 1);
+
+      if (shouldAppend && window.activeQueueList && window.activeQueueList.length > 0) {
+        // Append mode: preserve existing queue and add fresh unique recommendations at the end
+        const existingIds = new Set(window.activeQueueList.map(t => t.id));
+        const freshTracks = queueTracks.filter(t => !existingIds.has(t.id));
+        if (freshTracks.length > 0) {
+          window.activeQueueList = [...window.activeQueueList, ...freshTracks];
+          if (activePlaylist && activePlaylist.songIds) {
+            activePlaylist.songIds = [...activePlaylist.songIds, ...freshTracks.map(t => t.id)];
           }
-        } else {
-          // Start dynamic radio queue with recommendations
-          console.log(`[YTM-Radio] Connected ${queueTracks.length} dynamic recommended songs for ${trackId}`);
-          window.activeQueueList = queueTracks;
-          window.isRadioActive = true;
-          if (typeof showToast === 'function') {
-            showToast('📻 YouTube Music Radio started', '📻');
-          }
+          console.log(`[YTM-Radio] Appended ${freshTracks.length} fresh radio songs (total queue: ${window.activeQueueList.length})`);
         }
-        scheduleLookAhead(trackId);
-        autoPrefetchNextTrack(trackId);
+        window.isRadioActive = true;
+      } else {
+        // Replace mode: Quick picks or brand new radio launch
+        console.log(`[YTM-Radio] Connected ${queueTracks.length} dynamic recommended songs for ${trackId}`);
+        window.activeQueueList = queueTracks;
+        window.isRadioActive = true;
+        activePlaylist = null;
+        window.activePlaylist = null;
+        if (typeof showToast === 'function') {
+          showToast('📻 YouTube Music Radio started', '📻');
+        }
       }
+      const currentId = currentTrack?.id || trackId;
+      scheduleLookAhead(currentId);
+      autoPrefetchNextTrack(currentId);
     }
   } catch (err) {
     console.warn("fetchAndApplyYtmRadioQueue notice:", err);
+    if (typeof showToast === 'function') {
+      showToast('⚠️ Unable to connect YouTube Music radio', '⚠️');
+    }
   }
 }
 

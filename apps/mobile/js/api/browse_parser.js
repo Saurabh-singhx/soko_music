@@ -235,16 +235,21 @@ function parseBrowseShelves(data) {
             else if (titleLower.includes('romantic') || titleLower.includes('love')) badge = 'Romance';
 
             const grad = MIX_GRADIENTS[mixes.length % MIX_GRADIENTS.length];
+            const origTrack = vid ? { id: vid, title, artist: subtitle, cover, duration: 215, plays: 0 } : null;
+            if (origTrack && !CATALOG.some(t => t.id === vid)) {
+              CATALOG.push(origTrack);
+            }
             mixes.push({
               id: mixId,
               playlistId: pid || null,
+              videoId: vid || null,
               title,
               subtitle,
               cover,
               badge,
               gradient: grad,
-              songIds: [],
-              tracks: []
+              songIds: vid ? [vid] : [],
+              tracks: origTrack ? [origTrack] : []
             });
           }
         } else if (vid) {

@@ -48,8 +48,24 @@ function toggleRepeat() {
 function playNextTrack() {
   let pool = (window.activeQueueList && window.activeQueueList.length > 1)
     ? window.activeQueueList
-    : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
-  if (!pool || pool.length <= 1) pool = CATALOG;
+    : (activePlaylist && activePlaylist.songIds && activePlaylist.songIds.length > 0
+        ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean)
+        : (typeof CATALOG !== 'undefined' && CATALOG.length > 1 ? CATALOG : (window.activeQueueList || [])));
+  if (!pool || pool.length <= 1) {
+    if (typeof CATALOG !== 'undefined' && CATALOG.length > 1) {
+      pool = CATALOG;
+    }
+  }
+  
+  // NEVER fall back to charts! If queue is empty, notify user and stop.
+  if (!pool || pool.length === 0) {
+    if (typeof showToast === 'function') {
+      showToast('No more tracks in queue', 'ℹ️');
+    }
+    stopAllAudioEngines();
+    return;
+  }
+
   const filterFn = (typeof isPodcastOrLongTrack === 'function')
     ? isPodcastOrLongTrack
     : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
@@ -58,24 +74,84 @@ function playNextTrack() {
     if (validPool.length > 0) pool = validPool;
   }
 
+  // If pool has only 1 track and it is the current track, attempt to fetch dynamic radio queue
+  if (pool.length === 1 && pool[0].id === currentTrack?.id) {
+    if (typeof fetchAndApplyYtmRadioQueue === 'function') {
+      fetchAndApplyYtmRadioQueue(currentTrack.id, true).then(() => {
+        if (window.activeQueueList && window.activeQueueList.length > 1) {
+          const nextIdx = window.activeQueueList.findIndex(t => t.id !== currentTrack.id);
+          if (nextIdx >= 0) selectTrackToPlay(window.activeQueueList[nextIdx].id);
+        } else {
+          if (typeof showToast === 'function') showToast('No more tracks in radio queue', 'ℹ️');
+          stopAllAudioEngines();
+        }
+      }).catch(() => {
+        if (typeof showToast === 'function') showToast('Unable to load next radio track', '⚠️');
+        stopAllAudioEngines();
+      });
+    } else {
+      if (typeof showToast === 'function') showToast('No more tracks in queue', 'ℹ️');
+      stopAllAudioEngines();
+    }
+    return;
+  }
+
   let nextTrack;
-  if (isShuffle) {
+  const shuffleActive = (typeof window !== 'undefined' && window.isShuffle !== undefined) ? window.isShuffle : isShuffle;
+  const repeatActive = (typeof window !== 'undefined' && window.isRepeat !== undefined) ? window.isRepeat : isRepeat;
+
+  if (repeatActive && currentTrack) {
+    nextTrack = currentTrack;
+  } else if (shuffleActive) {
     const otherTracks = pool.filter(t => t.id !== currentTrack?.id);
     nextTrack = otherTracks.length > 0 ? otherTracks[Math.floor(Math.random() * otherTracks.length)] : pool[0];
   } else {
     const curIdx = pool.findIndex(t => t.id === currentTrack?.id);
-    const nextIdx = curIdx >= 0 ? (curIdx + 1) % pool.length : 0;
-    nextTrack = pool[nextIdx];
-  }
-  if (nextTrack) {
-    if (window.isRadioActive && typeof fetchAndApplyYtmRadioQueue === 'function') {
-      const curPos = pool.findIndex(t => t.id === nextTrack.id);
-      if (curPos >= pool.length - 3) {
-        fetchAndApplyYtmRadioQueue(nextTrack.id, false);
-      }
+    const nextIdx = curIdx >= 0 ? (curIdx + 1) : 0;
+    if (nextIdx < pool.length) {
+      nextTrack = pool[nextIdx];
+    } else {
+      nextTrack = null;
     }
-    selectTrackToPlay(nextTrack.id);
   }
+
+  // If we reached the end of the pool:
+  if (!nextTrack) {
+    // End of playlist/shelf reached! Seamlessly append radio recommendations
+    if (typeof fetchAndApplyYtmRadioQueue === 'function' && currentTrack) {
+      fetchAndApplyYtmRadioQueue(currentTrack.id, 'append').then(() => {
+        if (window.activeQueueList && window.activeQueueList.length > pool.length) {
+          const newTrack = window.activeQueueList[pool.length];
+          if (newTrack) selectTrackToPlay(newTrack.id);
+        } else {
+          if (typeof showToast === 'function') showToast('End of queue reached', 'ℹ️');
+          stopAllAudioEngines();
+        }
+      }).catch(() => {
+        if (typeof showToast === 'function') showToast('End of queue', 'ℹ️');
+        stopAllAudioEngines();
+      });
+    } else {
+      if (typeof showToast === 'function') showToast('End of queue', 'ℹ️');
+      stopAllAudioEngines();
+    }
+    return;
+  }
+
+  // Look-ahead radio continuation:
+  // 1. If radio is active and approaching end of radio queue (within 3 tracks)
+  // 2. OR if playing a shelf/playlist and within 2 tracks of the end
+  if (typeof fetchAndApplyYtmRadioQueue === 'function') {
+    const curPos = pool.findIndex(t => t.id === nextTrack.id);
+    if (window.isRadioActive && curPos >= pool.length - 3) {
+      fetchAndApplyYtmRadioQueue(nextTrack.id, 'append');
+    } else if (!window.isRadioActive && curPos >= pool.length - 2) {
+      // Nearing end of shelf/playlist - prefetch radio recommendations so playback never stops
+      fetchAndApplyYtmRadioQueue(nextTrack.id, 'append');
+    }
+  }
+
+  selectTrackToPlay(nextTrack.id);
 }
 
 function getActivePlaybackCurrentTime() {
@@ -107,8 +183,20 @@ function playPreviousTrack() {
   }
   let pool = (window.activeQueueList && window.activeQueueList.length > 1)
     ? window.activeQueueList
-    : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
-  if (!pool || pool.length <= 1) pool = CATALOG;
+    : (activePlaylist && activePlaylist.songIds && activePlaylist.songIds.length > 0
+        ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean)
+        : (typeof CATALOG !== 'undefined' && CATALOG.length > 1 ? CATALOG : (window.activeQueueList || [])));
+  if (!pool || pool.length <= 1) {
+    if (typeof CATALOG !== 'undefined' && CATALOG.length > 1) {
+      pool = CATALOG;
+    }
+  }
+  if (!pool || pool.length === 0) {
+    if (typeof showToast === 'function') {
+      showToast('No previous tracks in queue', 'ℹ️');
+    }
+    return;
+  }
   const filterFn = (typeof isPodcastOrLongTrack === 'function')
     ? isPodcastOrLongTrack
     : (typeof window !== 'undefined' && typeof window.isPodcastOrLongTrack === 'function' ? window.isPodcastOrLongTrack : null);
@@ -118,7 +206,7 @@ function playPreviousTrack() {
   }
 
   const curIdx = pool.findIndex(t => t.id === currentTrack?.id);
-  const prevIdx = curIdx > 0 ? curIdx - 1 : pool.length - 1;
+  const prevIdx = curIdx > 0 ? (curIdx - 1) : 0;
   const prevTrack = pool[prevIdx];
   if (prevTrack) {
     selectTrackToPlay(prevTrack.id);
@@ -128,13 +216,25 @@ function playPreviousTrack() {
 function scheduleLookAhead(currentId) {
   let pool = (window.activeQueueList && window.activeQueueList.length > 1)
     ? window.activeQueueList
-    : (activePlaylist ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean) : CATALOG);
-  if (!pool || pool.length <= 1) pool = CATALOG;
+    : (activePlaylist && activePlaylist.songIds && activePlaylist.songIds.length > 0
+        ? activePlaylist.songIds.map(id => findTrackAcrossAllSources(id)).filter(Boolean)
+        : (typeof CATALOG !== 'undefined' && CATALOG.length > 1 ? CATALOG : (window.activeQueueList || [])));
+  if (!pool || pool.length <= 1) {
+    if (typeof CATALOG !== 'undefined' && CATALOG.length > 1) {
+      pool = CATALOG;
+    }
+  }
+  if (!pool || pool.length === 0) {
+    lookAheadNextTrack = null;
+    window.lookAheadNextTrack = null;
+    updateLookAheadUI();
+    return;
+  }
   const validPool = pool.filter(t => !isPodcastOrLongTrack(t));
   const poolToUse = validPool.length > 0 ? validPool : pool;
   const curIdx = poolToUse.findIndex(t => t.id === currentId);
   const nextIdx = curIdx >= 0 ? (curIdx + 1) % poolToUse.length : 0;
-  lookAheadNextTrack = poolToUse[nextIdx] || CATALOG[0] || null;
+  lookAheadNextTrack = poolToUse[nextIdx] || null;
   window.lookAheadNextTrack = lookAheadNextTrack;
   updateLookAheadUI();
 }

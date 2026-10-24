@@ -52,6 +52,13 @@ window.onNativeTrackEnded = function() {
 window.onNativePlaybackError = function(errorCode) {
   console.warn('Native playback error code:', errorCode);
   if (currentTrack) {
+    if (window.SokoNative && typeof window.SokoNative.deleteDownloadedTrack === 'function') {
+      try { window.SokoNative.deleteDownloadedTrack(currentTrack.id); } catch (e) {}
+    }
+    if (typeof downloadedSet !== 'undefined' && downloadedSet.has(currentTrack.id)) {
+      downloadedSet.delete(currentTrack.id);
+      if (typeof persistDownloadState === 'function') persistDownloadState();
+    }
     showToast('Playback error, switching to stream...', '⚠️');
     playOnlineYouTubeStream(currentTrack);
   }

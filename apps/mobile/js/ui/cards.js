@@ -18,12 +18,14 @@ function createShelfCardHtml(track) {
   `;
 }
 
-function createYtmLineCardHtml(track) {
+function createYtmLineCardHtml(track, shelfId = null) {
   if (!track || !track.id) return '';
   const isCached = isTrackOffline(track.id);
   const isDownloading = activeDownloads.has(track.id);
+  const isRadioStart = shelfId === 'quick_picks';
+  const shelfArg = shelfId ? `'${shelfId}'` : 'null';
   return `
-    <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}', true)">
+    <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}', ${isRadioStart}, ${shelfArg})">
       <div class="ytm-line-art-wrapper">
         <img class="ytm-line-art" src="${track.cover || 'assets/logo.png'}" alt="${track.title || 'Track'}" onerror="this.onerror=null; this.src='assets/logo.png';" loading="lazy" />
         ${isCached ? '<div class="offline-chip-mini">⚡</div>' : ''}
@@ -48,23 +50,28 @@ function createYtmLineCardHtml(track) {
 function createMixCardHtml(mix) {
   if (!mix || !mix.id) return '';
   let coverArt = mix.cover;
+  const firstTrack = (mix.tracks && mix.tracks.length > 0) ? mix.tracks[0] :
+    ((mix.songIds && mix.songIds.length > 0) ? findTrackAcrossAllSources(mix.songIds[0]) : null);
   if (!coverArt || coverArt === 'assets/logo.png') {
-    const firstTrack = (mix.songIds && mix.songIds.length > 0) ? findTrackAcrossAllSources(mix.songIds[0]) : null;
     if (firstTrack && firstTrack.cover) coverArt = firstTrack.cover;
   }
   coverArt = coverArt || 'assets/logo.png';
   const gradient = mix.gradient || 'linear-gradient(135deg, #6366F1, #06B6D4)';
   const badge = mix.badge || 'Mix';
+  const displayTitle = mix.title || (firstTrack ? firstTrack.title : 'Mix');
+  const displaySubtitle = (mix.subtitle && mix.subtitle !== 'YouTube Music')
+    ? mix.subtitle
+    : (firstTrack ? firstTrack.artist : 'Personalized Mix');
 
   return `
     <div class="shelf-card" onclick="playCuratedMix('${mix.id}')">
       <div class="shelf-card-art-wrapper" style="background: ${gradient};">
-        <img class="shelf-card-art" src="${coverArt}" alt="${mix.title || 'Mix'}" onerror="this.onerror=null; this.src='assets/logo.png';" loading="lazy" style="opacity: 0.88; mix-blend-mode: overlay;" />
+        <img class="shelf-card-art" src="${coverArt}" alt="${displayTitle}" onerror="this.onerror=null; this.src='assets/logo.png';" loading="lazy" style="opacity: 0.88; mix-blend-mode: overlay;" />
         <div class="mix-card-badge">${badge}</div>
       </div>
       <div class="shelf-card-info">
-        <div class="shelf-card-title">${mix.title || 'Mix'}</div>
-        <div class="shelf-card-artist">${mix.subtitle || 'Personalized Mix'}</div>
+        <div class="shelf-card-title">${displayTitle}</div>
+        <div class="shelf-card-artist">${displaySubtitle}</div>
       </div>
     </div>
   `;

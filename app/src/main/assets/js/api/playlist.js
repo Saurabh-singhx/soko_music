@@ -1,11 +1,15 @@
 // ============================================================
 // YOUTUBE MUSIC PLAYLIST RESOLVER
 // ============================================================
-async function resolvePlaylistTracks(playlistId) {
-  if (!playlistId) return [];
-  const cleanId = playlistId.startsWith('VL') ? playlistId.substring(2) : playlistId;
+async function resolvePlaylistTracks(playlistId, videoId = null) {
+  if (!playlistId && !videoId) return [];
+  const cleanId = (playlistId && playlistId.startsWith('VL')) ? playlistId.substring(2) : (playlistId || '');
   const isUser = userSession && userSession.isLoggedIn;
-  const cookie = isUser ? (userSession.cookie || '') : '';
+  let cookie = isUser ? (userSession.cookie || '') : '';
+  if (!cookie && window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
+    const sc = window.SokoNative.getStoredYtmCookies();
+    if (sc && sc.length > 20) cookie = sc;
+  }
 
   try {
     const payload = {
@@ -14,12 +18,17 @@ async function resolvePlaylistTracks(playlistId) {
           clientName: "WEB_REMIX",
           clientVersion: "1.20261020.10.00",
           hl: "en",
-          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
+          gl: (typeof currentChartRegion !== 'undefined' && currentChartRegion === 'India') ? 'IN' : ((typeof currentChartRegion !== 'undefined' && currentChartRegion === 'United Kingdom') ? 'GB' : 'US')
         }
       },
-      playlistId: cleanId,
       isAudioOnly: true
     };
+    if (cleanId) payload.playlistId = cleanId;
+    if (videoId) {
+      payload.videoId = videoId;
+    } else if (cleanId.startsWith('RDAMVM') && cleanId.length > 6) {
+      payload.videoId = cleanId.substring(6);
+    }
 
     const res = await callInnerTubeApi("youtubei/v1/next", payload, cookie);
     let contents = res?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.musicQueueRenderer?.content?.playlistPanelRenderer?.contents ||
@@ -94,7 +103,7 @@ async function resolvePlaylistTracks(playlistId) {
           clientName: "WEB_REMIX",
           clientVersion: "1.20261020.10.00",
           hl: "en",
-          gl: currentChartRegion === 'India' ? 'IN' : (currentChartRegion === 'United Kingdom' ? 'GB' : 'US')
+          gl: (typeof currentChartRegion !== 'undefined' && currentChartRegion === 'India') ? 'IN' : ((typeof currentChartRegion !== 'undefined' && currentChartRegion === 'United Kingdom') ? 'GB' : 'US')
         }
       },
       browseId: "VL" + cleanId
@@ -167,4 +176,116 @@ async function resolvePlaylistTracks(playlistId) {
   return [];
 }
 
+async function fetchMixThemedTracks(query) {
+  if (!query) return [];
+  try {
+    let cookie = null;
+    if (userSession && userSession.cookie) {
+      cookie = userSession.cookie;
+    } else if (window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
+      const c = window.SokoNative.getStoredYtmCookies();
+      if (c && c.length > 20) cookie = c;
+    }
+
+    const payload = {
+      context: {
+        client: {
+          clientName: "WEB_REMIX",
+          clientVersion: "1.20261020.10.00",
+          hl: "en",
+          gl: (typeof currentChartRegion !== 'undefined' && currentChartRegion === 'India') ? 'IN' : ((typeof currentChartRegion !== 'undefined' && currentChartRegion === 'United Kingdom') ? 'GB' : 'US')
+        }
+      },
+      query: query
+    };
+
+    const data = await callInnerTubeApi("youtubei/v1/search", payload, cookie);
+    if (!data) return [];
+
+    const foundItems = [];
+    function scanItems(obj, depth = 8) {
+      if (!obj || typeof obj !== 'object' || depth < 0) return;
+      if (obj.musicResponsiveListItemRenderer) {
+        foundItems.push(obj.musicResponsiveListItemRenderer);
+        return;
+      }
+      if (Array.isArray(obj)) {
+        for (const item of obj) scanItems(item, depth - 1);
+      } else {
+        for (const k in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, k)) scanItems(obj[k], depth - 1);
+        }
+      }
+    }
+    scanItems(data);
+
+    const tracks = [];
+    for (const r of foundItems) {
+      if (isInnerTubePodcastItem(r)) continue;
+      let vid = r.playlistItemData?.videoId;
+      if (!vid) {
+        const c0 = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer;
+        vid = c0?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId;
+      }
+      if (!vid) {
+        vid = r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+      }
+      if (!vid) continue;
+
+      let title = "Unknown Track";
+      if (r.flexColumns && r.flexColumns[0]) {
+        const c0 = r.flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer;
+        const runs = c0?.text?.runs || c0?.title?.runs || [];
+        title = runs.map(x => x.text || '').join('').trim();
+      }
+      if (!title) {
+        const runs = r.title?.runs || (typeof r.title === 'string' ? [{ text: r.title }] : []);
+        title = runs.map(x => x.text || '').join('').trim();
+      }
+
+      let artist = "YouTube Music";
+      if (r.flexColumns && r.flexColumns.length > 1) {
+        const c1 = r.flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer;
+        const runs = c1?.text?.runs || c1?.title?.runs || [];
+        const cands = runs.map(x => x.text ? x.text.trim() : '').filter(x => x && x !== '•' && !/^[0-9]+:[0-9]+(:[0-9]+)?$/.test(x));
+        if (cands.length > 0) artist = cands.join(', ');
+      }
+
+      let cover = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+      const thumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+      if (thumbs.length > 0) cover = thumbs[thumbs.length - 1].url;
+
+      let duration = 215;
+      if (r.fixedColumns && r.fixedColumns.length > 0) {
+        const fc = r.fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer;
+        const durRun = (fc?.text?.runs || []).find(x => /^[0-9]+:[0-9]+(:[0-9]+)?$/.test((x.text || '').trim()));
+        if (durRun) duration = parseDurationStringToSeconds(durRun.text);
+      }
+      if (duration === 215 && r.flexColumns && r.flexColumns.length > 1) {
+        for (let ci = 1; ci < r.flexColumns.length; ci++) {
+          const col = r.flexColumns[ci]?.musicResponsiveListItemFlexColumnRenderer;
+          const durRun = (col?.text?.runs || []).find(x => /^[0-9]+:[0-9]+(:[0-9]+)?$/.test((x.text || '').trim()));
+          if (durRun) {
+            duration = parseDurationStringToSeconds(durRun.text);
+            break;
+          }
+        }
+      }
+
+      const tObj = { id: vid, title, artist, cover, duration, plays: 0 };
+      if (isPodcastOrLongTrack(tObj) || isPodcastOrLongTrack(r)) continue;
+
+      if (!tracks.some(t => t.id === vid)) {
+        tracks.push(tObj);
+        if (!CATALOG.some(t => t.id === vid)) CATALOG.push(tObj);
+      }
+    }
+    return tracks;
+  } catch (err) {
+    console.warn("fetchMixThemedTracks error:", err);
+    return [];
+  }
+}
+
 window.resolvePlaylistTracks = resolvePlaylistTracks;
+window.fetchMixThemedTracks = fetchMixThemedTracks;
