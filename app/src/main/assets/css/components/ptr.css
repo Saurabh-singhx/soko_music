@@ -1,0 +1,76 @@
+    /* Native Swipe-Down Pull-to-Refresh Styles */
+    .ptr-container {
+      overflow: hidden;
+      max-height: 0px;
+      height: 0px;
+      opacity: 0;
+      transition: height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), max-height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease, margin-bottom 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0px;
+      pointer-events: none;
+      width: 100%;
+    }
+    .ptr-container.pulling {
+      transition: none !important;
+    }
+    .ptr-container.active {
+      margin-bottom: 14px;
+      opacity: 1;
+    }
+    .ptr-content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 18px;
+      background: rgba(21, 27, 39, 0.92);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: var(--radius-full);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(99, 102, 241, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .ptr-icon-wrapper {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+    }
+    .ptr-arrow {
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      stroke: var(--accent-cyan);
+    }
+    .ptr-arrow.flipped {
+      transform: rotate(180deg);
+      stroke: #10B981;
+    }
+    .ptr-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(6, 182, 212, 0.25);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+    }
+    .ptr-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.2px;
+    }
+
+    .auth-banner-signin-btn {
+      font-size: 12px !important;
+      min-height: 40px;
+      min-width: 76px;
+      padding: 8px 16px !important;
+      border: none !important;
+      background: var(--accent-primary) !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      flex-shrink: 0;
+    }
+

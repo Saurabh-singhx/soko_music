@@ -1,0 +1,87 @@
+# Node & Package Managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Android Build & Temporary Files
+build_apk_tmp/
+build/
+.gradle/
+bin/
+gen/
+obj/
+dist/
+*.dex
+*.class
+*.idsig
+*.apk
+*.aab
+
+# IDE & Editor Configuration
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Keystores, Certificates & Private Signing Keys
+*.keystore
+*.jks
+*.key
+*.p12
+*.pem
+*.crt
+*.cer
+*.der
+*.pk8
+*.pfx
+apps/android/keystore/
+scripts/*.keystore
+
+# Environment & Local Configuration Files
+.env
+.env.*
+*.env
+local.properties
+!*.env.example
+!*.env.sample
+
+# Credentials, Secrets & Token Manifests
+*credentials*.json
+*secret*.json
+google-services.json
+token.json
+tokens/
+secrets/
+private/
+auth.json
+session.json
+session_cookies.txt
+.git-credentials
+.netrc
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Logs & Temporary Scratch Files
+*.log
+*.tmp
+
+# Playwright Test Artifacts & Auth Sessions
+.playwright-session/
+playwright/
+playwright.config.js
+playwright-report/
+test-results/
+tests/e2e/
+scripts/preview_server.js

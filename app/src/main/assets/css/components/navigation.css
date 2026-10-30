@@ -1,0 +1,44 @@
+    /* ============================================================ */
+    /* BOTTOM NAVIGATION DOCK (4 Tabs)                             */
+    /* ============================================================ */
+    .tab-bar-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 520px;
+      height: calc(var(--tab-bar-height) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: rgba(7, 9, 14, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 45;
+    }
+
+    .nav-tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      flex: 1;
+      height: 100%;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
+    .nav-tab-item.active {
+      color: var(--accent-primary);
+    }
+    .nav-tab-item.active svg {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+

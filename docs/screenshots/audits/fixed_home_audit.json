@@ -1,0 +1,33 @@
+{
+  "viewport": {
+    "width": 412,
+    "height": 915
+  },
+  "summary": {
+    "issuesCount": 0,
+    "warningsCount": 2,
+    "passedCount": 2,
+    "score": 80
+  },
+  "issues": [],
+  "warnings": [
+    {
+      "category": "accessibility",
+      "severity": "warning",
+      "title": "Small Tap Targets Detected",
+      "details": "13 interactive elements are smaller than 40x40px recommended for thumb taps. Samples: #headerAuthBtn (\"Saurabh\"): 78x22px, .filter-pill (\"↻ Refresh\"): 73x27px, .mini-controls (\"\"): 80x38px, .mini-btn (\"\"): 38x38px, .mini-btn (\"\"): 38x38px",
+      "recommendation": "Increase padding or min-height/min-width to at least 44px for comfortable touch navigation."
+    },
+    {
+      "category": "safe-area",
+      "severity": "warning",
+      "title": "Low Bottom Clearance",
+      "details": "body has only 0px bottom padding. Bottom navigation bars or home indicators may occlude content.",
+      "recommendation": "Set padding-bottom to calc(var(--tab-height, 64px) + env(safe-area-inset-bottom, 20px) + 24px)."
+    }
+  ],
+  "passed": [
+    "No horizontal overflow; layout fits within viewport width.",
+    "Typography meets mobile readability standards (font-size >= 10px)."
+  ]
+}

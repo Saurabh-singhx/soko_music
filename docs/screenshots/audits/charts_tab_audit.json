@@ -1,0 +1,27 @@
+{
+  "viewport": {
+    "width": 412,
+    "height": 915
+  },
+  "summary": {
+    "issuesCount": 0,
+    "warningsCount": 1,
+    "passedCount": 3,
+    "score": 90
+  },
+  "issues": [],
+  "warnings": [
+    {
+      "category": "accessibility",
+      "severity": "warning",
+      "title": "Small Tap Targets Detected",
+      "details": "67 interactive elements are smaller than 40x40px recommended for thumb taps. Samples: .chart-track-actions (\"\"): 82x38px, .search-action-btn (\"\"): 38x38px, .search-action-btn (\"\"): 38x38px, .chart-track-actions (\"\"): 82x38px, .search-action-btn (\"\"): 38x38px",
+      "recommendation": "Increase padding or min-height/min-width to at least 44px for comfortable touch navigation."
+    }
+  ],
+  "passed": [
+    "No horizontal overflow; layout fits within viewport width.",
+    "Typography meets mobile readability standards (font-size >= 10px).",
+    "Safe bottom clearance verified (96px)."
+  ]
+}

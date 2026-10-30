@@ -1,0 +1,29 @@
+{
+  "name": "soko-music-app",
+  "version": "1.0.7",
+  "description": "Offline-First Mobile Audio Player & Client-Side Predictive Caching Architecture Prototype",
+  "main": "apps/mobile/index.html",
+  "scripts": {
+    "test": "node tests/cache_test.js && node tests/comprehensive_test.js && node tests/remove_long_tracks_test.js",
+    "test:unit": "node tests/cache_test.js",
+    "test:comprehensive": "node tests/comprehensive_test.js",
+    "test:duration": "node tests/remove_long_tracks_test.js",
+    "preview": "bash scripts/preview.sh",
+    "build": "bash scripts/build.sh",
+    "build:apk": "bash scripts/build_apk.sh",
+    "generate:icons": "python3 scripts/generate_icons.py",
+    "setup:hooks": "bash scripts/setup_git_hooks.sh"
+  },
+  "keywords": [
+    "soko",
+    "music-player",
+    "offline-first",
+    "caching-engine",
+    "look-ahead-cache",
+    "audio-player",
+    "mobile-web",
+    "opus"
+  ],
+  "author": "Saurabh",
+  "license": "MIT"
+}

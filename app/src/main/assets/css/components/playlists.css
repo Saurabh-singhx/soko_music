@@ -1,0 +1,85 @@
+    /* Playlist Grid (Zero Layout Shift) */
+    .playlist-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .playlist-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 10px 12px 10px;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+    .playlist-card:active {
+      transform: scale(0.97);
+      background: var(--bg-card-hover);
+    }
+    .playlist-card-art {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      margin-bottom: 8px;
+      background: #11141E;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .playlist-card-info {
+      padding: 2px;
+      display: flex;
+      flex-direction: column;
+    }
+    .playlist-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      height: 2.6em;
+      min-height: 2.6em;
+      max-height: 2.6em;
+    }
+    .playlist-card-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Storage Meter Card */
+    .storage-meter-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.04) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .storage-progress-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .storage-progress-fill {
+      height: 100%;
+      width: 12%;
+      background: linear-gradient(90deg, #6366F1, #06B6D4);
+      transition: width 0.3s ease;
+    }
+

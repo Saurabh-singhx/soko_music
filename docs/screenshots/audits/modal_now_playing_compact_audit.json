@@ -1,0 +1,20 @@
+{
+  "viewport": {
+    "width": 360,
+    "height": 800
+  },
+  "summary": {
+    "issuesCount": 0,
+    "warningsCount": 0,
+    "passedCount": 4,
+    "score": 100
+  },
+  "issues": [],
+  "warnings": [],
+  "passed": [
+    "No horizontal overflow; layout fits within viewport width.",
+    "All interactive touch targets meet recommended size requirements.",
+    "Typography meets mobile readability standards (font-size >= 10px).",
+    "Safe bottom clearance verified (96px)."
+  ]
+}
