@@ -30,6 +30,7 @@ function initApp() {
   updateStorageMetrics();
   setupMediaSession();
   updateAuthHeaderUI();
+  if (typeof updateSettingsProfileUI === 'function') updateSettingsProfileUI();
 
   // Check last played track
   const savedLastTrack = getLastPlayedTrack();

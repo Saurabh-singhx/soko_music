@@ -4,10 +4,11 @@
   "description": "Offline-First Mobile Audio Player & Client-Side Predictive Caching Architecture Prototype",
   "main": "apps/mobile/index.html",
   "scripts": {
-    "test": "node tests/cache_test.js && node tests/comprehensive_test.js && node tests/remove_long_tracks_test.js",
+    "test": "node tests/cache_test.js && node tests/comprehensive_test.js && node tests/remove_long_tracks_test.js && node tests/profile_picture_test.js",
     "test:unit": "node tests/cache_test.js",
     "test:comprehensive": "node tests/comprehensive_test.js",
     "test:duration": "node tests/remove_long_tracks_test.js",
+    "test:profile": "node tests/profile_picture_test.js",
     "preview": "bash scripts/preview.sh",
     "build": "bash scripts/build.sh",
     "build:apk": "bash scripts/build_apk.sh",

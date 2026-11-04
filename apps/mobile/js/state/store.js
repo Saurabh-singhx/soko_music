@@ -1,12 +1,26 @@
 // Soko reactive application state store
 let userSession = null;
-const savedSession = localStorage.getItem('soko_ytm_session');
-if (savedSession) {
-  try {
+let customAvatar = null;
+let customAvatarType = null;
+let customProfileName = null;
+
+try {
+  const savedSession = localStorage.getItem('soko_ytm_session');
+  if (savedSession) {
     userSession = JSON.parse(savedSession);
-  } catch (e) {
-    userSession = null;
   }
+} catch (e) {
+  userSession = null;
+}
+
+try {
+  customAvatar = localStorage.getItem(STORAGE_KEY_CUSTOM_AVATAR) || null;
+  customAvatarType = localStorage.getItem(STORAGE_KEY_CUSTOM_AVATAR_TYPE) || null;
+  customProfileName = localStorage.getItem(STORAGE_KEY_USER_PROFILE_NAME) || null;
+} catch (e) {
+  customAvatar = null;
+  customAvatarType = null;
+  customProfileName = null;
 }
 
 const downloadedSet = new Set();
@@ -143,6 +157,9 @@ function findTrackAcrossAllSources(trackId) {
 
 // Window bindings
 window.userSession = userSession;
+window.customAvatar = customAvatar;
+window.customAvatarType = customAvatarType;
+window.customProfileName = customProfileName;
 window.downloadedSet = downloadedSet;
 window.personalShelves = personalShelves;
 window.currentHomeShelves = currentHomeShelves;

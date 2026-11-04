@@ -157,3 +157,191 @@
       color: #94a3b8;
     }
 
+    /* User Profile & Avatar Upload Styles */
+    .profile-card-section {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 16px 14px;
+      margin-bottom: 14px;
+      text-align: center;
+      position: relative;
+    }
+
+    .profile-avatar-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .modal-avatar-wrapper {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    }
+
+    .modal-avatar-wrapper:hover,
+    .modal-avatar-wrapper:active {
+      transform: scale(1.04);
+    }
+
+    .modal-avatar-preview {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366F1, #06B6D4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-avatar-preview img,
+    .modal-profile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    .avatar-edit-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.48);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+
+    .modal-avatar-wrapper:hover .avatar-edit-overlay,
+    .modal-avatar-wrapper:active .avatar-edit-overlay {
+      opacity: 1;
+    }
+
+    .avatar-gif-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      background: linear-gradient(135deg, #EC4899, #8B5CF6);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 12px;
+      letter-spacing: 0.05em;
+      border: 1.5px solid var(--bg-surface);
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.5);
+      animation: pulseGifBadge 2s infinite ease-in-out;
+      z-index: 3;
+    }
+
+    @keyframes pulseGifBadge {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .profile-meta-wrap {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .profile-display-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-display-sub {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-upload-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .profile-btn-upload {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #6366F1, #4F46E5);
+      color: #FFFFFF;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    }
+
+    .profile-btn-upload:hover {
+      background: linear-gradient(135deg, #4F46E5, #4338CA);
+      transform: translateY(-1px);
+    }
+
+    .profile-btn-upload:active {
+      transform: scale(0.96);
+    }
+
+    .profile-btn-remove {
+      padding: 8px 12px;
+      background: transparent;
+      color: #EF4444;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: var(--radius-md);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .profile-btn-remove:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: #EF4444;
+    }
+
+    .profile-btn-remove:active {
+      transform: scale(0.96);
+    }
+
+    .profile-upload-hint {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .profile-modal-divider {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 14px 0 12px;
+    }
+
