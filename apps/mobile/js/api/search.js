@@ -134,7 +134,12 @@ async function executeSearch(query) {
       }
 
       const thumbs = item.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-      const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : ('https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg');
+      let cover = 'https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg';
+      if (thumbs.length > 0) {
+        const sorted = [...thumbs].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+        const rawUrl = sorted[0]?.url || thumbs[thumbs.length - 1].url;
+        cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
+      }
 
       let duration = 210;
       if (item.fixedColumns && item.fixedColumns.length > 0) {

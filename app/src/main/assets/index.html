@@ -81,13 +81,25 @@
             <h2 class="section-title">Top 100 Charts</h2>
             <p class="section-subtitle">Trending hits with authentic audio</p>
           </div>
+          <button id="btnRefreshCharts" class="action-icon-btn" onclick="refreshCurrentCharts()" title="Refresh Charts" aria-label="Refresh Charts">
+            <svg id="chartsRefreshIcon" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+            </svg>
+          </button>
         </div>
 
-        <div class="filter-pills-row">
+        <div class="filter-pills-row" id="chartsCountryPills">
           <div class="filter-pill active" onclick="switchChartRegion('Global')">Global</div>
           <div class="filter-pill" onclick="switchChartRegion('United States')">United States</div>
           <div class="filter-pill" onclick="switchChartRegion('India')">India</div>
           <div class="filter-pill" onclick="switchChartRegion('United Kingdom')">United Kingdom</div>
+          <div class="filter-pill" onclick="switchChartRegion('Canada')">Canada</div>
+          <div class="filter-pill" onclick="switchChartRegion('Australia')">Australia</div>
+          <div class="filter-pill" onclick="switchChartRegion('Germany')">Germany</div>
+          <div class="filter-pill" onclick="switchChartRegion('France')">France</div>
+          <div class="filter-pill" onclick="switchChartRegion('Japan')">Japan</div>
+          <div class="filter-pill" onclick="switchChartRegion('Brazil')">Brazil</div>
+          <div class="filter-pill" onclick="switchChartRegion('South Korea')">South Korea</div>
         </div>
 
         <div class="track-list" id="chartsTrackList">

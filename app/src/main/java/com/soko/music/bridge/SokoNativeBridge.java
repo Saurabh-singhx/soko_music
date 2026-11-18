@@ -193,6 +193,11 @@ public class SokoNativeBridge {
     }
 
     @JavascriptInterface
+    public String getDownloadedCoverPath(final String videoId) {
+        return storageBridge != null ? storageBridge.getDownloadedCoverPath(videoId) : "";
+    }
+
+    @JavascriptInterface
     public boolean deleteDownloadedTrack(final String videoId) {
         return storageBridge != null && storageBridge.deleteDownloadedTrack(videoId);
     }

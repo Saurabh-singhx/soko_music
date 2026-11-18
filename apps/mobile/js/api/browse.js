@@ -284,3 +284,286 @@ async function fetchYouTubeMusicFeed(force = false) {
 }
 
 window.fetchYouTubeMusicFeed = fetchYouTubeMusicFeed;
+
+// ============================================================
+// REAL LIVE REGIONAL CHARTS API (InnerTube FEmusic_charts & Playlist Resolver)
+// ============================================================
+let isFetchingChartsMap = {};
+
+async function resolveChartPlaylistId(region, gl, cookie) {
+  const pids = window.REGIONAL_PLAYLIST_IDS || {};
+  if (pids[region]) return pids[region];
+
+  // Dynamically resolve regional chart playlist via InnerTube search
+  try {
+    const payload = {
+      context: {
+        client: {
+          clientName: "WEB_REMIX",
+          clientVersion: "1.20261020.10.00",
+          hl: "en",
+          gl: gl || "US"
+        }
+      },
+      query: `Top 100 Music Videos ${region}`
+    };
+    const sRes = await callInnerTubeApi("youtubei/v1/search", payload, cookie);
+    const sStr = JSON.stringify(sRes || {});
+    // Match official YouTube Charts channel playlists (PL4fGSI1pDJn...)
+    const officialMatch = sStr.match(/"playlistId":"(PL4fGSI1pDJn[a-zA-Z0-9_-]+)"/);
+    if (officialMatch && officialMatch[1]) {
+      pids[region] = officialMatch[1];
+      return officialMatch[1];
+    }
+    const genericMatch = sStr.match(/"playlistId":"(PL[a-zA-Z0-9_-]+)"/);
+    if (genericMatch && genericMatch[1]) {
+      pids[region] = genericMatch[1];
+      return genericMatch[1];
+    }
+  } catch (err) {
+    console.warn(`[Charts API] Dynamic playlist resolution failed for ${region}:`, err);
+  }
+  return pids["Global"] || "PL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv";
+}
+
+function parseChartBrowseResponse(res) {
+  if (!res) return [];
+  const secList = res?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents ||
+                  res?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ||
+                  res?.contents?.sectionListRenderer?.contents || [];
+  const tracks = [];
+  for (const s of secList) {
+    const shelf = s.musicPlaylistShelfRenderer || s.musicShelfRenderer;
+    if (!shelf || !shelf.contents || !Array.isArray(shelf.contents)) continue;
+    for (const it of shelf.contents) {
+      const r = it.musicResponsiveListItemRenderer;
+      if (!r) continue;
+      if (typeof isInnerTubePodcastItem === 'function' && isInnerTubePodcastItem(r)) continue;
+
+      let vid = r.playlistItemData?.videoId;
+      if (!vid) {
+        const c0 = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer;
+        vid = c0?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId;
+      }
+      if (!vid) {
+        vid = r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+      }
+      if (!vid || typeof vid !== 'string' || vid.length < 3) continue;
+
+      let title = "Unknown Title";
+      const c0 = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer;
+      if (c0?.text?.runs?.length) {
+        title = c0.text.runs.map(x => x.text || '').join('').trim();
+      } else if (r.title?.runs?.length) {
+        title = r.title.runs.map(x => x.text || '').join('').trim();
+      }
+
+      let artist = "Cloud Music";
+      if (r.flexColumns && r.flexColumns.length > 1) {
+        const c1 = r.flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer;
+        const runs = c1?.text?.runs || [];
+        const artistParts = [];
+        for (const x of runs) {
+          const t = x.text || '';
+          const trimmed = t.trim();
+          if (trimmed === '•' || trimmed === 'Song' || trimmed === 'Video' || trimmed === 'Album' || trimmed === 'Single') break;
+          if (/^[0-9]+:[0-9]+(:[0-9]+)?$/.test(trimmed)) break;
+          if (/^[0-9,.]+\s*(views|plays|subscribers)?$/i.test(trimmed)) break;
+          artistParts.push(t);
+        }
+        const joined = artistParts.join('').trim().replace(/^[,•\s]+|[,•\s]+$/g, '');
+        if (joined) artist = joined;
+      }
+
+      let cover = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+      const thumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+                     r.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+                     r.thumbnail?.thumbnails || [];
+      if (thumbs.length > 0) {
+        const sorted = [...thumbs].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+        const bestUrl = sorted[0]?.url || thumbs[thumbs.length - 1].url;
+        cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(bestUrl, 800) : bestUrl;
+      }
+
+      let duration = 215;
+      if (r.fixedColumns && r.fixedColumns.length > 0) {
+        const fc = r.fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer;
+        const durRun = (fc?.text?.runs || []).find(x => /^[0-9]+:[0-9]+(:[0-9]+)?$/.test((x.text || '').trim()));
+        if (durRun) duration = (typeof parseDurationStringToSeconds === 'function') ? parseDurationStringToSeconds(durRun.text) : 215;
+      }
+      if (duration === 215 && r.flexColumns && r.flexColumns.length > 1) {
+        for (let ci = 1; ci < r.flexColumns.length; ci++) {
+          const col = r.flexColumns[ci]?.musicResponsiveListItemFlexColumnRenderer;
+          const durRun = (col?.text?.runs || []).find(x => /^[0-9]+:[0-9]+(:[0-9]+)?$/.test((x.text || '').trim()));
+          if (durRun) {
+            duration = (typeof parseDurationStringToSeconds === 'function') ? parseDurationStringToSeconds(durRun.text) : 215;
+            break;
+          }
+        }
+      }
+      if (duration === 215 && r.lengthText) {
+        const lStr = r.lengthText.runs?.[0]?.text || r.lengthText.simpleText;
+        if (lStr && typeof parseDurationStringToSeconds === 'function') {
+          duration = parseDurationStringToSeconds(lStr);
+        }
+      }
+
+      const tObj = {
+        id: vid,
+        title,
+        artist,
+        cover,
+        duration,
+        plays: 0
+      };
+
+      if (typeof isPodcastOrLongTrack === 'function' && isPodcastOrLongTrack(tObj)) continue;
+
+      tracks.push(tObj);
+      if (typeof CATALOG !== 'undefined' && Array.isArray(CATALOG) && !CATALOG.some(t => t.id === tObj.id)) {
+        CATALOG.push(tObj);
+      }
+    }
+  }
+  return tracks;
+}
+
+async function fetchRealCharts(region, forceRefresh = false) {
+  const canonical = (typeof getCanonicalChartRegion === 'function')
+    ? getCanonicalChartRegion(region || (typeof currentChartRegion !== 'undefined' ? currentChartRegion : 'Global'))
+    : (region || 'Global');
+
+  // Ensure REGIONAL_CHARTS container exists
+  if (typeof REGIONAL_CHARTS === 'undefined' || !REGIONAL_CHARTS) {
+    window.REGIONAL_CHARTS = window.REGIONAL_CHARTS || {};
+  }
+  if (!Array.isArray(REGIONAL_CHARTS[canonical])) {
+    REGIONAL_CHARTS[canonical] = [];
+  }
+
+  // 1. In-memory check (if not forcing refresh)
+  if (!forceRefresh && REGIONAL_CHARTS[canonical].length > 0) {
+    return REGIONAL_CHARTS[canonical];
+  }
+
+  // 2. Local storage cached check (if not forcing refresh)
+  if (!forceRefresh) {
+    try {
+      const cached = localStorage.getItem(`soko_cached_charts_${canonical}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          REGIONAL_CHARTS[canonical] = parsed;
+          if (typeof CATALOG !== 'undefined' && Array.isArray(CATALOG)) {
+            for (const t of parsed) {
+              if (!CATALOG.some(c => c.id === t.id)) CATALOG.push(t);
+            }
+          }
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn(`[Charts API] Error reading cache for ${canonical}:`, e);
+    }
+  }
+
+  // Prevent duplicate simultaneous requests for same region
+  if (isFetchingChartsMap[canonical]) {
+    return isFetchingChartsMap[canonical];
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const isUser = typeof userSession !== 'undefined' && userSession && userSession.isLoggedIn;
+      let cookie = isUser ? (userSession.cookie || '') : '';
+      if (!cookie && typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
+        const sc = window.SokoNative.getStoredYtmCookies();
+        if (sc && sc.length > 20) cookie = sc;
+      }
+
+      const glCodes = window.REGIONAL_GL_CODES || {};
+      const gl = glCodes[canonical] || (canonical === 'India' ? 'IN' : (canonical === 'United Kingdom' ? 'GB' : 'US'));
+      const playlistId = await resolveChartPlaylistId(canonical, gl, cookie);
+
+      let tracks = [];
+
+      // Primary: Browse VL+playlistId
+      try {
+        const payload = {
+          context: {
+            client: {
+              clientName: "WEB_REMIX",
+              clientVersion: "1.20261020.10.00",
+              hl: "en",
+              gl: gl
+            }
+          },
+          browseId: "VL" + (playlistId.startsWith("VL") ? playlistId.substring(2) : playlistId)
+        };
+        const browseRes = await callInnerTubeApi("youtubei/v1/browse", payload, cookie);
+        tracks = parseChartBrowseResponse(browseRes);
+      } catch (err) {
+        console.warn(`[Charts API] Browse VL failed for ${canonical}:`, err);
+      }
+
+      // Secondary: Fallback to resolvePlaylistTracks if needed
+      if ((!tracks || tracks.length === 0) && typeof resolvePlaylistTracks === 'function') {
+        try {
+          const resTracks = await resolvePlaylistTracks(playlistId);
+          if (resTracks && resTracks.length > 0) {
+            tracks = resTracks;
+          }
+        } catch (err2) {
+          console.warn(`[Charts API] resolvePlaylistTracks fallback failed for ${canonical}:`, err2);
+        }
+      }
+
+      if (tracks && tracks.length > 0) {
+        REGIONAL_CHARTS[canonical] = tracks;
+        try {
+          localStorage.setItem(`soko_cached_charts_${canonical}`, JSON.stringify(tracks));
+        } catch (e) {}
+        return tracks;
+      }
+
+      // Offline / error fallback: check cache again even if forceRefresh was true
+      try {
+        const staleCached = localStorage.getItem(`soko_cached_charts_${canonical}`);
+        if (staleCached) {
+          const parsed = JSON.parse(staleCached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            REGIONAL_CHARTS[canonical] = parsed;
+            return parsed;
+          }
+        }
+      } catch (e) {}
+
+      return REGIONAL_CHARTS[canonical] || [];
+    } catch (outerErr) {
+      console.warn(`[Charts API] Critical fetch error for ${canonical}:`, outerErr);
+      return REGIONAL_CHARTS[canonical] || [];
+    } finally {
+      delete isFetchingChartsMap[canonical];
+    }
+  })();
+
+  isFetchingChartsMap[canonical] = fetchPromise;
+  return fetchPromise;
+}
+
+// Backward compatibility bridge for existing UI callers
+async function fetchLiveRegionalCharts(region, forceRefresh = false) {
+  const tracks = await fetchRealCharts(region, forceRefresh);
+  if (typeof renderCharts === 'function') {
+    const canonical = (typeof getCanonicalChartRegion === 'function') ? getCanonicalChartRegion(region) : region;
+    if (typeof currentChartRegion === 'undefined' || currentChartRegion === canonical || currentChartRegion === region) {
+      renderCharts(canonical, 1);
+    }
+  }
+  return tracks;
+}
+
+window.fetchRealCharts = fetchRealCharts;
+window.fetchLiveRegionalCharts = fetchLiveRegionalCharts;
+window.parseChartBrowseResponse = parseChartBrowseResponse;
+window.resolveChartPlaylistId = resolveChartPlaylistId;

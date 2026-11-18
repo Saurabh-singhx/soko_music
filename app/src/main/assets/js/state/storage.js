@@ -59,6 +59,14 @@ function initPersistentStorage() {
                 }
                 continue;
               }
+              if (window.SokoNative && typeof window.SokoNative.getDownloadedCoverPath === 'function') {
+                try {
+                  const localCover = window.SokoNative.getDownloadedCoverPath(st.id);
+                  if (localCover) {
+                    st.cover = 'artworks/' + st.id + '.jpg';
+                  }
+                } catch (e) {}
+              }
               const existingIdx = CATALOG.findIndex(t => t.id === st.id);
               if (existingIdx >= 0) {
                 CATALOG[existingIdx] = st;
@@ -152,9 +160,12 @@ function initPersistentStorage() {
           return isDownloaded || isFav || inPlaylist;
         };
 
-        const customTracks = CATALOG
-          .filter(isPreservedCustom)
-          .slice(-200)
+        // All downloaded tracks are guaranteed preservation (never dropped by a slice)
+        const downloadedCustom = CATALOG.filter(t => t && t.id && downloadedSet.has(t.id) && !BUNDLED_TRACKS.some(b => b.id === t.id) && !isExcluded(t));
+        const downloadedIds = new Set(downloadedCustom.map(t => t.id));
+        const otherCustom = CATALOG.filter(t => isPreservedCustom(t) && !downloadedIds.has(t.id)).slice(-150);
+
+        const customTracks = [...downloadedCustom, ...otherCustom]
           .map(t => ({
             id: t.id,
             title: t.title || 'Unknown Title',

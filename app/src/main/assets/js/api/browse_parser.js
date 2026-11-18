@@ -140,7 +140,9 @@ function parseBrowseShelves(data) {
                        r.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
                        r.thumbnail?.thumbnails || [];
         if (thumbs.length > 0) {
-          cover = thumbs[thumbs.length - 1].url;
+          const sorted = [...thumbs].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+          const rawUrl = sorted[0]?.url || thumbs[thumbs.length - 1].url;
+          cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
         } else if (vid) {
           cover = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
         }
@@ -202,7 +204,9 @@ function parseBrowseShelves(data) {
                        r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
                        r.thumbnail?.thumbnails || [];
         if (thumbs.length > 0) {
-          cover = thumbs[thumbs.length - 1].url;
+          const sorted = [...thumbs].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+          const rawUrl = sorted[0]?.url || thumbs[thumbs.length - 1].url;
+          cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
         } else if (vid) {
           cover = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
         }

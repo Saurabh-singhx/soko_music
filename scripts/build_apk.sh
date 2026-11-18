@@ -32,8 +32,11 @@ if [ -z "${VERSION_CODE}" ]; then
   fi
   # CI adds GITHUB_RUN_NUMBER to COMMIT_COUNT (which reached versionCode 54).
   # Use an offset so local builds stay above previously released versions (>= 55).
-  RUN_OFFSET="${GITHUB_RUN_NUMBER:-20}"
+  RUN_OFFSET="${GITHUB_RUN_NUMBER:-60}"
   VERSION_CODE=$((COMMIT_COUNT + RUN_OFFSET))
+  if [ "${VERSION_CODE}" -le 30 ]; then
+    VERSION_CODE=31
+  fi
 fi
 
 if [ -z "${VERSION_NAME}" ]; then

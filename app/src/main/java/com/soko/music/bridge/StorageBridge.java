@@ -34,6 +34,11 @@ public class StorageBridge {
     }
 
     @JavascriptInterface
+    public String getDownloadedCoverPath(final String videoId) {
+        return diskCacheManager.getDownloadedCoverPath(videoId);
+    }
+
+    @JavascriptInterface
     public boolean deleteDownloadedTrack(final String videoId) {
         return diskCacheManager.deleteDownloadedTrack(videoId);
     }

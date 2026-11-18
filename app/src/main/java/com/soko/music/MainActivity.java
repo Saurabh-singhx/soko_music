@@ -130,6 +130,21 @@ public class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 String path = uri.getPath();
                 if (path != null) {
+                    if (path.contains("artworks/")) {
+                        try {
+                            String fileName = new File(path).getName();
+                            File artFile = new File(diskCacheManager.getArtworksDir(), fileName);
+                            if (artFile.exists() && artFile.length() > 0) {
+                                InputStream in = new java.io.FileInputStream(artFile);
+                                WebResourceResponse response = new WebResourceResponse("image/jpeg", "UTF-8", in);
+                                if (android.os.Build.VERSION.SDK_INT >= 21) {
+                                    response.setResponseHeaders(java.util.Collections.singletonMap("Access-Control-Allow-Origin", "*"));
+                                }
+                                return response;
+                            }
+                        } catch (Exception ignored) {}
+                    }
+
                     String assetPath = path;
                     if (assetPath.contains("assets/")) {
                         assetPath = assetPath.substring(assetPath.indexOf("assets/"));

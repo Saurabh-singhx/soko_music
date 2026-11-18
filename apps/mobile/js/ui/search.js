@@ -15,7 +15,7 @@ function renderSearchResults(container, tracks, isLoadingMore) {
     return `
       <div class="search-track-card" onclick="selectTrackToPlay('${track.id}')">
         <div class="search-track-art-wrapper">
-          <img class="search-track-art" src="${track.cover}" alt="${track.title}" onerror="this.onerror=null; this.src='assets/logo.png';" />
+          <img class="search-track-art" src="${track.cover}" alt="${track.title}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" />
           <div class="search-play-badge ${isCurrentPlaying ? 'playing' : ''}">
             ${isCurrentPlaying ? 
               '<svg width="14" height="14" fill="#6366F1" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>' :

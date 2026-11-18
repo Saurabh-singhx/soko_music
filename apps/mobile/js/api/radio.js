@@ -54,7 +54,9 @@ async function fetchAndApplyYtmRadioQueue(trackId, mode = 'auto') {
       const artist = r.shortBylineText?.runs?.[0]?.text || "Unknown Artist";
       let cover = `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg`;
       if (r.thumbnail?.thumbnails?.length) {
-        cover = r.thumbnail.thumbnails[r.thumbnail.thumbnails.length - 1].url;
+        const sorted = [...r.thumbnail.thumbnails].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+        const rawUrl = sorted[0]?.url || r.thumbnail.thumbnails[r.thumbnail.thumbnails.length - 1].url;
+        cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
       }
       let duration = 215;
       const lenStr = r.lengthText?.runs?.[0]?.text || r.lengthText?.simpleText;

@@ -14,6 +14,14 @@ window.onNativeDownloadProgress = function(trackId, percent) {
       const track = findTrackAcrossAllSources(trackId);
       if (track) {
         track.audioUrl = localPath;
+        if (window.SokoNative && typeof window.SokoNative.getDownloadedCoverPath === 'function') {
+          try {
+            const localCover = window.SokoNative.getDownloadedCoverPath(trackId);
+            if (localCover) {
+              track.cover = 'artworks/' + trackId + '.jpg';
+            }
+          } catch (e) {}
+        }
         if (!CATALOG.some(t => t.id === track.id)) {
           CATALOG.push(track);
         }

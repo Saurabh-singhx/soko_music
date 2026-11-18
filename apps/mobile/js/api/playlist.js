@@ -4,7 +4,7 @@
 async function resolvePlaylistTracks(playlistId, videoId = null) {
   if (!playlistId && !videoId) return [];
   const cleanId = (playlistId && playlistId.startsWith('VL')) ? playlistId.substring(2) : (playlistId || '');
-  const isUser = userSession && userSession.isLoggedIn;
+  const isUser = typeof userSession !== 'undefined' && userSession && userSession.isLoggedIn;
   let cookie = isUser ? (userSession.cookie || '') : '';
   if (!cookie && window.SokoNative && typeof window.SokoNative.getStoredYtmCookies === 'function') {
     const sc = window.SokoNative.getStoredYtmCookies();
@@ -75,7 +75,9 @@ async function resolvePlaylistTracks(playlistId, videoId = null) {
 
       let cover = `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg`;
       if (r.thumbnail?.thumbnails?.length) {
-        cover = r.thumbnail.thumbnails[r.thumbnail.thumbnails.length - 1].url;
+        const sorted = [...r.thumbnail.thumbnails].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+        const rawUrl = sorted[0]?.url || r.thumbnail.thumbnails[r.thumbnail.thumbnails.length - 1].url;
+        cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
       }
       let duration = 215;
       const lenStr = r.lengthText?.runs?.[0]?.text || r.lengthText?.simpleText;
@@ -129,7 +131,12 @@ async function resolvePlaylistTracks(playlistId, videoId = null) {
         let title = r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.map(x => x.text).join('') || "Unknown";
         let artist = r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.map(x => x.text).filter(x => x && x !== '•').join(', ') || "Cloud Music";
         const thumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-        const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+        let cover = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+        if (thumbs.length > 0) {
+          const sorted = [...thumbs].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+          const rawUrl = sorted[0]?.url || thumbs[thumbs.length - 1].url;
+          cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(rawUrl, 800) : rawUrl;
+        }
         let duration = 215;
         if (r.fixedColumns && r.fixedColumns.length > 0) {
           const fc = r.fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer;

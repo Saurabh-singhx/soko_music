@@ -35,6 +35,40 @@ public class TrackDownloader {
         this.diskCacheManager = diskCacheManager;
     }
 
+    private void downloadAndCacheArtwork(final String videoId, final String coverUrl) {
+        if (coverUrl == null || coverUrl.isEmpty() || (!coverUrl.startsWith("http://") && !coverUrl.startsWith("https://"))) {
+            return;
+        }
+        File artDir = diskCacheManager.getArtworksDir();
+        File coverFile = new File(artDir, videoId + ".jpg");
+        if (coverFile.exists() && coverFile.length() > 0) {
+            return;
+        }
+        try {
+            URL artUrl = new URL(coverUrl);
+            HttpURLConnection conn = (HttpURLConnection) artUrl.openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setInstanceFollowRedirects(true);
+            if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                InputStream in = conn.getInputStream();
+                FileOutputStream fos = new FileOutputStream(coverFile);
+                byte[] buf = new byte[8192];
+                int r;
+                while ((r = in.read(buf)) != -1) {
+                    fos.write(buf, 0, r);
+                }
+                fos.flush();
+                fos.close();
+                in.close();
+                Log.d(TAG, "Cached offline artwork for " + videoId + " (" + coverFile.length() + " bytes)");
+            }
+            conn.disconnect();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed caching artwork for " + videoId + ": " + e.getMessage());
+        }
+    }
+
     public void downloadAndPlayTrack(final String videoId, final String title, final String artist, final String coverUrl, final boolean autoPlayWhenDone) {
         if (autoPlayWhenDone) {
             audioEngine.setActivePlaybackVideoId(videoId);
@@ -56,6 +90,9 @@ public class TrackDownloader {
                 final File targetFile = new File(musicDir, videoId + ".m4a");
 
                 if (targetFile.exists() && targetFile.length() > 50000) {
+                    downloadAndCacheArtwork(videoId, coverUrl);
+                    final String localCover = diskCacheManager.getDownloadedCoverPath(videoId);
+                    final String effectiveCover = (!localCover.isEmpty()) ? localCover : coverUrl;
                     final boolean shouldPlay = videoId.equals(audioEngine.getActivePlaybackVideoId());
                     activity.runOnUiThread(new Runnable() {
                         @Override
@@ -65,7 +102,7 @@ public class TrackDownloader {
                                 webView.evaluateJavascript("window.onNativeDownloadComplete && window.onNativeDownloadComplete(" + JSONObject.quote(videoId) + ", " + JSONObject.quote(targetFile.getAbsolutePath()) + ", " + shouldPlay + ")", null);
                             }
                             if (shouldPlay) {
-                                audioEngine.playNativeAudio(targetFile.getAbsolutePath(), title, artist, coverUrl);
+                                audioEngine.playNativeAudio(targetFile.getAbsolutePath(), title, artist, effectiveCover);
                             }
                         }
                     });
@@ -401,7 +438,10 @@ public class TrackDownloader {
                         throw new Exception("Downloaded file too small: " + partFile.length() + " bytes");
                     }
 
-                    // 4. Notify completion and play if this is the active track
+                    // 4. Cache artwork and notify completion
+                    downloadAndCacheArtwork(videoId, coverUrl);
+                    final String localCover = diskCacheManager.getDownloadedCoverPath(videoId);
+                    final String effectiveCover = (!localCover.isEmpty()) ? localCover : coverUrl;
                     final boolean shouldPlay = videoId.equals(audioEngine.getActivePlaybackVideoId());
                     activity.runOnUiThread(new Runnable() {
                         @Override
@@ -411,7 +451,7 @@ public class TrackDownloader {
                                 webView.evaluateJavascript("window.onNativeDownloadComplete && window.onNativeDownloadComplete(" + JSONObject.quote(videoId) + ", " + JSONObject.quote(targetFile.getAbsolutePath()) + ", " + shouldPlay + ")", null);
                             }
                             if (shouldPlay) {
-                                audioEngine.playNativeAudio(targetFile.getAbsolutePath(), title, artist, coverUrl);
+                                audioEngine.playNativeAudio(targetFile.getAbsolutePath(), title, artist, effectiveCover);
                             }
                         }
                     });

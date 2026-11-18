@@ -20,6 +20,14 @@ public class DiskCacheManager {
         return musicDir;
     }
 
+    public File getArtworksDir() {
+        File artworksDir = new File(context.getFilesDir(), "artworks");
+        if (!artworksDir.exists()) {
+            artworksDir.mkdirs();
+        }
+        return artworksDir;
+    }
+
     public boolean isTrackDownloaded(final String videoId) {
         File targetFile = new File(getMusicDir(), videoId + ".m4a");
         return targetFile.exists() && targetFile.length() > 50000;
@@ -33,17 +41,29 @@ public class DiskCacheManager {
         return "";
     }
 
+    public String getDownloadedCoverPath(final String videoId) {
+        File targetFile = new File(getArtworksDir(), videoId + ".jpg");
+        if (targetFile.exists() && targetFile.length() > 0) {
+            return targetFile.getAbsolutePath();
+        }
+        return "";
+    }
+
     public boolean deleteDownloadedTrack(final String videoId) {
         try {
             File musicDir = getMusicDir();
             File targetFile = new File(musicDir, videoId + ".m4a");
             File partFile = new File(musicDir, videoId + ".part");
+            File coverFile = new File(getArtworksDir(), videoId + ".jpg");
             boolean deleted = false;
             if (targetFile.exists()) {
                 deleted = targetFile.delete();
             }
             if (partFile.exists()) {
                 partFile.delete();
+            }
+            if (coverFile.exists()) {
+                coverFile.delete();
             }
             Log.d(TAG, "deleteDownloadedTrack: " + videoId + " -> " + deleted);
             return deleted;
@@ -63,6 +83,17 @@ public class DiskCacheManager {
                     for (File f : files) {
                         if (f.isFile() && (f.getName().endsWith(".m4a") || f.getName().endsWith(".part"))) {
                             if (f.delete()) count++;
+                        }
+                    }
+                }
+            }
+            File artDir = getArtworksDir();
+            if (artDir.exists() && artDir.isDirectory()) {
+                File[] artFiles = artDir.listFiles();
+                if (artFiles != null) {
+                    for (File af : artFiles) {
+                        if (af.isFile()) {
+                            if (af.delete()) count++;
                         }
                     }
                 }

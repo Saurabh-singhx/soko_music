@@ -11,13 +11,14 @@ function setupMediaSession() {
 }
 
 function updateMediaSession(track) {
+  const highResCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.artist,
       album: 'Soko Music Library',
       artwork: [
-        { src: track.cover, sizes: '512x512', type: 'image/jpeg' }
+        { src: highResCover, sizes: '512x512', type: 'image/jpeg' }
       ]
     });
   }
@@ -28,7 +29,7 @@ function updateMediaSession(track) {
       isPlaying,
       track.duration || 215,
       audioEl ? Math.floor(audioEl.currentTime) : 0,
-      track.cover
+      highResCover
     );
   }
 }

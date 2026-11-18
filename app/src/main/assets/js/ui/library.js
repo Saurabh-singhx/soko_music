@@ -6,7 +6,7 @@ function createTrackRowHtml(track, isInsidePlaylist = false, isLibraryView = fal
   const isDownloading = activeDownloads.has(track.id);
   return `
     <div class="track-row" onclick="selectTrackToPlay('${track.id}')">
-      <img class="track-art" src="${track.cover}" alt="${track.title}" onerror="this.onerror=null; this.src='assets/logo.png';" />
+      <img class="track-art" src="${track.cover}" alt="${track.title}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" />
       <div class="track-meta">
         <div class="track-title">${track.title}</div>
         <div class="track-desc">${track.artist} • ${formatTime(track.duration)}</div>
@@ -66,7 +66,13 @@ function playAllOfflineTracks(shuffle = false) {
   const cached = Array.from(downloadedSet).map(id => {
     let t = findTrackAcrossAllSources(id);
     if (!t) {
-      t = { id, title: 'Offline Song', artist: 'Soko Offline', duration: 200, cover: 'assets/logo.png' };
+      let localArt = 'assets/logo.png';
+      if (typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.getDownloadedCoverPath === 'function') {
+        try {
+          if (window.SokoNative.getDownloadedCoverPath(id)) localArt = 'artworks/' + id + '.jpg';
+        } catch (e) {}
+      }
+      t = { id, title: 'Offline Song', artist: 'Soko Offline', duration: 200, cover: localArt };
     }
     return t;
   }).filter(t => t && !(filterFn ? filterFn(t) : (Number(t.duration) || 0) > 600));
@@ -169,7 +175,16 @@ function renderLibraryTracks() {
   for (const id of downloadedSet) {
     if (seenIds.has(id)) continue;
     seenIds.add(id);
-    const t = findTrackAcrossAllSources(id);
+    let t = findTrackAcrossAllSources(id);
+    if (!t) {
+      let localArt = 'assets/logo.png';
+      if (typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.getDownloadedCoverPath === 'function') {
+        try {
+          if (window.SokoNative.getDownloadedCoverPath(id)) localArt = 'artworks/' + id + '.jpg';
+        } catch (e) {}
+      }
+      t = { id, title: 'Downloaded Track', artist: 'Offline Storage', duration: 215, cover: localArt };
+    }
     if (t && !(filterFn ? filterFn(t) : (Number(t.duration) || 0) > 600)) {
       cachedTracks.push(t);
     }

@@ -71,7 +71,10 @@ function updatePlayerUI(track) {
   const miniArt = document.getElementById('miniArt');
   const miniTitle = document.getElementById('miniTitle');
   const miniArtist = document.getElementById('miniArtist');
-  if (miniArt) miniArt.src = track.cover;
+  if (miniArt) {
+    miniArt.src = track.cover || 'assets/logo.png';
+    miniArt.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(miniArt, track.id); else miniArt.src = 'assets/logo.png'; };
+  }
   if (miniTitle) miniTitle.innerText = track.title;
   if (miniArtist) miniArtist.innerText = track.artist;
 
@@ -82,7 +85,11 @@ function updatePlayerUI(track) {
   const modalHeart = document.getElementById('modalHeartIcon');
   const modalDlIcon = document.getElementById('modalDownloadIcon');
 
-  if (modalArt) modalArt.src = track.cover;
+  if (modalArt) {
+    const heroCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
+    modalArt.src = heroCover || 'assets/logo.png';
+    modalArt.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(modalArt, track.id); else modalArt.src = 'assets/logo.png'; };
+  }
   if (modalTitle) modalTitle.innerText = track.title;
   if (modalArtist) modalArtist.innerText = track.artist;
   if (modalDuration && track.duration) modalDuration.innerText = formatTime(track.duration);
