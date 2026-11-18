@@ -597,15 +597,15 @@
           </div>
 
           <div class="profile-upload-bar">
-            <input type="file" id="profilePicInput" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" style="display: none;" onchange="handleProfilePicUpload(event)" />
-            <button class="profile-btn-upload" onclick="triggerProfilePicUpload()" title="Select photo or animated GIF">
+            <input type="file" id="profilePicInput" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="visually-hidden-file-input" onclick="this.value=''" onchange="handleProfilePicUpload(event)" />
+            <label for="profilePicInput" class="profile-btn-upload" id="profileUploadLabel" title="Select photo or animated GIF" role="button" tabindex="0">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
               <span>Upload Photo / GIF</span>
-            </button>
+            </label>
             <button id="btnRemoveAvatar" class="profile-btn-remove" onclick="removeUserProfilePicture()" style="display: none;" title="Remove custom avatar">
               Remove
             </button>

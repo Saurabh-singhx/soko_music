@@ -78,7 +78,7 @@ function isGifAvatar(url, type) {
     return true;
   }
   if (typeof url === 'string') {
-    if (url.startsWith('data:image/gif')) return true;
+    if (url.startsWith('data:image/gif') || url.includes('base64,R0lGOD')) return true;
     if (/\.gif(\?.*)?$/i.test(url)) return true;
   }
   return false;
@@ -207,10 +207,12 @@ async function saveUserProfilePicture(file) {
 
   const fileName = file.name || '';
   const fileType = file.type || '';
-  const isGif = fileType === 'image/gif' || /\.gif$/i.test(fileName);
-  const isImage = isGif || fileType.startsWith('image/') || /\.(png|jpe?g|webp|svg)$/i.test(fileName);
+  let isGif = fileType === 'image/gif' || /\.gif$/i.test(fileName);
+  let isImage = isGif || fileType.startsWith('image/') || /\.(png|jpe?g|webp|svg)$/i.test(fileName);
 
-  if (!isImage) {
+  // If mime is generic or missing (e.g. Android ContentProvider / PhotoPicker), allow reading bytes
+  const isGenericMime = !fileType || fileType === 'application/octet-stream' || fileType === 'image/*';
+  if (!isImage && !isGenericMime) {
     if (typeof showToast === 'function') {
       showToast('Please choose an image or animated GIF file', '⚠️');
     }
@@ -234,6 +236,21 @@ async function saveUserProfilePicture(file) {
     let dataUrl = e.target.result;
     if (!dataUrl) return;
 
+    // Detect image format from dataUrl header or base64 magic bytes
+    if (dataUrl.startsWith('data:image/gif') || dataUrl.includes('base64,R0lGOD')) {
+      isGif = true;
+      isImage = true;
+    } else if (dataUrl.startsWith('data:image/') || dataUrl.includes('base64,/9j/') || dataUrl.includes('base64,iVBORw0KGgo') || dataUrl.includes('base64,UklGR')) {
+      isImage = true;
+    }
+
+    if (!isImage && !dataUrl.startsWith('data:image/')) {
+      if (typeof showToast === 'function') {
+        showToast('Please choose an image or animated GIF file', '⚠️');
+      }
+      return;
+    }
+
     // Preserve animated GIF byte stream directly (canvas drawImage loses GIF animation frames!)
     if (!isGif && file.size > 1024 * 1024) {
       try {
@@ -243,7 +260,22 @@ async function saveUserProfilePicture(file) {
       }
     }
 
-    const mime = isGif ? 'image/gif' : (fileType || 'image/jpeg');
+    let mime = 'image/jpeg';
+    if (isGif) {
+      mime = 'image/gif';
+    } else if (dataUrl.startsWith('data:image/')) {
+      const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);/);
+      if (match && match[1]) mime = match[1];
+    } else if (fileType && fileType.startsWith('image/')) {
+      mime = fileType;
+    }
+
+    if (isGif && (dataUrl.startsWith('data:application/') || !dataUrl.startsWith('data:image/gif'))) {
+      dataUrl = dataUrl.replace(/^data:[^;]+;/, 'data:image/gif;');
+    } else if (isImage && dataUrl.startsWith('data:application/')) {
+      dataUrl = dataUrl.replace(/^data:[^;]+;/, `data:${mime};`);
+    }
+
     await applyAndPersistAvatar(dataUrl, mime);
 
     if (typeof showToast === 'function') {
@@ -298,10 +330,15 @@ async function removeUserProfilePicture() {
 }
 
 // Trigger hidden file picker input
-function triggerProfilePicUpload() {
+function triggerProfilePicUpload(event) {
+  if (event && event.target && (event.target.id === 'profilePicInput' || event.target.id === 'profileUploadLabel' || event.target.closest('#profileUploadLabel'))) {
+    return;
+  }
   const input = document.getElementById('profilePicInput');
   if (input) {
-    input.value = '';
+    try {
+      input.value = '';
+    } catch (e) {}
     input.click();
   }
 }
@@ -311,6 +348,9 @@ function handleProfilePicUpload(event) {
   const files = event && event.target && event.target.files;
   if (!files || !files[0]) return;
   saveUserProfilePicture(files[0]);
+  try {
+    if (event.target) event.target.value = '';
+  } catch (e) {}
 }
 
 // Drag & drop support for profile picture
@@ -323,8 +363,35 @@ function handleProfilePicDrop(event) {
   }
 }
 
+// Keyboard accessibility for file picker label and avatar wrapper
+function initProfilePickerAccessibility() {
+  if (typeof document === 'undefined') return;
+  const label = document.getElementById('profileUploadLabel');
+  if (label && !label._hasA11yListener && typeof label.addEventListener === 'function') {
+    label._hasA11yListener = true;
+    label.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        triggerProfilePicUpload();
+      }
+    });
+  }
+
+  const avatarWrapper = document.getElementById('modalAvatarWrapper');
+  if (avatarWrapper && !avatarWrapper._hasA11yListener && typeof avatarWrapper.addEventListener === 'function') {
+    avatarWrapper._hasA11yListener = true;
+    avatarWrapper.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        triggerProfilePicUpload();
+      }
+    });
+  }
+}
+
 function openAuthModal() {
   updateAuthModalContent();
+  initProfilePickerAccessibility();
   const modal = document.getElementById('authModal');
   if (modal) modal.style.display = 'flex';
 }
@@ -519,3 +586,4 @@ window.triggerProfilePicUpload = triggerProfilePicUpload;
 window.handleProfilePicUpload = handleProfilePicUpload;
 window.handleProfilePicDrop = handleProfilePicDrop;
 window.resizeStaticImage = resizeStaticImage;
+window.initProfilePickerAccessibility = initProfilePickerAccessibility;

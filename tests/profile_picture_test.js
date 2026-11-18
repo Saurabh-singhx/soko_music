@@ -73,8 +73,8 @@ class MockFileReader {
       return;
     }
     const mime = file.type || 'image/png';
-    const content = file._mockContent || 'sample_bytes_123';
-    this.result = `data:${mime};base64,${Buffer.from(content).toString('base64')}`;
+    const b64 = file._mockBase64 || Buffer.from(file._mockContent || 'sample_bytes_123').toString('base64');
+    this.result = `data:${mime};base64,${b64}`;
     if (this.onload) {
       this.onload({ target: { result: this.result } });
     }
@@ -345,6 +345,79 @@ assert(rehydratedAvatar.isCustom === true, 'Rehydrated avatar is custom');
 assert(rehydratedAvatar.isGif === true, 'Rehydrated avatar is recognized as animated GIF');
 assert(rehydratedAvatar.url === savedDataUrl, 'Rehydrated avatar URL matches saved data');
 pass('Avatar and GIF metadata survive complete cold restart');
+
+// -------------------------------------------------------------
+// Test 8: Trigger File Picker & Label Native Activation
+// -------------------------------------------------------------
+console.log('\n--- Test Suite 8: Trigger File Picker & Label Activation ---');
+const triggerProfilePicUpload = sandbox.window.triggerProfilePicUpload;
+const fileInputEl = getOrCreateEl('profilePicInput');
+fileInputEl.value = 'dummy_old_path.jpg';
+fileInputEl.clicked = false;
+
+// Trigger upload via avatar wrapper or programmatic call
+triggerProfilePicUpload();
+assert(fileInputEl.value === '', 'File input value should be cleared to allow re-selecting same file');
+assert(fileInputEl.clicked === true, 'File input click() should have been called');
+pass('triggerProfilePicUpload cleanly resets value and calls input.click()');
+
+// Ensure event from label does not recursively call input.click() again
+fileInputEl.clicked = false;
+const mockLabelEl = getOrCreateEl('profileUploadLabel');
+triggerProfilePicUpload({ target: mockLabelEl });
+assert(fileInputEl.clicked === false, 'Click originating from label should not double-invoke input.click()');
+pass('Label click event prevents duplicate synthetic click invocation');
+
+// -------------------------------------------------------------
+// Test 9: Android Photo Picker (Extensionless & Missing MIME)
+// -------------------------------------------------------------
+console.log('\n--- Test Suite 9: Android Photo Picker Resiliency ---');
+// Simulate Android 13+ MediaStore/PhotoPicker returning content URI:
+// name: '100000042', type: '' or 'application/octet-stream' with JPEG bytes (/9j/)
+const androidPickerFile = {
+  name: '100000042',
+  type: '',
+  size: 80 * 1024,
+  _mockBase64: '/9j/4AAQSkZJRgABAQEASABIAAD_photo_picker_bytes'
+};
+
+sandbox.window.saveUserProfilePicture(androidPickerFile);
+const androidAvatar = sandbox.window.getUserAvatar();
+assert(androidAvatar !== null, 'Android photo picker image should be accepted');
+assert(androidAvatar.isCustom === true, 'Avatar should be marked custom');
+assert(androidAvatar.isGif === false, 'JPEG should not be flagged as GIF');
+pass('Android photo picker file without extension/type successfully identified and persisted');
+
+// Simulate Android PhotoPicker returning animated GIF without extension:
+const androidPickerGif = {
+  name: '100000099',
+  type: 'application/octet-stream',
+  size: 250 * 1024,
+  _mockBase64: 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+};
+
+sandbox.window.saveUserProfilePicture(androidPickerGif);
+const androidGifAvatar = sandbox.window.getUserAvatar();
+assert(androidGifAvatar !== null, 'Android GIF file should be accepted');
+assert(androidGifAvatar.isGif === true, 'Android GIF with octet-stream MIME correctly recognized as animated GIF');
+pass('Android GIF without extension correctly recognized via magic bytes');
+
+// -------------------------------------------------------------
+// Test 10: HTML & CSS File Input Markup & Accessibility
+// -------------------------------------------------------------
+console.log('\n--- Test Suite 10: HTML & CSS File Input Markup Verification ---');
+const mobileHtml = fs.readFileSync(path.join(__dirname, '../apps/mobile/index.html'), 'utf8');
+const assetsHtml = fs.readFileSync(path.join(__dirname, '../app/src/main/assets/index.html'), 'utf8');
+
+assert(mobileHtml.includes('class="visually-hidden-file-input"'), 'Mobile index.html should use visually-hidden-file-input');
+assert(assetsHtml.includes('class="visually-hidden-file-input"'), 'Assets index.html should use visually-hidden-file-input');
+assert(!mobileHtml.includes('id="profilePicInput" style="display: none;"'), 'Mobile index.html should not use display: none on file input');
+assert(!assetsHtml.includes('id="profilePicInput" style="display: none;"'), 'Assets index.html should not use display: none on file input');
+assert(mobileHtml.includes('label for="profilePicInput" class="profile-btn-upload" id="profileUploadLabel"'), 'Mobile index.html should bind label for profilePicInput');
+assert(assetsHtml.includes('label for="profilePicInput" class="profile-btn-upload" id="profileUploadLabel"'), 'Assets index.html should bind label for profilePicInput');
+assert(mobileHtml.includes('<span>Upload Photo / GIF</span>'), 'Mobile index.html should render Upload Photo / GIF');
+assert(assetsHtml.includes('<span>Upload Photo / GIF</span>'), 'Assets index.html should render Upload Photo / GIF');
+pass('HTML markup uses accessible label and avoids display: none on file input');
 
 console.log("\n====================================================");
 console.log(`🏁 ALL PROFILE PICTURE TESTS PASSED: ${passedCount} Passed, 0 Failed`);

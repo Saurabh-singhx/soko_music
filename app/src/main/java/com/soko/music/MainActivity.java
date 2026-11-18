@@ -1,6 +1,8 @@
 package com.soko.music;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -10,6 +12,7 @@ import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -33,8 +36,10 @@ import java.io.InputStream;
 
 public class MainActivity extends Activity {
     private static final String TAG = "SokoMusic";
+    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
 
     private WebView webView;
+    private ValueCallback<Uri[]> uploadMessage;
     private MediaNotificationManager mediaNotificationManager;
     private AudioFocusManager audioFocusManager;
     private AudioEngine audioEngine;
@@ -210,6 +215,58 @@ public class MainActivity extends Activity {
                 Log.d("SokoMusicWeb", "[" + consoleMessage.messageLevel() + "] " + consoleMessage.message() + " (" + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber() + ")");
                 return super.onConsoleMessage(consoleMessage);
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                if (uploadMessage != null) {
+                    uploadMessage.onReceiveValue(null);
+                    uploadMessage = null;
+                }
+                uploadMessage = filePathCallback;
+
+                Intent intent = null;
+                if (fileChooserParams != null) {
+                    try {
+                        intent = fileChooserParams.createIntent();
+                    } catch (Exception e) {
+                        Log.w(TAG, "Failed creating intent from fileChooserParams", e);
+                    }
+                }
+                if (intent == null) {
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("image/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                        "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"
+                    });
+                }
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                try {
+                    Intent chooserIntent = Intent.createChooser(intent, "Select Profile Picture or GIF");
+                    startActivityForResult(chooserIntent, FILE_CHOOSER_REQUEST_CODE);
+                    return true;
+                } catch (ActivityNotFoundException e) {
+                    try {
+                        startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                        return true;
+                    } catch (Exception ex) {
+                        Log.e(TAG, "Cannot open file chooser", ex);
+                        if (uploadMessage != null) {
+                            uploadMessage.onReceiveValue(null);
+                            uploadMessage = null;
+                        }
+                        return false;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Cannot open file chooser", e);
+                    if (uploadMessage != null) {
+                        uploadMessage.onReceiveValue(null);
+                        uploadMessage = null;
+                    }
+                    return false;
+                }
+            }
         });
 
         try {
@@ -247,6 +304,36 @@ public class MainActivity extends Activity {
         setIntent(intent);
         if (audioEngine != null) {
             audioEngine.syncPlaybackStateToWebView();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            if (uploadMessage != null) {
+                Uri[] results = null;
+                if (resultCode == Activity.RESULT_OK) {
+                    if (android.os.Build.VERSION.SDK_INT >= 21) {
+                        try {
+                            results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+                        } catch (Exception ignored) {}
+                    }
+                    if (results == null && data != null) {
+                        if (data.getData() != null) {
+                            results = new Uri[]{ data.getData() };
+                        } else if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            results = new Uri[count];
+                            for (int i = 0; i < count; i++) {
+                                results[i] = data.getClipData().getItemAt(i).getUri();
+                            }
+                        }
+                    }
+                }
+                uploadMessage.onReceiveValue(results);
+                uploadMessage = null;
+            }
         }
     }
 
