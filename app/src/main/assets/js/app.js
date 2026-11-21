@@ -31,6 +31,9 @@ function initApp() {
   setupMediaSession();
   updateAuthHeaderUI();
   if (typeof updateSettingsProfileUI === 'function') updateSettingsProfileUI();
+  if (window.listeningTracker && typeof window.listeningTracker.init === 'function') {
+    try { window.listeningTracker.init(); } catch (e) {}
+  }
 
   // Check last played track
   const savedLastTrack = getLastPlayedTrack();

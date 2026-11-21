@@ -4,8 +4,8 @@
 
 const SOKO_UPDATE_CONFIG = {
   gistUrl: 'https://gist.githubusercontent.com/Saurabh-singhx/04c5db7f1bed9206d1b858cd44bfb8eb/raw/soko-music-version.json',
-  defaultVersion: '1.0.6',
-  defaultBuildNumber: 67
+  defaultVersion: '1.0.7',
+  defaultBuildNumber: 70
 };
 
 if (typeof window !== 'undefined') {

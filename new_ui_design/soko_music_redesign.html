@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Soko Music — Vibrant Light Redesign</title>
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              orange: '#FF5A1F',
+              orangeDeep: '#FF6B00',
+              orangeSoft: '#FFF3ED',
+              green: '#16A34A',
+              greenBright: '#10B981',
+              greenSoft: '#ECFDF5',
+              red: '#EF4444',
+              redDeep: '#E11D48',
+              redSoft: '#FEF2F2',
+              surface: '#F8F9FA',
+              warm: '#FFF8F5',
+              border: '#EAECEF',
+              ink: '#111827',
+            }
+          },
+          boxShadow: {
+            'card': '0 2px 10px -2px rgba(17, 24, 39, 0.05), 0 1px 3px -1px rgba(17, 24, 39, 0.03)',
+            'orange-glow': '0 10px 25px -5px rgba(255, 90, 31, 0.42)',
+            'mini': '0 10px 28px -6px rgba(17, 24, 39, 0.14), 0 2px 8px -2px rgba(255, 90, 31, 0.12)',
+            'art': '0 22px 45px -12px rgba(255, 90, 31, 0.25), 0 10px 20px -8px rgba(17, 24, 39, 0.12)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #FFF5F0 0%, #F3F4F6 50%, #F0FDF4 100%);
+      color: #111827;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Hide scrollbars cleanly for carousels & main scroll */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Custom Orange Range Slider for Now Playing */
+    input[type="range"].soko-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #E5E7EB;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].soko-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #FF5A1F;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 2px 8px rgba(255, 90, 31, 0.45);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].soko-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+    input[type="range"].soko-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #FF5A1F;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 2px 8px rgba(255, 90, 31, 0.45);
+      cursor: pointer;
+    }
+
+    /* Animated Equalizer Bars */
+    @keyframes eqBounce1 { 0%, 100% { height: 6px; } 50% { height: 22px; } }
+    @keyframes eqBounce2 { 0%, 100% { height: 14px; } 50% { height: 6px; } }
+    @keyframes eqBounce3 { 0%, 100% { height: 8px; } 50% { height: 26px; } }
+    @keyframes eqBounce4 { 0%, 100% { height: 18px; } 50% { height: 7px; } }
+
+    .eq-bar {
+      width: 4px;
+      border-radius: 999px;
+      height: 6px;
+      transition: height 0.2s ease;
+    }
+    .eq-playing .eq-b1 { animation: eqBounce1 0.72s ease-in-out infinite; }
+    .eq-playing .eq-b2 { animation: eqBounce2 0.64s ease-in-out infinite 0.1s; }
+    .eq-playing .eq-b3 { animation: eqBounce3 0.80s ease-in-out infinite 0.15s; }
+    .eq-playing .eq-b4 { animation: eqBounce4 0.68s ease-in-out infinite 0.05s; }
+    .eq-playing .eq-b5 { animation: eqBounce1 0.76s ease-in-out infinite 0.22s; }
+    .eq-playing .eq-b6 { animation: eqBounce3 0.62s ease-in-out infinite 0.12s; }
+    .eq-playing .eq-b7 { animation: eqBounce2 0.74s ease-in-out infinite 0.18s; }
+    .eq-playing .eq-b8 { animation: eqBounce4 0.70s ease-in-out infinite 0.08s; }
+    .eq-playing .eq-b9 { animation: eqBounce1 0.66s ease-in-out infinite 0.25s; }
+
+    /* Now Playing Slide-up Sheet Transition */
+    #nowPlayingSheet {
+      transform: translateY(105%);
+      transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #nowPlayingSheet.open {
+      transform: translateY(0%);
+    }
+
+    /* Radio Pulse Ring */
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.40); }
+      70% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .radio-pulse {
+      animation: pulseRing 2s infinite;
+    }
+
+    /* Refresh Spin */
+    @keyframes spinOnce {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spin-once {
+      animation: spinOnce 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Bar Chart Smooth Height Transition */
+    .chart-bar {
+      transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
+    }
+
+    /* Screen Fade */
+    .screen-view {
+      animation: fadeSlideIn 0.20s ease-out;
+    }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center sm:py-5">
+
+  <!-- Centered Mobile Viewport Shell (max-w-[430px] on desktop, full viewport on mobile) -->
+  <div id="appShell" class="relative w-full max-w-[430px] h-[100dvh] sm:h-[860px] sm:max-h-[94vh] bg-[#F8F9FA] sm:rounded-[34px] sm:shadow-[0_24px_70px_-15px_rgba(17,24,39,0.22)] sm:border sm:border-white/90 overflow-hidden flex flex-col">
+
+    <!-- STICKY TOP APP BAR -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#EAECEF] px-4 py-3 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchTab('home')">
+        <!-- Brand Icon: Orange-to-Red Gradient Badge with White Headphones & Lightning -->
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FF6B00] via-[#FF5A1F] to-[#E11D48] flex items-center justify-center shadow-md shadow-orange-500/25">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 14v-2a9 9 0 0 1 18 0v2" />
+            <path d="M21 15a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" fill="currentColor" stroke="none"/>
+            <path d="M3 15a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" fill="currentColor" stroke="none"/>
+            <path d="M12.5 8.5L10 13h2.5l-1 4.5 3.5-5h-2.5l1-4z" fill="#FFFFFF" stroke="none"/>
+          </svg>
+        </div>
+        <div class="leading-tight">
+          <span class="font-display font-extrabold text-[18px] tracking-tight text-[#111827]">Soko</span>
+          <span class="font-display font-semibold text-[16px] text-[#FF5A1F] ml-0.5">Music</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Tappable Listening Time Pill Badge -> jumps directly to Listening Time & Stats in Settings -->
+        <button onclick="switchTab('settings', true)" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-[#FFF3ED] to-[#ECFDF5] border border-orange-200/80 text-[11px] font-bold text-[#FF5A1F] hover:brightness-95 active:scale-95 transition">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse"></span>
+          <span id="headerListenBadge">1h 42m today</span>
+        </button>
+        <!-- Circular User Avatar -->
+        <button onclick="switchTab('settings')" aria-label="User Profile & Settings" class="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-[#FF5A1F] via-[#EF4444] to-[#16A34A] shadow-sm active:scale-95 transition">
+          <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+            <svg viewBox="0 0 40 40" class="w-full h-full">
+              <defs>
+                <linearGradient id="avBg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#FFEDD5"/>
+                  <stop offset="100%" stop-color="#FECACA"/>
+                </linearGradient>
+              </defs>
+              <rect width="40" height="40" fill="url(#avBg)"/>
+              <circle cx="20" cy="15" r="7" fill="#FF5A1F"/>
+              <path d="M8 36c1.5-7 6.5-10 12-10s10.5 3 12 10" fill="#111827"/>
+              <circle cx="17.5" cy="14" r="1.2" fill="#FFF"/>
+              <circle cx="22.5" cy="14" r="1.2" fill="#FFF"/>
+              <path d="M17.5 17.5c1 1.2 4 1.2 5 0" stroke="#FFF" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#16A34A] border-2 border-white"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN SCROLLABLE CONTENT AREA -->
+    <main id="mainScroll" class="flex-1 overflow-y-auto no-scrollbar pb-[162px]">
+
+      <!-- ==================== SCREEN 1: HOME (ALL 6 ORIGINAL SECTIONS) ==================== -->
+      <section id="screen-home" class="screen-view px-4 pt-4 space-y-6">
+
+        <!-- Section 1: Quick picks -->
+        <div>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] font-bold tracking-widest uppercase text-[#FF5A1F]">START RADIO FROM A SONG</p>
+              <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Quick picks</h2>
+            </div>
+            <button onclick="playSection('quickPicks')" class="px-3.5 py-1.5 rounded-full bg-[#FFF3ED] text-[#FF5A1F] border border-orange-200 text-xs font-bold hover:bg-[#FF5A1F] hover:text-white transition active:scale-95">
+              Play all
+            </button>
+          </div>
+          <div id="quickPicksList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Section 2: Mixed for you + 4-track curated list immediately below -->
+        <div class="space-y-3.5">
+          <div>
+            <p class="text-[10px] font-bold tracking-widest uppercase text-[#16A34A]">PLAYLISTS TAILORED FOR YOU</p>
+            <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Mixed for you</h2>
+          </div>
+          <div id="mixedCarousel" class="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4"></div>
+          <div id="mixedTracksList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Section 3: Forgotten favorites -->
+        <div>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] font-bold tracking-widest uppercase text-gray-500">REVISIT PAST FAVORITES</p>
+              <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Forgotten favorites</h2>
+            </div>
+            <button onclick="playSection('forgotten')" class="px-3.5 py-1.5 rounded-full bg-[#FFF3ED] text-[#FF5A1F] border border-orange-200 text-xs font-bold hover:bg-[#FF5A1F] hover:text-white transition active:scale-95">
+              Play all
+            </button>
+          </div>
+          <div id="forgottenList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Section 4: Trending songs for you -->
+        <div>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] font-bold tracking-widest uppercase text-[#EF4444]">CHARTS &amp; BUZZ</p>
+              <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Trending songs for you</h2>
+            </div>
+            <button onclick="playSection('trending')" class="px-3.5 py-1.5 rounded-full bg-[#FFF3ED] text-[#FF5A1F] border border-orange-200 text-xs font-bold hover:bg-[#FF5A1F] hover:text-white transition active:scale-95">
+              Play all
+            </button>
+          </div>
+          <div id="trendingList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Section 5: Listen together -->
+        <div>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] font-bold tracking-widest uppercase text-[#16A34A]">GROUP SESSION &amp; PARTY PICKS</p>
+              <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Listen together</h2>
+            </div>
+            <button onclick="playSection('listenTogether')" class="px-3.5 py-1.5 rounded-full bg-[#FFF3ED] text-[#FF5A1F] border border-orange-200 text-xs font-bold hover:bg-[#FF5A1F] hover:text-white transition active:scale-95">
+              Play all
+            </button>
+          </div>
+          <div id="listenTogetherList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Section 6: Heard in Shorts -->
+        <div>
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] font-bold tracking-widest uppercase text-[#EF4444]">CURATED HIT</p>
+              <h2 class="font-display font-extrabold text-[20px] text-[#111827] leading-tight">Heard in Shorts</h2>
+            </div>
+            <button onclick="playSection('shorts')" class="px-3.5 py-1.5 rounded-full bg-[#FEF2F2] text-[#EF4444] border border-red-200 text-xs font-bold hover:bg-[#EF4444] hover:text-white transition active:scale-95">
+              Play all
+            </button>
+          </div>
+          <div id="shortsList" class="space-y-2.5"></div>
+        </div>
+
+      </section>
+
+      <!-- ==================== SCREEN 2: TOP 100 CHARTS ==================== -->
+      <section id="screen-charts" class="screen-view hidden px-4 pt-4 space-y-4">
+
+        <!-- Header + Refresh Button -->
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="font-display font-extrabold text-[22px] text-[#111827] leading-tight">Top 100 Charts</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Trending hits with authentic audio</p>
+          </div>
+          <button id="chartsRefreshBtn" onclick="refreshCharts()" aria-label="Refresh Charts" class="w-10 h-10 rounded-full bg-white border border-[#EAECEF] text-[#FF5A1F] flex items-center justify-center shadow-card hover:bg-[#FFF3ED] active:scale-95 transition">
+            <svg id="chartsRefreshIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Region Filter Pills -->
+        <div id="regionPills" class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+          <!-- Populated via JS -->
+        </div>
+
+        <!-- Numbered Chart List -->
+        <div id="chartsTrackList" class="space-y-2.5">
+          <!-- Populated via JS -->
+        </div>
+
+      </section>
+
+      <!-- ==================== SCREEN 3: SEARCH ==================== -->
+      <section id="screen-search" class="screen-view hidden px-4 pt-4 space-y-4">
+
+        <!-- Rounded Search Input with Magnifying Glass & Clear X -->
+        <div class="relative">
+          <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="globalSearchInput" type="text" placeholder="Search songs, artists, or albums..." oninput="renderSearch()" class="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-[#EAECEF] shadow-card text-sm text-[#111827] placeholder-gray-400 focus:outline-none focus:border-[#FF5A1F] transition" />
+          <button id="clearSearchBtn" onclick="clearGlobalSearch()" aria-label="Clear search" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-[#EF4444] flex items-center justify-center transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Filter Pills: All Songs | Offline Only | Favorites -->
+        <div class="flex items-center gap-2">
+          <button onclick="setSearchFilter('all')" id="sf-all" class="px-4 py-2 rounded-full text-xs font-bold bg-[#FF5A1F] text-white shadow-sm shadow-orange-500/25 transition active:scale-95">
+            All Songs
+          </button>
+          <button onclick="setSearchFilter('offline')" id="sf-offline" class="px-4 py-2 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-green-300 transition active:scale-95">
+            Offline Only
+          </button>
+          <button onclick="setSearchFilter('favorites')" id="sf-favorites" class="px-4 py-2 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-red-300 transition active:scale-95">
+            Favorites
+          </button>
+        </div>
+
+        <!-- Dynamic Search Results / Empty Prompt -->
+        <div id="searchResultsContainer" class="space-y-2.5">
+          <!-- Populated via JS -->
+        </div>
+
+      </section>
+
+      <!-- ==================== SCREEN 4: LIBRARY ==================== -->
+      <section id="screen-library" class="screen-view hidden px-4 pt-4 space-y-5">
+
+        <!-- Your Playlists Header -->
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-display font-extrabold text-[22px] text-[#111827] leading-tight">Your Playlists</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Local collections &amp; auto-smart lists</p>
+          </div>
+          <button onclick="showToast('New local playlist created', 'orange')" aria-label="Create Playlist" class="w-10 h-10 rounded-full bg-[#FF5A1F] text-white flex items-center justify-center shadow-md shadow-orange-500/30 hover:bg-[#FF6B00] active:scale-95 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+
+        <!-- 2x2 Playlist Grid -->
+        <div class="grid grid-cols-2 gap-3">
+          <!-- 1. Liked Songs -->
+          <div onclick="openFavoritesInSearch()" class="bg-white rounded-2xl p-3 border border-[#EAECEF] shadow-card cursor-pointer hover:border-red-200 active:scale-[0.98] transition">
+            <div class="w-full aspect-square rounded-xl bg-gradient-to-br from-[#EF4444] via-[#E11D48] to-[#FF5A1F] flex flex-col items-center justify-center relative overflow-hidden mb-2.5">
+              <div class="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/15"></div>
+              <div class="absolute -bottom-5 -left-5 w-20 h-20 rounded-full bg-black/10"></div>
+              <svg class="w-11 h-11 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span class="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-white/90 bg-black/20 px-2 py-0.5 rounded-full">Favorites</span>
+            </div>
+            <h3 class="font-display font-bold text-sm text-[#111827] truncate">Liked Songs</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5"><span id="likedCountLabel">3</span> tracks &middot; System</p>
+          </div>
+
+          <!-- 2. Downloaded Music -->
+          <div onclick="document.getElementById('offlineContainer').scrollIntoView({behavior:'smooth'})" class="bg-white rounded-2xl p-3 border border-[#EAECEF] shadow-card cursor-pointer hover:border-green-200 active:scale-[0.98] transition">
+            <div class="w-full aspect-square rounded-xl bg-gradient-to-br from-[#16A34A] via-[#10B981] to-[#059669] flex flex-col items-center justify-center relative overflow-hidden mb-2.5">
+              <div class="absolute -top-5 -left-5 w-20 h-20 rounded-full bg-white/15"></div>
+              <svg class="w-11 h-11 text-white drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span class="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-white/95 bg-black/20 px-2 py-0.5 rounded-full">⚡ 0ms Ready</span>
+            </div>
+            <h3 class="font-display font-bold text-sm text-[#111827] truncate">Downloaded Music</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5"><span id="downloadedGridCount">369</span> tracks &middot; System</p>
+          </div>
+
+          <!-- 3. Late Night Lo-Fi & Acoustic -->
+          <div onclick="showToast('Late Night Lo-Fi & Acoustic is empty. Tap + on any song to add!', 'orange')" class="bg-white rounded-2xl p-3 border border-[#EAECEF] shadow-card cursor-pointer hover:border-orange-200 active:scale-[0.98] transition">
+            <div class="w-full aspect-square rounded-xl bg-gradient-to-br from-[#FF8C42] via-[#FF5A1F] to-[#F59E0B] flex flex-col items-center justify-center relative overflow-hidden mb-2.5">
+              <div class="absolute bottom-2 right-2 w-14 h-14 rounded-full bg-white/15"></div>
+              <svg class="w-11 h-11 text-white drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <span class="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-white/95 bg-black/15 px-2 py-0.5 rounded-full">Chill Mix</span>
+            </div>
+            <h3 class="font-display font-bold text-sm text-[#111827] leading-snug line-clamp-1">Late Night Lo-Fi &amp; Acoustic</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">0 tracks</p>
+          </div>
+
+          <!-- 4. High Energy & Party -->
+          <div onclick="loadTrack('superman', true)" class="bg-white rounded-2xl p-3 border border-[#EAECEF] shadow-card cursor-pointer hover:border-orange-200 active:scale-[0.98] transition">
+            <div class="w-full aspect-square rounded-xl bg-gradient-to-br from-[#FF5A1F] via-[#EF4444] to-[#FB923C] flex flex-col items-center justify-center relative overflow-hidden mb-2.5">
+              <div class="absolute -top-3 right-3 w-12 h-12 rounded-full bg-yellow-300/25"></div>
+              <svg class="w-11 h-11 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <span class="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-white/95 bg-black/20 px-2 py-0.5 rounded-full">Party Hits</span>
+            </div>
+            <h3 class="font-display font-bold text-sm text-[#111827] truncate">High Energy &amp; Party</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">1 tracks</p>
+          </div>
+        </div>
+
+        <!-- All Offline Stored Songs Container Card -->
+        <div id="offlineContainer" class="bg-white rounded-3xl p-4 border border-[#EAECEF] shadow-card space-y-3.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="font-display font-extrabold text-[17px] text-[#111827]">All Offline Stored Songs</h3>
+                <span id="offlineCountPill" class="px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#16A34A] border border-green-200 text-[11px] font-bold">369 songs</span>
+              </div>
+              <p class="text-[11px] text-gray-500 mt-1">100% on device disk &middot; 0ms gapless offline</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button onclick="playOfflineAll(false)" aria-label="Play All Offline" class="w-10 h-10 rounded-full bg-[#FF5A1F] text-white flex items-center justify-center shadow-md shadow-orange-500/30 hover:bg-[#FF6B00] active:scale-95 transition">
+                <svg class="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              </button>
+              <button onclick="playOfflineAll(true)" aria-label="Shuffle Offline" class="w-10 h-10 rounded-full bg-[#ECFDF5] text-[#16A34A] border border-green-200 flex items-center justify-center hover:bg-[#16A34A] hover:text-white active:scale-95 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Input -->
+          <div class="relative">
+            <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="offlineSearchInput" type="text" placeholder="Search within downloaded songs..." oninput="renderOfflineSongs()" class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F8F9FA] border border-[#EAECEF] text-sm text-[#111827] placeholder-gray-400 focus:outline-none focus:border-[#FF5A1F] focus:bg-white transition" />
+          </div>
+
+          <!-- Sort Pills -->
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-0.5">Sort:</span>
+            <button id="sortRecentBtn" onclick="setOfflineSort('recent')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-[#FF5A1F] text-white shadow-sm transition active:scale-95">
+              Recently added &darr;
+            </button>
+            <button id="sortAlphaBtn" onclick="setOfflineSort('alpha')" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-orange-300 transition active:scale-95">
+              Title (A-Z)
+            </button>
+          </div>
+
+          <!-- Offline Song List -->
+          <div id="offlineSongsList" class="space-y-2"></div>
+        </div>
+
+      </section>
+
+      <!-- ==================== SCREEN 5: SETTINGS & STORAGE ==================== -->
+      <section id="screen-settings" class="screen-view hidden px-4 pt-4 space-y-4">
+
+        <!-- Header -->
+        <div>
+          <h2 class="font-display font-extrabold text-[22px] text-[#111827] leading-tight">Settings &amp; Storage</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Manage offline space and audio quality</p>
+        </div>
+
+        <!-- NEW FEATURE: LISTENING TIME & STATS CARD -->
+        <div id="listeningStatsCard" class="bg-white rounded-3xl border border-[#EAECEF] shadow-card overflow-hidden">
+          <div class="h-1.5 w-full bg-gradient-to-r from-[#FF5A1F] via-[#FF6B00] to-[#16A34A]"></div>
+          <div class="p-4 space-y-4">
+            <!-- Card Header -->
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-[#FFF3ED] text-[#FF5A1F] flex items-center justify-center">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-display font-extrabold text-[15px] text-[#111827] leading-tight">Listening Time &amp; Stats</h3>
+                  <p class="text-[11px] text-gray-500">Live session timer &amp; playback activity</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-gradient-to-r from-[#FEF2F2] to-[#FFF3ED] border border-red-200/80 text-[11px] font-bold text-[#EF4444] flex items-center gap-1 shrink-0">
+                <span>12-day streak</span>
+                <span>🔥</span>
+              </span>
+            </div>
+
+            <!-- Segmented Pill Tabs -->
+            <div class="grid grid-cols-4 gap-1.5 bg-[#F8F9FA] p-1 rounded-xl border border-[#EAECEF]">
+              <button onclick="setStatsRange('today')" data-range="today" class="range-btn py-1.5 rounded-lg text-xs font-bold bg-[#FF5A1F] text-white shadow-sm transition">Today</button>
+              <button onclick="setStatsRange('week')" data-range="week" class="range-btn py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-[#111827] transition">Week</button>
+              <button onclick="setStatsRange('month')" data-range="month" class="range-btn py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-[#111827] transition">Month</button>
+              <button onclick="setStatsRange('all')" data-range="all" class="range-btn py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-[#111827] transition">All Time</button>
+            </div>
+
+            <!-- Hero Metrics -->
+            <div class="flex items-end justify-between bg-[#FFF8F5] rounded-2xl p-3.5 border border-orange-100">
+              <div>
+                <p id="statRangeLabel" class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Time Spent Today</p>
+                <div class="flex items-baseline gap-2 mt-0.5 flex-wrap">
+                  <span id="statTotalTime" class="font-display font-extrabold text-[30px] text-[#111827] tracking-tight leading-none">1h 42m</span>
+                  <span id="statLiveSec" class="text-[11px] font-bold text-[#16A34A] tabular-nums">+00s live</span>
+                </div>
+                <p id="statTrackCount" class="text-xs font-bold text-[#FF5A1F] mt-1">28 songs played</p>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#16A34A] text-[11px] font-bold border border-green-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#16A34A]"></span>
+                  <span id="statOfflinePctBadge">92% Offline</span>
+                </span>
+                <p id="statTooltipReadout" class="text-[10px] text-gray-500 mt-1.5 font-medium">Tap a bar for details</p>
+              </div>
+            </div>
+
+            <!-- Interactive Bar Chart -->
+            <div class="pt-1">
+              <div id="listeningChart" class="h-32 flex items-end justify-between gap-2 px-1"></div>
+              <div id="listeningChartLabels" class="flex items-center justify-between gap-2 px-1 mt-2"></div>
+            </div>
+
+            <!-- Offline (Green) vs. Online (Orange) Split Bar -->
+            <div class="space-y-1.5 pt-1">
+              <div class="flex items-center justify-between text-[11px] font-semibold">
+                <span class="text-[#16A34A] flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#16A34A]"></span>
+                  Offline <strong id="offlineShareText">92%</strong>
+                </span>
+                <span class="text-[#FF5A1F] flex items-center gap-1.5">
+                  Online <strong id="onlineShareText">8%</strong>
+                  <span class="w-2 h-2 rounded-full bg-[#FF5A1F]"></span>
+                </span>
+              </div>
+              <div class="w-full h-2.5 rounded-full bg-[#F3F4F6] overflow-hidden flex p-0.5 gap-0.5">
+                <div id="offlineShareBar" class="h-full rounded-full bg-gradient-to-r from-[#16A34A] to-[#10B981] transition-all duration-500" style="width: 92%"></div>
+                <div id="onlineShareBar" class="h-full rounded-full bg-gradient-to-r from-[#FF6B00] to-[#FF5A1F] transition-all duration-500" style="width: 8%"></div>
+              </div>
+            </div>
+
+            <!-- 3-Column Mini Stat Grid: Daily Average, Top Artist, Peak Hour -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <div class="bg-[#F8F9FA] rounded-xl p-2.5 border border-[#EAECEF]">
+                <p class="text-[9px] font-bold uppercase tracking-wider text-gray-400">Daily Avg</p>
+                <p id="statDailyAvg" class="font-display font-extrabold text-xs text-[#111827] mt-0.5 truncate">2h 05m</p>
+              </div>
+              <div class="bg-[#F8F9FA] rounded-xl p-2.5 border border-[#EAECEF]">
+                <p class="text-[9px] font-bold uppercase tracking-wider text-gray-400">Top Artist</p>
+                <p id="statTopArtist" class="font-display font-extrabold text-xs text-[#FF5A1F] mt-0.5 truncate">Yo Yo Honey Singh</p>
+              </div>
+              <div class="bg-[#F8F9FA] rounded-xl p-2.5 border border-[#EAECEF]">
+                <p class="text-[9px] font-bold uppercase tracking-wider text-gray-400">Peak Hour</p>
+                <p id="statPeakHour" class="font-display font-extrabold text-xs text-[#16A34A] mt-0.5 truncate">9:00 PM</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile & Cloud Account Card -->
+        <div class="bg-white rounded-3xl p-4 border border-[#EAECEF] shadow-card space-y-3.5">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#FF5A1F] to-[#EF4444] p-0.5 shrink-0">
+                <div class="w-full h-full rounded-[14px] bg-[#FFF8F5] flex items-center justify-center font-display font-extrabold text-[#FF5A1F] text-base">SM</div>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-display font-bold text-sm text-[#111827] truncate">Profile &amp; Cloud Account</h3>
+                <p class="text-xs text-[#16A34A] font-medium flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#16A34A]"></span>
+                  Connected &middot; Cloud Sync
+                </p>
+              </div>
+            </div>
+            <button onclick="showToast('Cloud Account synced just now', 'orange')" class="px-3.5 py-2 rounded-full bg-[#FF5A1F] text-white text-xs font-bold shadow-sm shadow-orange-500/25 hover:bg-[#FF6B00] active:scale-95 transition shrink-0">
+              Manage Account
+            </button>
+          </div>
+          <div class="bg-[#F8F9FA] rounded-2xl p-3 border border-[#EAECEF] flex items-center justify-between gap-3">
+            <p class="text-[11px] text-gray-500 leading-relaxed">Custom profile picture &amp; animated GIFs supported. Sync recommendations into Soko offline storage.</p>
+            <button onclick="showToast('Photo picker opened', 'orange')" class="px-3 py-1.5 rounded-full bg-white text-[#FF5A1F] border border-orange-300 text-[11px] font-bold hover:bg-[#FFF3ED] active:scale-95 transition shrink-0">
+              Change Photo
+            </button>
+          </div>
+        </div>
+
+        <!-- Recommendation Feedback Card -->
+        <div class="bg-white rounded-3xl p-4 border border-[#EAECEF] shadow-card space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-[#FFF3ED] text-[#FF5A1F] flex items-center justify-center">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              </div>
+              <div>
+                <h3 class="font-display font-bold text-sm text-[#111827]">Recommendation Feedback</h3>
+                <p class="text-[11px] text-gray-500">Watch Time, Likes &amp; History</p>
+              </div>
+            </div>
+            <button id="recToggleBtn" onclick="toggleRecommendation()" class="px-3 py-1 rounded-full bg-[#ECFDF5] text-[#16A34A] border border-green-200 text-[11px] font-extrabold tracking-wide transition active:scale-95">
+              &bull; ACTIVE
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 bg-[#F8F9FA] rounded-2xl p-3 border border-[#EAECEF] leading-relaxed">
+            Automatically reports listen time (&gt;50% completion) and skips to the recommendation model so your discovery feed continuously improves.
+          </p>
+        </div>
+
+        <!-- Offline Disk Storage Card -->
+        <div class="bg-white rounded-3xl p-4 border border-[#EAECEF] shadow-card space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-[#ECFDF5] text-[#16A34A] flex items-center justify-center">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              </div>
+              <div>
+                <h3 class="font-display font-bold text-sm text-[#111827]">Offline Disk Storage</h3>
+                <p class="text-[11px] text-gray-500">High-bitrate local audio</p>
+              </div>
+            </div>
+            <span id="storageBadge" class="px-2.5 py-1 rounded-lg bg-[#ECFDF5] text-[#16A34A] border border-green-200 text-[11px] font-bold">
+              1236.9 MB / 4.0 GB
+            </span>
+          </div>
+
+          <div class="bg-[#F8F9FA] rounded-2xl p-3.5 border border-[#EAECEF] space-y-2.5">
+            <div class="flex items-center justify-between text-[11px] font-bold">
+              <span class="text-gray-500 tracking-wider uppercase">Disk Allocation</span>
+              <span class="text-[#16A34A]">&bull; 100% Offline Ready</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-gray-200 overflow-hidden">
+              <div id="storageProgressBar" class="h-full rounded-full bg-gradient-to-r from-[#FF5A1F] via-[#FF8C42] to-[#16A34A] transition-all duration-500" style="width: 31%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-gray-500">
+              <span id="storageSongsLabel">369 real songs stored locally (1236.9 MB)</span>
+              <span class="font-semibold text-gray-700">160k Opus / AAC</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cache & Engine Settings Card -->
+        <div class="bg-white rounded-3xl p-4 border border-[#EAECEF] shadow-card space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h4 class="font-display font-bold text-sm text-[#111827]">Maximum Cache Size</h4>
+              <p class="text-[11px] text-gray-500">Automated eviction of oldest unpinned songs</p>
+            </div>
+            <select id="cacheSizeSelect" onchange="updateCacheLimit()" class="bg-[#F8F9FA] border border-[#EAECEF] rounded-xl px-2.5 py-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#FF5A1F] cursor-pointer">
+              <option value="2.0">2.0 GB (~500 songs)</option>
+              <option value="4.0" selected>4.0 GB (~1,000 songs)</option>
+              <option value="8.0">8.0 GB (~2,000 songs)</option>
+            </select>
+          </div>
+
+          <div class="h-px bg-[#EAECEF]"></div>
+
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h4 class="font-display font-bold text-sm text-[#111827]">Audio Engine</h4>
+              <p class="text-[11px] text-gray-500">On-device 128k AAC/Opus native decoder</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#16A34A] border border-green-200 text-xs font-bold shrink-0">
+              Active &#10003;
+            </span>
+          </div>
+
+          <div class="h-px bg-[#EAECEF]"></div>
+
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h4 class="font-display font-bold text-sm text-[#111827]">Look-Ahead Pre-download</h4>
+              <p class="text-[11px] text-gray-500">Caches upcoming track in background for 0ms gaps</p>
+            </div>
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="predownloadCheck" type="checkbox" checked onchange="togglePredownload()" class="sr-only peer">
+              <div class="w-6 h-6 rounded-lg border-2 border-[#EAECEF] peer-checked:border-[#FF5A1F] peer-checked:bg-[#FF5A1F] flex items-center justify-center transition">
+                <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </label>
+          </div>
+
+          <!-- Clear Cache Button + Inline Confirmation Box -->
+          <div id="clearCacheWrap" class="space-y-2">
+            <button id="clearCacheTrigger" onclick="promptClearCache()" class="w-full py-3 rounded-2xl bg-[#FEF2F2] text-[#EF4444] border border-red-200 font-display font-bold text-xs hover:bg-[#EF4444] hover:text-white active:scale-[0.99] transition">
+              Clear Unpinned Cache (Keep Liked &amp; Bundled)
+            </button>
+            <div id="clearCacheConfirm" class="hidden bg-[#FEF2F2] border border-red-200 rounded-2xl p-3 space-y-2">
+              <p class="text-[11px] font-semibold text-[#991B1B]">Free up ~824.5 MB of unpinned cache? Your Liked &amp; Bundled tracks stay safe.</p>
+              <div class="flex items-center gap-2">
+                <button onclick="confirmClearCache()" class="flex-1 py-2 rounded-xl bg-[#EF4444] text-white text-xs font-bold active:scale-95 transition">Yes, Clear Cache</button>
+                <button onclick="cancelClearCache()" class="flex-1 py-2 rounded-xl bg-white text-gray-700 border border-gray-200 text-xs font-bold active:scale-95 transition">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- PERSISTENT FLOATING MINI-PLAYER (Matches Screenshot Layout in Light Mode) -->
+    <div id="miniPlayer" onclick="openNowPlaying()" class="absolute bottom-[68px] left-2.5 right-2.5 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-[#EAECEF] shadow-mini overflow-hidden cursor-pointer active:scale-[0.99] transition">
+      <!-- Thin Orange Progress Line Across Top -->
+      <div class="w-full h-[3px] bg-orange-100">
+        <div id="miniProgress" class="h-full bg-gradient-to-r from-[#FF5A1F] to-[#FF6B00] transition-all duration-300" style="width: 45%"></div>
+      </div>
+      <div class="px-2.5 py-2 flex items-center gap-2.5">
+        <!-- Album Art -->
+        <div id="miniArt" class="w-11 h-11 rounded-xl shrink-0 overflow-hidden shadow-sm"></div>
+        <!-- Title + Artist + Offline & Radio Pills -->
+        <div class="min-w-0 flex-1">
+          <h4 id="miniTitle" class="font-display font-extrabold text-[13px] text-[#111827] truncate leading-tight">YA BABA (FITNA FAREBI)</h4>
+          <div class="flex items-center gap-1 mt-1 overflow-hidden">
+            <span id="miniArtist" class="text-[11px] text-gray-500 truncate max-w-[60px]">Amit...</span>
+            <span id="miniOfflinePill" class="px-1.5 py-[1px] rounded-full bg-[#ECFDF5] border border-green-200 text-[#16A34A] text-[9px] font-bold shrink-0">⚡ Offline</span>
+            <span class="px-1.5 py-[1px] rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] text-[9px] font-bold shrink-0">📻 Radio</span>
+          </div>
+        </div>
+        <!-- Controls: Red Glowing Radio, Orange Play/Pause, Next -->
+        <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+          <button id="miniRadioBtn" onclick="toggleRadioMode()" aria-label="Radio Active" class="w-8 h-8 rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] flex items-center justify-center radio-pulse active:scale-95 transition">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          </button>
+          <button onclick="togglePlayPause()" id="miniPlayBtn" aria-label="Play or Pause" class="w-9 h-9 rounded-full bg-[#FF5A1F] text-white flex items-center justify-center shadow-md shadow-orange-500/30 hover:bg-[#FF6B00] active:scale-95 transition"></button>
+          <button onclick="nextTrack()" aria-label="Next Track" class="w-7 h-8 rounded-full text-[#111827] hover:text-[#FF5A1F] flex items-center justify-center active:scale-90 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5-TAB BOTTOM NAVIGATION BAR: Home, Charts, Search, Library, Settings -->
+    <nav class="absolute bottom-0 left-0 right-0 z-30 bg-white border-t border-[#EAECEF] px-2 py-2 flex items-center justify-around">
+      <button onclick="switchTab('home')" id="nav-home" class="nav-tab flex-1 flex flex-col items-center gap-0.5 text-[#FF5A1F] transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span class="text-[10px] font-bold">Home</span>
+      </button>
+      <button onclick="switchTab('charts')" id="nav-charts" class="nav-tab flex-1 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-700 transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <span class="text-[10px] font-semibold">Charts</span>
+      </button>
+      <button onclick="switchTab('search')" id="nav-search" class="nav-tab flex-1 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-700 transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="text-[10px] font-semibold">Search</span>
+      </button>
+      <button onclick="switchTab('library')" id="nav-library" class="nav-tab flex-1 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-700 transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span class="text-[10px] font-semibold">Library</span>
+      </button>
+      <button onclick="switchTab('settings')" id="nav-settings" class="nav-tab flex-1 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-700 transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="text-[10px] font-semibold">Settings</span>
+      </button>
+    </nav>
+
+    <!-- ==================== FULL-SCREEN NOW PLAYING SLIDE-UP SHEET ==================== -->
+    <div id="nowPlayingSheet" class="absolute inset-0 z-50 bg-gradient-to-b from-[#FFF6F0] via-[#FFFFFF] to-[#F8F9FA] flex flex-col justify-between px-5 pt-4 pb-6 overflow-y-auto no-scrollbar">
+
+      <!-- Top Bar -->
+      <div class="flex items-center justify-between">
+        <button onclick="closeNowPlaying()" aria-label="Close Now Playing" class="w-10 h-10 rounded-full bg-white border border-[#EAECEF] flex items-center justify-center text-[#111827] shadow-sm active:scale-95 transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <button id="npOfflinePill" onclick="toggleOfflineMode()" class="px-4 py-1.5 rounded-full bg-[#ECFDF5] border border-green-200 text-[#16A34A] text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+          <span>⚡</span>
+          <span id="npOfflinePillText">Offline ⇄</span>
+        </button>
+
+        <button onclick="downloadCurrentTrack()" aria-label="Download Track" class="w-10 h-10 rounded-full bg-[#ECFDF5] border border-green-200 flex items-center justify-center text-[#16A34A] shadow-sm active:scale-95 transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+      </div>
+
+      <!-- Large Album Art & Animated Equalizer -->
+      <div class="flex flex-col items-center my-3">
+        <div id="npArtContainer" class="w-[258px] h-[258px] max-w-[72vw] max-h-[72vw] rounded-[28px] shadow-art overflow-hidden border-4 border-white"></div>
+
+        <div id="npEqualizer" class="h-7 mt-5 flex items-center justify-center gap-1.5 eq-playing">
+          <span class="eq-bar eq-b1 bg-[#FF5A1F]"></span>
+          <span class="eq-bar eq-b2 bg-[#FF8C42]"></span>
+          <span class="eq-bar eq-b3 bg-[#EF4444]"></span>
+          <span class="eq-bar eq-b4 bg-[#16A34A]"></span>
+          <span class="eq-bar eq-b5 bg-[#FF5A1F]"></span>
+          <span class="eq-bar eq-b6 bg-[#10B981]"></span>
+          <span class="eq-bar eq-b7 bg-[#EF4444]"></span>
+          <span class="eq-bar eq-b8 bg-[#FF6B00]"></span>
+          <span class="eq-bar eq-b9 bg-[#16A34A]"></span>
+        </div>
+      </div>
+
+      <!-- Song Info + Radio & Heart Buttons -->
+      <div class="flex items-center justify-between gap-3 mt-1">
+        <div class="min-w-0 flex-1">
+          <h2 id="npTitle" class="font-display font-extrabold text-[21px] text-[#111827] truncate leading-tight">YA BABA (FITNA FAREBI)</h2>
+          <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span id="npArtist" class="text-sm font-medium text-gray-500 truncate max-w-[140px]">Amit Trivedi</span>
+            <span class="px-2 py-0.5 rounded-full bg-[#ECFDF5] border border-green-200 text-[#16A34A] text-[10px] font-bold">⚡ Offline</span>
+            <span class="px-2 py-0.5 rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] text-[10px] font-bold">📻 Radio</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="npRadioBtn" onclick="toggleRadioMode()" aria-label="Toggle Radio" class="w-11 h-11 rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] flex items-center justify-center radio-pulse active:scale-95 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          </button>
+          <button id="npLikeBtn" onclick="toggleLikeCurrent()" aria-label="Like Song" class="w-11 h-11 rounded-full bg-white border border-[#EAECEF] text-gray-500 flex items-center justify-center shadow-sm active:scale-95 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrubber & Timestamps -->
+      <div class="mt-4">
+        <input id="npScrubber" type="range" min="0" max="210" value="95" oninput="seekTrack(this.value)" class="soko-slider" />
+        <div class="flex items-center justify-between text-xs font-semibold text-gray-500 mt-1.5 tabular-nums">
+          <span id="npCurrentTime">1:35</span>
+          <span id="npTotalTime">3:30</span>
+        </div>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="flex items-center justify-between px-2 my-3">
+        <button id="npShuffleBtn" onclick="toggleShuffle()" aria-label="Shuffle" class="p-2.5 text-gray-400 hover:text-[#111827] transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+        <button onclick="prevTrack()" aria-label="Previous" class="p-2.5 text-[#111827] hover:text-[#FF5A1F] active:scale-90 transition">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button id="npPlayPauseBtn" onclick="togglePlayPause()" aria-label="Play or Pause" class="w-16 h-16 rounded-full bg-gradient-to-br from-[#FF6B00] to-[#FF5A1F] text-white flex items-center justify-center shadow-orange-glow active:scale-95 transition"></button>
+        <button onclick="nextTrack()" aria-label="Next" class="p-2.5 text-[#111827] hover:text-[#FF5A1F] active:scale-90 transition">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+        <button id="npRepeatBtn" onclick="toggleRepeat()" aria-label="Repeat" class="p-2.5 text-gray-400 hover:text-[#111827] transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+      </div>
+
+      <!-- UP NEXT Card -->
+      <div onclick="playUpNext()" class="bg-white rounded-2xl p-3.5 border border-[#EAECEF] shadow-card cursor-pointer hover:border-orange-200 active:scale-[0.99] transition">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">UP NEXT</span>
+            <span class="px-2 py-0.5 rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] text-[10px] font-bold">📻 Dynamic Mix</span>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full bg-[#FEF2F2] border border-red-200 text-[#EF4444] text-[10px] font-bold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444] animate-pulse"></span>
+            Radio Active
+          </span>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div id="upNextArt" class="w-11 h-11 rounded-xl shrink-0 overflow-hidden"></div>
+            <div class="min-w-0">
+              <h4 id="upNextTitle" class="font-display font-bold text-sm text-[#111827] truncate">Balma</h4>
+              <p id="upNextArtist" class="text-xs text-gray-500 truncate">Shreya Ghoshal</p>
+            </div>
+          </div>
+          <span class="text-[11px] font-bold text-[#16A34A] shrink-0">&bull; Offline Ready</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CUSTOM TOAST NOTIFICATION -->
+    <div id="toastBox" class="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[60] opacity-0 -translate-y-2 transition-all duration-300 w-[90%] max-w-[360px]">
+      <div class="bg-[#111827] text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5">
+        <span id="toastDot" class="w-2 h-2 rounded-full bg-[#FF5A1F] shrink-0"></span>
+        <span id="toastText">Notification</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== APPLICATION LOGIC ==================== -->
+  <script>
+    // =========================================================================
+    // 1. VIBRANT SVG/CSS ARTWORK GENERATOR (ZERO BROKEN EXTERNAL IMAGES)
+    // =========================================================================
+    function createArtHTML(palette, motif, label = '') {
+      const palettes = {
+        orangeGold: 'linear-gradient(135deg, #FF5A1F 0%, #FF8C42 52%, #FBBF24 100%)',
+        redFlame:   'linear-gradient(135deg, #E11D48 0%, #EF4444 50%, #FF6B00 100%)',
+        freshGreen: 'linear-gradient(135deg, #16A34A 0%, #10B981 55%, #34D399 100%)',
+        sunsetPop:  'linear-gradient(135deg, #FF6B00 0%, #EF4444 60%, #FB7185 100%)',
+        emeraldSun: 'linear-gradient(135deg, #059669 0%, #16A34A 50%, #F59E0B 100%)',
+        citrus:     'linear-gradient(135deg, #F97316 0%, #FB923C 50%, #FACC15 100%)',
+        berryRed:   'linear-gradient(135deg, #DC2626 0%, #E11D48 55%, #F97316 100%)',
+        mintOrange: 'linear-gradient(135deg, #10B981 0%, #FF5A1F 100%)',
+        warmWhite:  'linear-gradient(135deg, #FF5A1F 0%, #FFFFFF 52%, #16A34A 100%)',
+      };
+      const bg = palettes[palette] || palettes.orangeGold;
+      return `
+        <div class="w-full h-full relative flex flex-col items-center justify-center select-none overflow-hidden" style="background: ${bg};">
+          <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <circle cx="84" cy="16" r="30" fill="#FFFFFF"/>
+            <circle cx="14" cy="86" r="34" fill="#111827"/>
+          </svg>
+          <span class="relative z-10 text-white font-display font-extrabold drop-shadow-sm" style="font-size: clamp(14px, 38%, 42px); line-height: 1;">${motif}</span>
+          ${label ? `<span class="relative z-10 mt-1 px-1.5 py-0.5 rounded bg-black/30 text-white text-[9px] font-bold uppercase tracking-wider">${label}</span>` : ''}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 2. COMPLETE UNIFIED TRACK CATALOG (HOME + CHARTS + LIBRARY + PLAYER)
+    // =========================================================================
+    const TRACKS = {
+      // Featured Now Playing & Up Next
+      yababa: { id: 'yababa', title: 'YA BABA (FITNA FAREBI)', artist: 'Amit Trivedi', meta: '3:30', duration: 210, downloaded: true, palette: 'redFlame', motif: '🔥', label: 'RADIO' },
+      tohre: { id: 'tohre', title: 'Tohre Kaaranwa', artist: 'Khesari Lal Yadav', meta: '42M plays', duration: 210, downloaded: true, palette: 'citrus', motif: '🎈', label: 'HIT' },
+      balma: { id: 'balma', title: 'Balma', artist: 'Shreya Ghoshal', meta: '115M plays', duration: 234, downloaded: true, palette: 'sunsetPop', motif: '✨', label: 'MIX' },
+
+      // Home Section 1: Quick picks
+      jimmy: { id: 'jimmy', title: 'Jimmy Jimmy Jimmy Aaja', artist: 'Parvati Khan', meta: '83M plays', duration: 198, downloaded: true, palette: 'orangeGold', motif: '🪩' },
+      bheegi: { id: 'bheegi', title: 'Bheegi Bheegi Raaton Mein', artist: 'Lata Mangeshkar, Kishore Kumar', meta: '50M plays', duration: 232, downloaded: false, palette: 'freshGreen', motif: '🌧️' },
+      mexico: { id: 'mexico', title: 'Mexico', artist: 'Shotgun Willy, &, Yung Craka', meta: '66M plays', duration: 165, downloaded: false, palette: 'sunsetPop', motif: '🌵' },
+      tuzaroori: { id: 'tuzaroori', title: 'Tu Zaroori (From "Zid")', artist: 'Sharib Toshi, &, Sunidhi Chauhan', meta: '86M plays', duration: 256, downloaded: true, palette: 'emeraldSun', motif: '💚' },
+
+      // Home Section 2: Mixed for you curated 4 tracks
+      ekdilruba: { id: 'ekdilruba', title: 'Ek Dilruba Hai', artist: 'Udit Narayan', meta: '4:42', duration: 282, downloaded: false, palette: 'orangeGold', motif: '🎼' },
+      baazigar: { id: 'baazigar', title: 'Baazigar O Baazigar (With J...)', artist: 'Kumar Sanu', meta: '5:18', duration: 318, downloaded: false, palette: 'berryRed', motif: '🎭' },
+      tumhejoma: { id: 'tumhejoma', title: 'TUMHE JO MAINE DEKHA', artist: 'Anu Malik, Shreya Ghoshal, Abhijeet', meta: '5:41', duration: 341, downloaded: false, palette: 'citrus', motif: '💫' },
+      yehmeradil: { id: 'yehmeradil', title: 'ये मेरा दिल यार का | Yeh Mera Di...', artist: 'Asha Bhosle Retro Vibes', meta: '4:15', duration: 255, downloaded: false, palette: 'redFlame', motif: '❤️' },
+
+      // Home Section 3: Forgotten favorites (reuses jimmy, tuzaroori + 2)
+      amiwrong: { id: 'amiwrong', title: 'Am I Wrong', artist: 'Nico & Vinz', meta: '1.3B plays', duration: 247, downloaded: true, palette: 'mintOrange', motif: '🌍' },
+      gorkariya: { id: 'gorkariya', title: 'Gor Kariya', artist: 'Pawan Singh, &, Honey B', meta: '2.4M plays', duration: 205, downloaded: true, palette: 'orangeGold', motif: '🔥' },
+
+      // Home Section 4: Trending songs for you
+      arasan: { id: 'arasan', title: "Vetri Maaran's Arasan 'FIRE'...", artist: 'Silambarasan TR', meta: '9.5M views', duration: 214, downloaded: false, palette: 'redFlame', motif: '⚡' },
+      mataarti: { id: 'mataarti', title: 'जब सब तुम्हारी माता आरती | Jai ...', artist: 'Bhojpuri Devotional', meta: '700K views', duration: 268, downloaded: false, palette: 'citrus', motif: '🪔' },
+      rathinamc: { id: 'rathinamc', title: 'Rathinamc - Official Music V...', artist: 'Tanishk Bagchi', meta: '3:54', duration: 234, downloaded: false, palette: 'emeraldSun', motif: '🎧' },
+      tulsa: { id: 'tulsa', title: 'तुलसा की आई है बारात मेरे आंगन ...', artist: 'Brijesh Shastri', meta: '4:22', duration: 262, downloaded: false, palette: 'orangeGold', motif: '🌿' },
+
+      // Home Section 5: Listen together (reuses jimmy, gorkariya + 2)
+      pehliraat: { id: 'pehliraat', title: 'Pehli raat official music pura...', artist: 'Aasif', meta: '100K plays', duration: 212, downloaded: true, palette: 'sunsetPop', motif: '🌙' },
+      superman: { id: 'superman', title: 'Superman', artist: 'Yo Yo Honey Singh', meta: '187M plays', duration: 218, downloaded: true, palette: 'redFlame', motif: '⚡' },
+
+      // Home Section 6: Heard in Shorts
+      pariskatrip: { id: 'pariskatrip', title: 'Paris Ka Trip', artist: 'Yo Yo Honey Singh, &, Millind Gaba', meta: '94M plays', duration: 192, downloaded: true, palette: 'berryRed', motif: '🗼' },
+      casatupka: { id: 'casatupka', title: 'Casa Tupka Anthemo (feat. ...', artist: 'Yo Yo Honey Singh', meta: '250M plays', duration: 186, downloaded: true, palette: 'orangeGold', motif: '🎉' },
+      bigdawgs: { id: 'bigdawgs', title: 'Big Dawgs', artist: 'Hanumankind, &, Kalmi', meta: '580M plays', duration: 190, downloaded: true, palette: 'redFlame', motif: '🎤' },
+      tumiljaaye: { id: 'tumiljaaye', title: 'Tu Mil Jaaye (From "KING")', artist: 'Ed Sheeran, Arijit Singh, Kumaar', meta: '3:44', duration: 224, downloaded: true, palette: 'freshGreen', motif: '🎵' },
+
+      // Top 100 Charts Tracks (1-11, reuses tumiljaaye & casatupka for #8 & #9)
+      guzarish: { id: 'guzarish', title: 'Guzarish', artist: 'Satinder Sartaaj', meta: '4:51', duration: 291, downloaded: false, palette: 'orangeGold', motif: '🪕' },
+      daidai: { id: 'daidai', title: 'Dai Dai', artist: 'Shakira, &, Burna Boy', meta: '4:01', duration: 241, downloaded: false, palette: 'citrus', motif: '☀️' },
+      kalyani: { id: 'kalyani', title: 'KALYANI (Remix)', artist: 'ARJN, KDS, FIFTY4, &, Shreya...', meta: '3:28', duration: 208, downloaded: false, palette: 'berryRed', motif: '🎛️' },
+      bbywow: { id: 'bbywow', title: 'BbY WOW', artist: 'KAROL G, Judeline, &, rusow...', meta: '3:15', duration: 195, downloaded: false, palette: 'freshGreen', motif: '✨' },
+      alfaaz: { id: 'alfaaz', title: 'Alfaaz', artist: 'Hamza Malik, &, Zain Zohaib', meta: '3:42', duration: 222, downloaded: false, palette: 'emeraldSun', motif: '🎙️' },
+      parvati: { id: 'parvati', title: 'Parvati', artist: 'Sadhu Tiwari', meta: '4:46', duration: 286, downloaded: false, palette: 'sunsetPop', motif: '🪘' },
+      barsaat: { id: 'barsaat', title: 'Barsaat', artist: 'Banjaare, &, Roni', meta: '3:06', duration: 186, downloaded: false, palette: 'mintOrange', motif: '🌧️' },
+      xamdam: { id: 'xamdam', title: 'Xamdam Sobirov - Pesht...', artist: 'Xamdam Sobirov', meta: '3:01', duration: 181, downloaded: false, palette: 'redFlame', motif: '🎸' },
+      veezha: { id: 'veezha', title: 'Veezha Veera (From "O...', artist: 'Sai Abhyankkar, Ritesh G Rao...', meta: '3:36', duration: 216, downloaded: false, palette: 'orangeGold', motif: '🥁' },
+
+      // Library Offline Stored Songs (10 tracks)
+      raate: { id: 'raate', title: 'राते दीया बुताके', artist: 'Indu Sonali', meta: '2:18', duration: 138, downloaded: true, addedOrder: 1, palette: 'berryRed', motif: '🪔' },
+      rashke: { id: 'rashke', title: 'Mere Rashke Qamar', artist: 'Nusrat Fateh Ali Khan', meta: '3:40', duration: 220, downloaded: true, addedOrder: 2, palette: 'orangeGold', motif: '🌙' },
+      sona: { id: 'sona', title: 'Sona Kitna Sona Hai', artist: 'Poornima', meta: '4:39', duration: 279, downloaded: true, addedOrder: 3, palette: 'citrus', motif: '💛' },
+      kamar: { id: 'kamar', title: 'Kamar Hilela', artist: 'Indu Sonali', meta: '4:04', duration: 244, downloaded: true, addedOrder: 4, palette: 'sunsetPop', motif: '💃' },
+      namariya: { id: 'namariya', title: 'Namariya Kamariya', artist: 'Shilpi Raj', meta: '3:25', duration: 205, downloaded: true, addedOrder: 5, palette: 'freshGreen', motif: '🎶' },
+      aeraja: { id: 'aeraja', title: 'Ae Raja Jani', artist: 'Khesari Lal Yadav', meta: '3:12', duration: 192, downloaded: true, addedOrder: 6, palette: 'redFlame', motif: '👑' },
+      gorikare: { id: 'gorikare', title: 'Gori Kare da P...', artist: 'Ritesh Pandey', meta: '2:58', duration: 178, downloaded: true, addedOrder: 7, palette: 'emeraldSun', motif: '🎤' },
+      sorry: { id: 'sorry', title: 'Sorry Sorry', artist: 'Pawan Singh', meta: '2:13', duration: 133, downloaded: true, addedOrder: 8, palette: 'mintOrange', motif: '🎸' },
+      saiyan: { id: 'saiyan', title: 'Saiyan Ke Rak...', artist: 'Arvind Akela Kallu', meta: '3:31', duration: 211, downloaded: true, addedOrder: 9, palette: 'orangeGold', motif: '🔥' },
+      pawanhit: { id: 'pawanhit', title: 'Pawan Singh Hit', artist: 'Bhawna', meta: '3:18', duration: 198, downloaded: true, addedOrder: 10, palette: 'berryRed', motif: '⭐' },
+    };
+
+    // Home 6 Sections Map
+    const HOME_SECTIONS = {
+      quickPicks: ['jimmy', 'bheegi', 'mexico', 'tuzaroori'],
+      mixedTracks: ['ekdilruba', 'baazigar', 'tumhejoma', 'yehmeradil'],
+      forgotten: ['jimmy', 'tuzaroori', 'amiwrong', 'gorkariya'],
+      trending: ['arasan', 'mataarti', 'rathinamc', 'tulsa'],
+      listenTogether: ['jimmy', 'pehliraat', 'gorkariya', 'superman'],
+      shorts: ['pariskatrip', 'casatupka', 'bigdawgs', 'tumiljaaye'],
+    };
+
+    const MIXED_CARDS = [
+      { title: 'Feel Good Mix 1', sub: 'Udit Narayan, Alka Yagnik...', palette: 'warmWhite', tag: 'MIX', trackId: 'ekdilruba' },
+      { title: 'Feel Good Mix 2', sub: 'Arijit Singh, Vishal Dadlani...', palette: 'freshGreen', tag: 'MIX', trackId: 'tumiljaaye' },
+      { title: 'Feel Good Mix 3', sub: 'Abhijeet, Kumar Sanu...', palette: 'orangeGold', tag: 'MIX', trackId: 'baazigar' },
+    ];
+
+    // Charts Regions & Track Orders
+    const CHART_REGIONS = {
+      'United States': ['guzarish', 'daidai', 'kalyani', 'bbywow', 'alfaaz', 'parvati', 'barsaat', 'tumiljaaye', 'casatupka', 'xamdam', 'veezha'],
+      'Global': ['daidai', 'bigdawgs', 'tumiljaaye', 'bbywow', 'guzarish', 'kalyani', 'casatupka', 'barsaat', 'alfaaz', 'xamdam', 'veezha'],
+      'India': ['tumiljaaye', 'guzarish', 'casatupka', 'parvati', 'barsaat', 'veezha', 'kalyani', 'arasan', 'gorkariya', 'superman', 'alfaaz'],
+      'United Kingdom': ['tumiljaaye', 'daidai', 'bbywow', 'bigdawgs', 'guzarish', 'alfaaz', 'kalyani', 'barsaat', 'casatupka', 'xamdam', 'parvati'],
+    };
+    const REGION_NAMES = ['Global', 'United States', 'India', 'United Kingdom'];
+
+    let offlineTrackIds = ['raate', 'rashke', 'sona', 'kamar', 'namariya', 'aeraja', 'gorikare', 'sorry', 'saiyan', 'pawanhit'];
+    let offlineTotalCount = 369;
+    let offlineSortMode = 'recent';
+
+    // =========================================================================
+    // 3. LISTENING TIME & STATS DATASET
+    // =========================================================================
+    const LISTENING_STATS = {
+      today: {
+        rangeLabel: 'Time Spent Today',
+        baseMinutes: 102, // 1h 42m
+        tracks: 28,
+        offlinePct: 92,
+        dailyAvg: '1h 42m',
+        topArtist: 'Yo Yo Honey Singh',
+        peakHour: '9:00 PM',
+        bars: [
+          { label: '6a', val: 12, text: '12m' },
+          { label: '9a', val: 26, text: '26m' },
+          { label: '12p', val: 16, text: '16m' },
+          { label: '3p', val: 14, text: '14m' },
+          { label: '6p', val: 18, text: '18m' },
+          { label: '9p', val: 34, text: '34m (Peak)' },
+        ]
+      },
+      week: {
+        rangeLabel: 'Time Spent This Week',
+        total: '14h 35m',
+        tracks: 218,
+        offlinePct: 87,
+        dailyAvg: '2h 05m',
+        topArtist: 'Khesari Lal Yadav',
+        peakHour: '8:30 PM',
+        bars: [
+          { label: 'Mon', val: 95, text: '1h 35m' },
+          { label: 'Tue', val: 120, text: '2h 00m' },
+          { label: 'Wed', val: 88, text: '1h 28m' },
+          { label: 'Thu', val: 140, text: '2h 20m' },
+          { label: 'Fri', val: 175, text: '2h 55m (Peak)' },
+          { label: 'Sat', val: 142, text: '2h 22m' },
+          { label: 'Sun', val: 115, text: '1h 55m' },
+        ]
+      },
+      month: {
+        rangeLabel: 'Time Spent This Month',
+        total: '58h 12m',
+        tracks: 864,
+        offlinePct: 84,
+        dailyAvg: '1h 56m',
+        topArtist: 'Yo Yo Honey Singh',
+        peakHour: '9:15 PM',
+        bars: [
+          { label: 'Wk 1', val: 13.5, text: '13h 30m' },
+          { label: 'Wk 2', val: 16.4, text: '16h 24m (Peak)' },
+          { label: 'Wk 3', val: 13.1, text: '13h 06m' },
+          { label: 'Wk 4', val: 15.2, text: '15h 12m' },
+        ]
+      },
+      all: {
+        rangeLabel: 'All-Time Listening',
+        total: '312h 40m',
+        tracks: 4820,
+        offlinePct: 82,
+        dailyAvg: '1h 52m',
+        topArtist: 'Arijit Singh',
+        peakHour: '9:00 PM',
+        bars: [
+          { label: 'Jun', val: 42, text: '42h 10m' },
+          { label: 'Jul', val: 51, text: '51h 20m' },
+          { label: 'Aug', val: 49, text: '49h 15m' },
+          { label: 'Sep', val: 66, text: '66h 30m (Peak)' },
+          { label: 'Oct', val: 56, text: '56h 05m' },
+          { label: 'Nov', val: 47, text: '47h 20m' },
+        ]
+      }
+    };
+
+    // =========================================================================
+    // 4. PLAYER & APP STATE
+    // =========================================================================
+    const playerState = {
+      currentTrackId: 'yababa',
+      upNextId: 'balma',
+      isPlaying: true,
+      currentTime: 95, // 1:35
+      likedIds: new Set(['jimmy', 'gorkariya', 'aeraja']),
+      shuffle: false,
+      repeat: false,
+      offlineMode: true,
+      radioActive: true,
+      recFeedbackActive: true,
+      activeTab: 'home',
+      activeRegion: 'United States',
+      searchFilter: 'all',
+      activeRange: 'today',
+      liveSessionSeconds: 0,
+    };
+
+    const PLAY_SVG = `<svg class="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+    const PAUSE_SVG = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`;
+    const PLAY_LG_SVG = `<svg class="w-7 h-7 ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+    const PAUSE_LG_SVG = `<svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>`;
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function formatHoursMins(totalMinutes) {
+      const h = Math.floor(totalMinutes / 60);
+      const m = totalMinutes % 60;
+      return `${h}h ${m}m`;
+    }
+
+    // =========================================================================
+    // 5. REUSABLE TRACK ROW & DOWNLOAD ACTION
+    // =========================================================================
+    function downloadStatusButtonHTML(track) {
+      if (track.downloaded) {
+        return `
+          <span onclick="event.stopPropagation(); showToast('&ldquo;${track.title.replace(/'/g, '')}&rdquo; is stored offline (0ms ready)', 'green')" class="w-7 h-7 rounded-full bg-[#ECFDF5] text-[#16A34A] flex items-center justify-center shrink-0" title="Downloaded Offline">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        `;
+      }
+      return `
+        <button onclick="event.stopPropagation(); simulateDownload('${track.id}')" aria-label="Download offline" class="w-7 h-7 rounded-full bg-[#F3F4F6] text-gray-400 hover:bg-[#FFF3ED] hover:text-[#FF5A1F] flex items-center justify-center shrink-0 active:scale-90 transition" title="Tap to download offline">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+        </button>
+      `;
+    }
+
+    function simulateDownload(trackId) {
+      const track = TRACKS[trackId];
+      if (!track || track.downloaded) return;
+      showToast(`Downloading "${track.title}" to offline disk...`, 'orange');
+      setTimeout(() => {
+        track.downloaded = true;
+        offlineTotalCount += 1;
+        if (!offlineTrackIds.includes(trackId)) {
+          track.addedOrder = 0;
+          offlineTrackIds.unshift(trackId);
+        }
+        document.getElementById('offlineCountPill').textContent = `${offlineTotalCount} songs`;
+        document.getElementById('downloadedGridCount').textContent = offlineTotalCount;
+        rerenderAllViews();
+        showToast(`Downloaded "${track.title}" — Offline Ready ✓`, 'green');
+      }, 450);
+    }
+
+    function renderHomeTrackRow(track) {
+      const isCurrent = playerState.currentTrackId === track.id;
+      return `
+        <div onclick="loadTrack('${track.id}', true)" class="flex items-center gap-3 p-2.5 rounded-2xl bg-white border ${isCurrent ? 'border-[#FF5A1F] bg-[#FFF8F5]' : 'border-[#EAECEF]'} shadow-card cursor-pointer hover:border-orange-300 active:scale-[0.99] transition">
+          <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 shadow-sm">
+            ${createArtHTML(track.palette, track.motif)}
+          </div>
+          <div class="min-w-0 flex-1">
+            <h4 class="font-display font-bold text-[13.5px] ${isCurrent ? 'text-[#FF5A1F]' : 'text-[#111827]'} truncate">${track.title}</h4>
+            <p class="text-[11.5px] text-gray-500 truncate mt-0.5">${track.artist}${track.meta ? ` &middot; ${track.meta}` : ''}</p>
+          </div>
+          ${downloadStatusButtonHTML(track)}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 6. SCREEN RENDERERS
+    // =========================================================================
+
+    function renderHome() {
+      document.getElementById('quickPicksList').innerHTML = HOME_SECTIONS.quickPicks.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+      document.getElementById('mixedTracksList').innerHTML = HOME_SECTIONS.mixedTracks.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+      document.getElementById('forgottenList').innerHTML = HOME_SECTIONS.forgotten.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+      document.getElementById('trendingList').innerHTML = HOME_SECTIONS.trending.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+      document.getElementById('listenTogetherList').innerHTML = HOME_SECTIONS.listenTogether.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+      document.getElementById('shortsList').innerHTML = HOME_SECTIONS.shorts.map(id => renderHomeTrackRow(TRACKS[id])).join('');
+
+      document.getElementById('mixedCarousel').innerHTML = MIXED_CARDS.map(card => `
+        <div onclick="loadTrack('${card.trackId}', true)" class="w-[144px] shrink-0 bg-white rounded-2xl p-2.5 border border-[#EAECEF] shadow-card cursor-pointer hover:border-orange-300 active:scale-[0.98] transition">
+          <div class="w-full aspect-square rounded-xl overflow-hidden mb-2 shadow-sm">
+            ${createArtHTML(card.palette, '♫', card.tag)}
+          </div>
+          <h4 class="font-display font-bold text-xs text-[#111827] truncate">${card.title}</h4>
+          <p class="text-[11px] text-gray-500 truncate mt-0.5">${card.sub}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderCharts() {
+      // Region Pills
+      document.getElementById('regionPills').innerHTML = REGION_NAMES.map(region => {
+        const active = playerState.activeRegion === region;
+        return `
+          <button onclick="setChartRegion('${region}')" class="px-4 py-2 rounded-full text-xs shrink-0 transition active:scale-95 ${
+            active
+              ? 'bg-[#FF5A1F] text-white font-bold shadow-md shadow-orange-500/25'
+              : 'bg-white text-gray-600 font-semibold border border-[#EAECEF] hover:border-orange-300'
+          }">
+            ${region}
+          </button>
+        `;
+      }).join('');
+
+      // Numbered Chart List
+      const list = CHART_REGIONS[playerState.activeRegion] || CHART_REGIONS['United States'];
+      document.getElementById('chartsTrackList').innerHTML = list.map((id, idx) => {
+        const rank = idx + 1;
+        const track = TRACKS[id];
+        const isCurrent = playerState.currentTrackId === track.id;
+
+        let rankBadgeClass = 'bg-[#F3F4F6] text-gray-500 border border-[#EAECEF]';
+        if (rank === 1) rankBadgeClass = 'bg-gradient-to-br from-[#FF6B00] to-[#F59E0B] text-white shadow-sm shadow-orange-500/30';
+        else if (rank === 2) rankBadgeClass = 'bg-gradient-to-br from-slate-400 to-slate-500 text-white shadow-sm';
+        else if (rank === 3) rankBadgeClass = 'bg-gradient-to-br from-[#EF4444] to-[#D97706] text-white shadow-sm';
+
+        return `
+          <div onclick="loadTrack('${track.id}', true)" class="flex items-center gap-3 p-2.5 rounded-2xl bg-white border ${isCurrent ? 'border-[#FF5A1F] bg-[#FFF8F5]' : 'border-[#EAECEF]'} shadow-card cursor-pointer hover:border-orange-300 active:scale-[0.99] transition">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center font-display font-extrabold text-xs shrink-0 ${rankBadgeClass}">
+              ${rank}
+            </div>
+            <div class="w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm">
+              ${createArtHTML(track.palette, track.motif)}
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="font-display font-bold text-[13.5px] ${isCurrent ? 'text-[#FF5A1F]' : 'text-[#111827]'} truncate">${track.title}</h4>
+              <p class="text-[11.5px] text-gray-500 truncate mt-0.5">${track.artist} &middot; ${track.meta}</p>
+            </div>
+            ${downloadStatusButtonHTML(track)}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSearch() {
+      const input = document.getElementById('globalSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      const query = (input?.value || '').trim().toLowerCase();
+
+      if (query.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      // Filter pill styles
+      const pills = [
+        { id: 'sf-all', key: 'all', activeClass: 'bg-[#FF5A1F] text-white font-bold shadow-sm shadow-orange-500/25' },
+        { id: 'sf-offline', key: 'offline', activeClass: 'bg-[#16A34A] text-white font-bold shadow-sm shadow-green-500/25' },
+        { id: 'sf-favorites', key: 'favorites', activeClass: 'bg-[#EF4444] text-white font-bold shadow-sm shadow-red-500/25' },
+      ];
+      pills.forEach(p => {
+        const el = document.getElementById(p.id);
+        el.className = playerState.searchFilter === p.key
+          ? `px-4 py-2 rounded-full text-xs transition active:scale-95 ${p.activeClass}`
+          : 'px-4 py-2 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-gray-300 transition active:scale-95';
+      });
+
+      const container = document.getElementById('searchResultsContainer');
+
+      // Empty state when query is empty AND All Songs is active
+      if (!query && playerState.searchFilter === 'all') {
+        const chips = ['Honey Singh', 'Arijit Singh', 'Pawan Singh', 'Shreya Ghoshal'];
+        container.innerHTML = `
+          <div class="py-12 px-4 text-center space-y-5">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-[#FFF3ED] text-[#FF5A1F] flex items-center justify-center border border-orange-100">
+              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <p class="text-sm font-medium text-gray-500 max-w-[240px] mx-auto leading-relaxed">
+              Type a title, artist, or song name to search
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+              ${chips.map(c => `
+                <button onclick="applyQuickSearch('${c}')" class="px-3.5 py-1.5 rounded-full bg-white border border-[#EAECEF] text-xs font-semibold text-gray-700 hover:border-[#FF5A1F] hover:text-[#FF5A1F] shadow-sm active:scale-95 transition">
+                  ${c}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Live Filter Across All Tracks
+      let results = Object.values(TRACKS);
+      if (playerState.searchFilter === 'offline') {
+        results = results.filter(t => t.downloaded);
+      } else if (playerState.searchFilter === 'favorites') {
+        results = results.filter(t => playerState.likedIds.has(t.id));
+      }
+
+      if (query) {
+        results = results.filter(t =>
+          t.title.toLowerCase().includes(query) ||
+          t.artist.toLowerCase().includes(query)
+        );
+      }
+
+      if (results.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center space-y-2">
+            <p class="font-display font-bold text-sm text-[#111827]">No matching tracks found</p>
+            <p class="text-xs text-gray-500">Try a different song title, artist, or filter pill.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1">${results.length} ${results.length === 1 ? 'result' : 'results'}</p>
+        ${results.map(track => {
+          const isCurrent = playerState.currentTrackId === track.id;
+          const isLiked = playerState.likedIds.has(track.id);
+          return `
+            <div onclick="loadTrack('${track.id}', true)" class="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border ${isCurrent ? 'border-[#FF5A1F] bg-[#FFF8F5]' : 'border-[#EAECEF]'} shadow-card cursor-pointer hover:border-orange-300 transition">
+              <div class="w-11 h-11 rounded-xl overflow-hidden shrink-0">
+                ${createArtHTML(track.palette, track.motif)}
+              </div>
+              <div class="min-w-0 flex-1">
+                <h4 class="font-display font-bold text-[13px] ${isCurrent ? 'text-[#FF5A1F]' : 'text-[#111827]'} truncate">${track.title}</h4>
+                <p class="text-[11px] text-gray-500 truncate">${track.artist}</p>
+              </div>
+              <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
+                <button onclick="toggleLikeTrack('${track.id}')" aria-label="Favorite" class="w-7 h-7 rounded-full flex items-center justify-center transition ${isLiked ? 'bg-[#FEF2F2] text-[#EF4444]' : 'text-gray-400 hover:bg-red-50 hover:text-[#EF4444]'}">
+                  ${isLiked
+                    ? `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
+                    : `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`
+                  }
+                </button>
+                ${downloadStatusButtonHTML(track)}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      `;
+    }
+
+    function renderOfflineSongs() {
+      const query = (document.getElementById('offlineSearchInput')?.value || '').trim().toLowerCase();
+      let list = offlineTrackIds.map(id => TRACKS[id]).filter(Boolean);
+
+      if (query) {
+        list = list.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
+      }
+
+      if (offlineSortMode === 'alpha') {
+        list.sort((a, b) => a.title.localeCompare(b.title));
+      } else {
+        list.sort((a, b) => (a.addedOrder ?? 99) - (b.addedOrder ?? 99));
+      }
+
+      const container = document.getElementById('offlineSongsList');
+      if (list.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-xs text-gray-400">No offline tracks match "${query}"</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(track => {
+        const isCurrent = playerState.currentTrackId === track.id;
+        return `
+          <div onclick="loadTrack('${track.id}', true)" class="flex items-center gap-2.5 p-2 rounded-2xl ${isCurrent ? 'bg-[#FFF8F5] border border-orange-200' : 'bg-[#F8F9FA] border border-transparent hover:border-[#EAECEF]'} cursor-pointer transition">
+            <div class="w-11 h-11 rounded-xl overflow-hidden shrink-0">
+              ${createArtHTML(track.palette, track.motif)}
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="font-display font-bold text-[13px] ${isCurrent ? 'text-[#FF5A1F]' : 'text-[#111827]'} truncate">${track.title}</h4>
+              <p class="text-[11px] text-gray-500 truncate">${track.artist} &middot; ${formatTime(track.duration)}</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
+              <span class="w-7 h-7 rounded-full bg-[#ECFDF5] text-[#16A34A] flex items-center justify-center" title="Downloaded">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <button onclick="showToast('Added &ldquo;${track.title.replace(/'/g, '')}&rdquo; to playlist', 'orange')" aria-label="Add to playlist" class="w-7 h-7 rounded-full text-gray-400 hover:bg-orange-50 hover:text-[#FF5A1F] flex items-center justify-center transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button onclick="removeOfflineTrack('${track.id}')" aria-label="Delete offline song" class="w-7 h-7 rounded-full text-gray-400 hover:bg-[#FEF2F2] hover:text-[#EF4444] flex items-center justify-center transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderListeningStats() {
+      const range = playerState.activeRange;
+      const data = LISTENING_STATS[range];
+
+      // Dynamic Today counter increments with live playback
+      const extraMins = Math.floor(playerState.liveSessionSeconds / 60);
+      const remSecs = playerState.liveSessionSeconds % 60;
+      const todayFormatted = formatHoursMins(LISTENING_STATS.today.baseMinutes + extraMins);
+      document.getElementById('headerListenBadge').textContent = `${todayFormatted} today`;
+
+      document.getElementById('statRangeLabel').textContent = data.rangeLabel;
+      document.getElementById('statTotalTime').textContent = range === 'today' ? todayFormatted : data.total;
+      const liveSecEl = document.getElementById('statLiveSec');
+      if (range === 'today') {
+        liveSecEl.classList.remove('hidden');
+        liveSecEl.textContent = playerState.isPlaying
+          ? `+${remSecs < 10 ? '0' : ''}${remSecs}s live`
+          : 'paused';
+      } else {
+        liveSecEl.classList.add('hidden');
+      }
+
+      document.getElementById('statTrackCount').textContent = `${data.tracks.toLocaleString()} songs played`;
+      document.getElementById('statOfflinePctBadge').textContent = `${data.offlinePct}% Offline`;
+      document.getElementById('statDailyAvg').textContent = data.dailyAvg;
+      document.getElementById('statTopArtist').textContent = data.topArtist;
+      document.getElementById('statPeakHour').textContent = data.peakHour;
+
+      const onlinePct = 100 - data.offlinePct;
+      document.getElementById('offlineShareText').textContent = `${data.offlinePct}%`;
+      document.getElementById('onlineShareText').textContent = `${onlinePct}%`;
+      document.getElementById('offlineShareBar').style.width = `${data.offlinePct}%`;
+      document.getElementById('onlineShareBar').style.width = `${onlinePct}%`;
+
+      // Range pill styling
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        const active = btn.dataset.range === range;
+        btn.className = active
+          ? 'range-btn py-1.5 rounded-lg text-xs font-bold bg-[#FF5A1F] text-white shadow-sm transition'
+          : 'range-btn py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-[#111827] transition';
+      });
+
+      // Interactive Bar Chart
+      const maxVal = Math.max(...data.bars.map(b => b.val), 1);
+      const chartEl = document.getElementById('listeningChart');
+      const labelsEl = document.getElementById('listeningChartLabels');
+
+      chartEl.innerHTML = data.bars.map(bar => {
+        const pct = Math.max(14, Math.round((bar.val / maxVal) * 100));
+        const isPeak = bar.val === maxVal;
+        const barColor = isPeak
+          ? 'bg-gradient-to-t from-[#16A34A] to-[#10B981] shadow-sm shadow-green-500/30'
+          : 'bg-gradient-to-t from-[#FF5A1F] to-[#FF8C42]';
+
+        return `
+          <div onclick="highlightBar('${bar.label}', '${bar.text}')" class="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer">
+            <span class="text-[9px] font-bold ${isPeak ? 'text-[#16A34A]' : 'text-gray-400'} opacity-0 group-hover:opacity-100 transition mb-1 whitespace-nowrap">${bar.text.split(' ')[0]}</span>
+            <div class="w-full max-w-[30px] rounded-t-xl chart-bar ${barColor} group-hover:brightness-105" style="height: ${pct}%"></div>
+          </div>
+        `;
+      }).join('');
+
+      labelsEl.innerHTML = data.bars.map(bar => `
+        <span class="flex-1 text-center text-[10px] font-bold text-gray-500">${bar.label}</span>
+      `).join('');
+    }
+
+    function renderPlayerUI() {
+      const track = TRACKS[playerState.currentTrackId];
+      const upNext = TRACKS[playerState.upNextId];
+      const isLiked = playerState.likedIds.has(track.id);
+
+      // Mini Player
+      document.getElementById('miniArt').innerHTML = createArtHTML(track.palette, track.motif);
+      document.getElementById('miniTitle').textContent = track.title;
+      document.getElementById('miniArtist').textContent = track.artist;
+      document.getElementById('miniPlayBtn').innerHTML = playerState.isPlaying ? PAUSE_SVG : PLAY_SVG;
+
+      // Now Playing Sheet
+      document.getElementById('npArtContainer').innerHTML = createArtHTML(track.palette, track.motif, track.label || 'SOKO');
+      document.getElementById('npTitle').textContent = track.title;
+      document.getElementById('npArtist').textContent = track.artist;
+      document.getElementById('npPlayPauseBtn').innerHTML = playerState.isPlaying ? PAUSE_LG_SVG : PLAY_LG_SVG;
+
+      // Equalizer
+      const eq = document.getElementById('npEqualizer');
+      eq.classList.toggle('eq-playing', playerState.isPlaying);
+
+      // Scrubber & Timestamps
+      const scrubber = document.getElementById('npScrubber');
+      scrubber.max = track.duration;
+      scrubber.value = playerState.currentTime;
+      const pct = Math.min(100, (playerState.currentTime / track.duration) * 100);
+      scrubber.style.background = `linear-gradient(to right, #FF5A1F ${pct}%, #E5E7EB ${pct}%)`;
+      document.getElementById('miniProgress').style.width = `${pct}%`;
+      document.getElementById('npCurrentTime').textContent = formatTime(playerState.currentTime);
+      document.getElementById('npTotalTime').textContent = formatTime(track.duration);
+
+      // Heart Button in Now Playing
+      const npLike = document.getElementById('npLikeBtn');
+      const heartFilled = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+      const heartOutline = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+
+      if (isLiked) {
+        npLike.innerHTML = heartFilled;
+        npLike.className = 'w-11 h-11 rounded-full bg-[#EF4444] border border-[#EF4444] text-white flex items-center justify-center shadow-md shadow-red-500/30 active:scale-95 transition';
+      } else {
+        npLike.innerHTML = heartOutline;
+        npLike.className = 'w-11 h-11 rounded-full bg-white border border-[#EAECEF] text-gray-500 flex items-center justify-center shadow-sm active:scale-95 transition';
+      }
+
+      document.getElementById('likedCountLabel').textContent = playerState.likedIds.size;
+
+      // Up Next
+      document.getElementById('upNextArt').innerHTML = createArtHTML(upNext.palette, upNext.motif);
+      document.getElementById('upNextTitle').textContent = upNext.title;
+      document.getElementById('upNextArtist').textContent = upNext.artist;
+    }
+
+    function rerenderAllViews() {
+      renderHome();
+      renderCharts();
+      renderSearch();
+      renderOfflineSongs();
+      renderPlayerUI();
+    }
+
+    // =========================================================================
+    // 7. INTERACTIONS & NAVIGATION
+    // =========================================================================
+    function switchTab(tabName, scrollToTop = false) {
+      playerState.activeTab = tabName;
+      ['home', 'charts', 'search', 'library', 'settings'].forEach(t => {
+        const screen = document.getElementById(`screen-${t}`);
+        const navBtn = document.getElementById(`nav-${t}`);
+        if (t === tabName) {
+          screen.classList.remove('hidden');
+          navBtn.classList.remove('text-gray-400');
+          navBtn.classList.add('text-[#FF5A1F]');
+          navBtn.querySelector('span').className = 'text-[10px] font-bold';
+        } else {
+          screen.classList.add('hidden');
+          navBtn.classList.add('text-gray-400');
+          navBtn.classList.remove('text-[#FF5A1F]');
+          navBtn.querySelector('span').className = 'text-[10px] font-semibold';
+        }
+      });
+
+      const scrollEl = document.getElementById('mainScroll');
+      if (scrollToTop) {
+        scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        scrollEl.scrollTop = 0;
+      }
+    }
+
+    function loadTrack(trackId, autoPlay = true) {
+      if (!TRACKS[trackId]) return;
+      playerState.currentTrackId = trackId;
+      playerState.currentTime = 0;
+      playerState.isPlaying = autoPlay;
+
+      const allIds = Object.keys(TRACKS);
+      const nextIdx = (allIds.indexOf(trackId) + 1) % allIds.length;
+      playerState.upNextId = allIds[nextIdx] === trackId ? 'balma' : allIds[nextIdx];
+
+      rerenderAllViews();
+      showToast(`Now playing: ${TRACKS[trackId].title}`, 'orange');
+    }
+
+    function playSection(sectionKey) {
+      const ids = HOME_SECTIONS[sectionKey];
+      if (ids && ids.length) loadTrack(ids[0], true);
+    }
+
+    function setChartRegion(region) {
+      playerState.activeRegion = region;
+      renderCharts();
+      showToast(`Showing Top 100 — ${region}`, 'orange');
+    }
+
+    function refreshCharts() {
+      const icon = document.getElementById('chartsRefreshIcon');
+      icon.classList.remove('spin-once');
+      void icon.offsetWidth;
+      icon.classList.add('spin-once');
+      showToast(`${playerState.activeRegion} Top 100 refreshed`, 'green');
+    }
+
+    function setSearchFilter(filter) {
+      playerState.searchFilter = filter;
+      renderSearch();
+    }
+
+    function applyQuickSearch(term) {
+      document.getElementById('globalSearchInput').value = term;
+      renderSearch();
+    }
+
+    function clearGlobalSearch() {
+      document.getElementById('globalSearchInput').value = '';
+      renderSearch();
+    }
+
+    function openFavoritesInSearch() {
+      playerState.searchFilter = 'favorites';
+      document.getElementById('globalSearchInput').value = '';
+      switchTab('search');
+      renderSearch();
+    }
+
+    function playOfflineAll(shuffle) {
+      if (offlineTrackIds.length === 0) return;
+      const pick = shuffle
+        ? offlineTrackIds[Math.floor(Math.random() * offlineTrackIds.length)]
+        : offlineTrackIds[0];
+      loadTrack(pick, true);
+      showToast(shuffle ? 'Shuffling offline library (0ms gapless)' : 'Playing all offline songs', 'green');
+    }
+
+    function setOfflineSort(mode) {
+      offlineSortMode = mode;
+      const recentBtn = document.getElementById('sortRecentBtn');
+      const alphaBtn = document.getElementById('sortAlphaBtn');
+      if (mode === 'recent') {
+        recentBtn.className = 'px-3 py-1.5 rounded-full text-xs font-bold bg-[#FF5A1F] text-white shadow-sm transition active:scale-95';
+        alphaBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-orange-300 transition active:scale-95';
+      } else {
+        alphaBtn.className = 'px-3 py-1.5 rounded-full text-xs font-bold bg-[#FF5A1F] text-white shadow-sm transition active:scale-95';
+        recentBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-[#EAECEF] hover:border-orange-300 transition active:scale-95';
+      }
+      renderOfflineSongs();
+    }
+
+    function removeOfflineTrack(trackId) {
+      const title = TRACKS[trackId]?.title || 'Track';
+      offlineTrackIds = offlineTrackIds.filter(id => id !== trackId);
+      if (TRACKS[trackId]) TRACKS[trackId].downloaded = false;
+      offlineTotalCount = Math.max(0, offlineTotalCount - 1);
+      document.getElementById('offlineCountPill').textContent = `${offlineTotalCount} songs`;
+      document.getElementById('downloadedGridCount').textContent = offlineTotalCount;
+      rerenderAllViews();
+      showToast(`Removed "${title}" from device disk`, 'red');
+    }
+
+    function togglePlayPause() {
+      playerState.isPlaying = !playerState.isPlaying;
+      renderPlayerUI();
+      renderListeningStats();
+    }
+
+    function seekTrack(val) {
+      playerState.currentTime = Number(val);
+      renderPlayerUI();
+    }
+
+    function nextTrack() {
+      loadTrack(playerState.upNextId, true);
+    }
+
+    function prevTrack() {
+      if (playerState.currentTime > 5) {
+        playerState.currentTime = 0;
+        renderPlayerUI();
+      } else {
+        const allIds = Object.keys(TRACKS);
+        const prevIdx = (allIds.indexOf(playerState.currentTrackId) - 1 + allIds.length) % allIds.length;
+        loadTrack(allIds[prevIdx], true);
+      }
+    }
+
+    function playUpNext() {
+      loadTrack(playerState.upNextId, true);
+    }
+
+    function toggleLikeTrack(trackId) {
+      if (playerState.likedIds.has(trackId)) {
+        playerState.likedIds.delete(trackId);
+        showToast('Removed from Favorites', 'red');
+      } else {
+        playerState.likedIds.add(trackId);
+        showToast('Added to Favorites ❤️', 'red');
+      }
+      rerenderAllViews();
+    }
+
+    function toggleLikeCurrent() {
+      toggleLikeTrack(playerState.currentTrackId);
+    }
+
+    function toggleRadioMode() {
+      playerState.radioActive = !playerState.radioActive;
+      const miniRadio = document.getElementById('miniRadioBtn');
+      const npRadio = document.getElementById('npRadioBtn');
+      [miniRadio, npRadio].forEach(el => {
+        el.classList.toggle('radio-pulse', playerState.radioActive);
+        el.classList.toggle('opacity-50', !playerState.radioActive);
+      });
+      showToast(playerState.radioActive ? 'Dynamic Radio Mix active' : 'Radio Mix paused', 'red');
+    }
+
+    function downloadCurrentTrack() {
+      const t = TRACKS[playerState.currentTrackId];
+      if (!t.downloaded) {
+        simulateDownload(t.id);
+      } else {
+        showToast(`"${t.title}" is already stored in 160k Opus offline`, 'green');
+      }
+    }
+
+    function toggleShuffle() {
+      playerState.shuffle = !playerState.shuffle;
+      const btn = document.getElementById('npShuffleBtn');
+      btn.classList.toggle('text-[#FF5A1F]', playerState.shuffle);
+      btn.classList.toggle('text-gray-400', !playerState.shuffle);
+      showToast(playerState.shuffle ? 'Shuffle enabled' : 'Shuffle disabled', 'orange');
+    }
+
+    function toggleRepeat() {
+      playerState.repeat = !playerState.repeat;
+      const btn = document.getElementById('npRepeatBtn');
+      btn.classList.toggle('text-[#16A34A]', playerState.repeat);
+      btn.classList.toggle('text-gray-400', !playerState.repeat);
+      showToast(playerState.repeat ? 'Repeat enabled' : 'Repeat disabled', 'green');
+    }
+
+    function toggleOfflineMode() {
+      playerState.offlineMode = !playerState.offlineMode;
+      const pill = document.getElementById('npOfflinePill');
+      const txt = document.getElementById('npOfflinePillText');
+      if (playerState.offlineMode) {
+        pill.className = 'px-4 py-1.5 rounded-full bg-[#ECFDF5] border border-green-200 text-[#16A34A] text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition';
+        txt.textContent = 'Offline ⇄';
+        showToast('Switched to 0ms Offline Disk playback', 'green');
+      } else {
+        pill.className = 'px-4 py-1.5 rounded-full bg-[#FFF3ED] border border-orange-200 text-[#FF5A1F] text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition';
+        txt.textContent = 'Stream ⇄';
+        showToast('Switched to Online High-Bitrate Stream', 'orange');
+      }
+    }
+
+    function openNowPlaying() {
+      document.getElementById('nowPlayingSheet').classList.add('open');
+    }
+
+    function closeNowPlaying() {
+      document.getElementById('nowPlayingSheet').classList.remove('open');
+    }
+
+    // Settings Interactions
+    function setStatsRange(range) {
+      playerState.activeRange = range;
+      document.getElementById('statTooltipReadout').textContent = 'Tap a bar for details';
+      renderListeningStats();
+    }
+
+    function highlightBar(label, text) {
+      document.getElementById('statTooltipReadout').textContent = `${label}: ${text}`;
+    }
+
+    function toggleRecommendation() {
+      playerState.recFeedbackActive = !playerState.recFeedbackActive;
+      const btn = document.getElementById('recToggleBtn');
+      if (playerState.recFeedbackActive) {
+        btn.textContent = '• ACTIVE';
+        btn.className = 'px-3 py-1 rounded-full bg-[#ECFDF5] text-[#16A34A] border border-green-200 text-[11px] font-extrabold tracking-wide transition active:scale-95';
+        showToast('Recommendation feedback enabled', 'green');
+      } else {
+        btn.textContent = '• PAUSED';
+        btn.className = 'px-3 py-1 rounded-full bg-[#FEF2F2] text-[#EF4444] border border-red-200 text-[11px] font-extrabold tracking-wide transition active:scale-95';
+        showToast('Recommendation feedback paused', 'red');
+      }
+    }
+
+    function updateCacheLimit() {
+      const limitGB = parseFloat(document.getElementById('cacheSizeSelect').value);
+      const usedMB = 1236.9;
+      const pct = Math.min(100, Math.round((usedMB / (limitGB * 1024)) * 100));
+      document.getElementById('storageBadge').textContent = `${usedMB} MB / ${limitGB.toFixed(1)} GB`;
+      document.getElementById('storageProgressBar').style.width = `${pct}%`;
+      showToast(`Maximum cache size set to ${limitGB.toFixed(1)} GB`, 'orange');
+    }
+
+    function togglePredownload() {
+      const checked = document.getElementById('predownloadCheck').checked;
+      showToast(checked ? 'Look-Ahead Pre-download enabled' : 'Look-Ahead Pre-download disabled', checked ? 'orange' : 'red');
+    }
+
+    function promptClearCache() {
+      document.getElementById('clearCacheTrigger').classList.add('hidden');
+      document.getElementById('clearCacheConfirm').classList.remove('hidden');
+    }
+
+    function cancelClearCache() {
+      document.getElementById('clearCacheConfirm').classList.add('hidden');
+      document.getElementById('clearCacheTrigger').classList.remove('hidden');
+    }
+
+    function confirmClearCache() {
+      cancelClearCache();
+      document.getElementById('storageBadge').textContent = '412.4 MB / 4.0 GB';
+      document.getElementById('storageProgressBar').style.width = '11%';
+      document.getElementById('storageSongsLabel').textContent = '128 liked & bundled songs kept (412.4 MB)';
+      showToast('Cleared 824.5 MB of unpinned cache (Liked & Bundled kept)', 'red');
+    }
+
+    // Toast Helper
+    let toastTimer = null;
+    function showToast(msg, color = 'orange') {
+      const box = document.getElementById('toastBox');
+      const dot = document.getElementById('toastDot');
+      const text = document.getElementById('toastText');
+      const colors = { orange: '#FF5A1F', green: '#16A34A', red: '#EF4444' };
+      dot.style.backgroundColor = colors[color] || '#FF5A1F';
+      text.innerHTML = msg;
+      box.classList.remove('opacity-0', '-translate-y-2');
+      box.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        box.classList.add('opacity-0', '-translate-y-2');
+        box.classList.remove('opacity-100', 'translate-y-0');
+      }, 2400);
+    }
+
+    // =========================================================================
+    // 8. LIVE PLAYBACK & LISTENING TIME TICKER
+    // =========================================================================
+    setInterval(() => {
+      if (!playerState.isPlaying) return;
+      const track = TRACKS[playerState.currentTrackId];
+      if (!track) return;
+
+      playerState.currentTime += 1;
+      playerState.liveSessionSeconds += 1;
+
+      if (playerState.currentTime >= track.duration) {
+        if (playerState.repeat) {
+          playerState.currentTime = 0;
+        } else {
+          LISTENING_STATS.today.tracks += 1;
+          loadTrack(playerState.upNextId, true);
+          return;
+        }
+      }
+
+      // Smoothly update scrubber & timers
+      const scrubber = document.getElementById('npScrubber');
+      scrubber.value = playerState.currentTime;
+      const pct = Math.min(100, (playerState.currentTime / track.duration) * 100);
+      scrubber.style.background = `linear-gradient(to right, #FF5A1F ${pct}%, #E5E7EB ${pct}%)`;
+      document.getElementById('miniProgress').style.width = `${pct}%`;
+      document.getElementById('npCurrentTime').textContent = formatTime(playerState.currentTime);
+
+      // Update live Today listening time in header & Settings
+      const extraMins = Math.floor(playerState.liveSessionSeconds / 60);
+      const remSecs = playerState.liveSessionSeconds % 60;
+      const todayFormatted = formatHoursMins(LISTENING_STATS.today.baseMinutes + extraMins);
+      document.getElementById('headerListenBadge').textContent = `${todayFormatted} today`;
+      if (playerState.activeRange === 'today') {
+        document.getElementById('statTotalTime').textContent = todayFormatted;
+        document.getElementById('statLiveSec').textContent = `+${remSecs < 10 ? '0' : ''}${remSecs}s live`;
+      }
+    }, 1000);
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      rerenderAllViews();
+      renderListeningStats();
+    });
+  </script>
+</body>
+</html>

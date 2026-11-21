@@ -1,26 +1,80 @@
-    :root {
-      --bg-primary: #07090E;
-      --bg-surface: #0E121B;
-      --bg-card: #151B27;
-      --bg-card-hover: #1C2434;
-      --accent-primary: #6366F1;
-      --accent-hover: #4F46E5;
-      --accent-cyan: #06B6D4;
-      --accent-glow: rgba(99, 102, 241, 0.35);
-      --text-primary: #FFFFFF;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(99, 102, 241, 0.4);
-      --success: #10B981;
-      --warning: #F59E0B;
-      --tab-bar-height: 60px;
-      --mini-player-height: 56px;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 18px;
-      --radius-full: 9999px;
-    }
+:root {
+  /* Brand Palette - Vibrant Light Redesign */
+  --brand-orange: #FF5A1F;
+  --brand-orange-deep: #FF6B00;
+  --brand-orange-soft: #FFF3ED;
+  --brand-orange-border: #FFD8C4;
+  --brand-orange-glow: rgba(255, 90, 31, 0.42);
 
+  --brand-green: #16A34A;
+  --brand-green-bright: #10B981;
+  --brand-green-soft: #ECFDF5;
+  --brand-green-border: #A7F3D0;
+
+  --brand-red: #EF4444;
+  --brand-red-deep: #E11D48;
+  --brand-red-soft: #FEF2F2;
+  --brand-red-border: #FECACA;
+
+  --brand-warm: #FFF8F5;
+  --brand-warm-surface: #FFF5F0;
+
+  /* Surfaces & Backgrounds */
+  --bg-primary: #F8F9FA;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFF8F5;
+  --bg-card-active: #FFF3ED;
+  --bg-muted: #F3F4F6;
+  --bg-input: #F8F9FA;
+
+  /* Accent Colors */
+  --accent-primary: #FF5A1F;
+  --accent-hover: #FF6B00;
+  --accent-soft: #FFF3ED;
+  --accent-cyan: #10B981;
+  --accent-glow: rgba(255, 90, 31, 0.35);
+
+  /* Typography / Ink */
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6B7280;
+  --text-dim: #9CA3AF;
+  --text-inverse: #FFFFFF;
+
+  /* Borders */
+  --border-subtle: #EAECEF;
+  --border-card: #EAECEF;
+  --border-focus: #FF5A1F;
+  --border-hover: #D1D5DB;
+
+  /* Status Colors */
+  --success: #16A34A;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+
+  /* Shadows */
+  --shadow-card: 0 2px 10px -2px rgba(17, 24, 39, 0.05), 0 1px 3px -1px rgba(17, 24, 39, 0.03);
+  --shadow-md: 0 4px 14px rgba(17, 24, 39, 0.08);
+  --shadow-lg: 0 10px 25px -3px rgba(17, 24, 39, 0.1), 0 4px 6px -2px rgba(17, 24, 39, 0.05);
+  --shadow-orange-glow: 0 10px 25px -5px rgba(255, 90, 31, 0.42);
+  --shadow-mini: 0 10px 28px -6px rgba(17, 24, 39, 0.14), 0 2px 8px -2px rgba(255, 90, 31, 0.12);
+  --shadow-art: 0 22px 45px -12px rgba(255, 90, 31, 0.25), 0 10px 20px -8px rgba(17, 24, 39, 0.12);
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+
+  /* Dimensions & Radius */
+  --tab-bar-height: 64px;
+  --mini-player-height: 62px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+}

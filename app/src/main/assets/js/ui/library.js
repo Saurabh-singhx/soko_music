@@ -1,34 +1,37 @@
 // ============================================================
-// LIBRARY & TRACK ROW UI
+// LIBRARY & TRACK ROW UI - Vibrant Light Redesign
 // ============================================================
 function createTrackRowHtml(track, isInsidePlaylist = false, isLibraryView = false) {
   const isCached = isTrackOffline(track.id);
   const isDownloading = activeDownloads.has(track.id);
+  const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(track.id, '♫') : 'assets/logo.png';
+  const coverSrc = track.cover || fallbackArt;
+
   return `
     <div class="track-row" onclick="selectTrackToPlay('${track.id}')">
-      <img class="track-art" src="${track.cover}" alt="${track.title}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" />
+      <img class="track-art" src="${coverSrc}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
       <div class="track-meta">
-        <div class="track-title">${track.title}</div>
-        <div class="track-desc">${track.artist} • ${formatTime(track.duration)}</div>
+        <div class="track-title">${track.title || 'Unknown Title'}</div>
+        <div class="track-desc">${track.artist || 'Unknown Artist'} &middot; ${formatTime(track.duration)}</div>
       </div>
       <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
         ${isLibraryView ? `
-          <span title="Stored Offline" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; color: #10B981; margin-right: 2px;">
-            <svg width="17" height="17" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          <span title="Stored Offline" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #ECFDF5; color: #16A34A; margin-right: 2px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </span>
         ` : `
-          <button class="action-icon-btn-compact" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isCached ? 'Cached Offline' : 'Download'}">
+          <button class="action-icon-btn-compact" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isCached ? 'Cached Offline' : (isDownloading ? 'Downloading...' : 'Download')}" aria-label="${isCached ? 'Cached Offline' : 'Download'}">
             ${isCached ? 
-              '<svg width="17" height="17" fill="#10B981" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' : 
+              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : 
               (isDownloading ? 
-                '<svg width="17" height="17" fill="#F59E0B" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' : 
-                '<svg width="17" height="17" fill="var(--text-dim)" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>'
+                '<svg width="17" height="17" fill="#FF5A1F" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' : 
+                '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>'
               )
             }
           </button>
         `}
         ${isInsidePlaylist ? `
-          <button class="action-icon-btn-compact" onclick="event.stopPropagation(); removeSongFromActivePlaylist('${track.id}')" title="Remove">✕</button>
+          <button class="action-icon-btn-compact" onclick="event.stopPropagation(); removeSongFromActivePlaylist('${track.id}')" title="Remove" style="color: var(--brand-red);">✕</button>
         ` : `
           <button class="action-icon-btn-compact" onclick="event.stopPropagation(); promptAddSongToPlaylist('${track.id}')" title="Add to playlist">
             <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -36,7 +39,7 @@ function createTrackRowHtml(track, isInsidePlaylist = false, isLibraryView = fal
         `}
         ${isLibraryView ? `
           <button class="action-icon-btn-compact" onclick="event.stopPropagation(); deleteOfflineTrack('${track.id}')" title="Delete from Offline" style="color: var(--text-dim);">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
           </button>
         ` : ''}
       </div>
@@ -83,7 +86,7 @@ function playAllOfflineTracks(shuffle = false) {
   isShuffle = shuffle;
   window.isShuffle = isShuffle;
   const btn = document.getElementById('btnShuffle');
-  if (btn) btn.style.color = isShuffle ? 'var(--accent-primary)' : 'var(--text-dim)';
+  if (btn) btn.style.color = isShuffle ? 'var(--brand-orange)' : 'var(--text-dim)';
 
   window.activeQueueList = cached;
   const firstTrack = isShuffle ? cached[Math.floor(Math.random() * cached.length)] : cached[0];
@@ -236,21 +239,25 @@ function renderLibraryTracks() {
   if (cachedTracks.length === 0) {
     if (currentLibraryFilter) {
       list.innerHTML = `
-        <div style="text-align: center; padding: 32px 16px; color: var(--text-dim);">
-          <div style="font-size: 28px; margin-bottom: 8px;">🔍</div>
-          <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 4px;">No matching offline songs</div>
-          <div style="font-size: 11px;">No downloaded tracks match "${currentLibraryFilter}"</div>
+        <div style="text-align: center; padding: 36px 16px; color: var(--text-muted);">
+          <div style="width: 48px; height: 48px; border-radius: 14px; background: #FFF3ED; color: var(--brand-orange); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; border: 1px solid var(--brand-orange-border);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 4px;">No matching offline songs</div>
+          <div style="font-size: 12px; color: var(--text-muted);">No downloaded tracks match "${currentLibraryFilter}"</div>
         </div>
       `;
     } else {
       list.innerHTML = `
-        <div style="text-align: center; padding: 36px 16px; background: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); margin-top: 8px;">
-          <div style="font-size: 32px; margin-bottom: 8px;">📥</div>
-          <div style="font-size: 14px; font-weight: 700; color: #FFF; margin-bottom: 4px;">No offline songs yet</div>
-          <div style="font-size: 12px; color: var(--text-dim); max-width: 260px; margin: 0 auto 16px;">
+        <div style="text-align: center; padding: 36px 16px; background: #FFFFFF; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); margin-top: 8px; box-shadow: var(--shadow-card);">
+          <div style="width: 48px; height: 48px; border-radius: 14px; background: #ECFDF5; color: var(--brand-green); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; border: 1px solid var(--brand-green-border);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div style="font-size: 14px; font-weight: 800; color: #111827; margin-bottom: 4px;">No offline songs yet</div>
+          <div style="font-size: 12px; color: var(--text-muted); max-width: 260px; margin: 0 auto 16px; line-height: 1.45;">
             Download songs from Charts or Search for instant, 0-buffering playback anywhere.
           </div>
-          <button class="filter-pill active" onclick="switchTab('charts')" style="padding: 8px 18px; font-size: 12px; font-weight: 600; margin: 0 auto;">
+          <button class="filter-pill active" onclick="switchNavTab('charts', document.querySelectorAll('.nav-tab-item')[1])" style="padding: 8px 20px; font-size: 12px; font-weight: 700; margin: 0 auto;">
             Explore Top Charts
           </button>
         </div>
@@ -278,7 +285,7 @@ function renderLibraryTracks() {
             onclick="setLibraryPage(${currentLibraryPage - 1})">
             ‹ Prev
           </button>
-          <span style="color: var(--text-dim); font-size: 11px; font-family: ui-monospace, monospace;">
+          <span style="color: var(--text-muted); font-size: 11px; font-family: ui-monospace, monospace; font-weight: 700;">
             Page ${currentLibraryPage} of ${totalPages} (${cachedTracks.length} total)
           </span>
           <button class="filter-pill ${currentLibraryPage === totalPages ? 'disabled' : ''}" 

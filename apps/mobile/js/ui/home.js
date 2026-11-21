@@ -1,6 +1,7 @@
 // ============================================================
-// HOME FEED & SHELVES UI
+// HOME FEED & SHELVES UI - Vibrant Light Redesign
 // ============================================================
+
 async function playCuratedMix(mixId) {
   let mix = null;
   if (currentHomeShelves) {
@@ -155,7 +156,6 @@ function selectRotatingTracks(pool, count = 16, shouldRotate = false) {
   if (pool.length <= count && !shouldRotate) return pool.slice(0, count);
 
   if (shouldRotate && pool.length > 2) {
-    // Perform pseudo-randomized Fisher-Yates shuffle on a copy so each refresh yields fresh songs
     const shuffled = [...pool];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -178,14 +178,14 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
   let apiTrending = null;
   let apiTogether = null;
 
-  // 1. Identify Quick picks (YouTube Music horizontal line-like cards)
+  // 1. Identify Quick picks
   apiQuick = apiShelves.find(s => s.title && (
     s.title.toLowerCase().includes('quick') ||
     s.title.toLowerCase().includes('start radio') ||
     s.title.toLowerCase().includes('songs you might like')
   ) && !s.title.toLowerCase().includes('listen again'));
 
-  // 2. Identify Mix for you (Authentic YouTube Music Mixed for you shelf)
+  // 2. Identify Mix for you
   apiMix = apiShelves.find(s => s.title && (
     s.title.toLowerCase().includes('mixed for you') ||
     s.title.toLowerCase().includes('mix for you') ||
@@ -206,7 +206,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
          !s.title.toLowerCase().includes('together'));
   }
 
-  // 3. Identify Forgotten favorites (YouTube Music horizontal line-like cards)
+  // 3. Identify Forgotten favorites
   apiForgotten = apiShelves.find(s => s !== apiMix && s.title && (
     s.title.toLowerCase().includes('forgot') ||
     s.title.toLowerCase().includes('revisit') ||
@@ -218,7 +218,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     s.title.toLowerCase().includes('feel-good')
   ) && !s.title.toLowerCase().includes('listen again'));
 
-  // 4. Identify Trending songs for you (YouTube Music horizontal line-like cards)
+  // 4. Identify Trending songs for you
   apiTrending = apiShelves.find(s => s !== apiMix && s.title && (
     s.title.toLowerCase().includes('trend') ||
     s.title.toLowerCase().includes('chart') ||
@@ -239,7 +239,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     ) && !s.title.toLowerCase().includes('listen again'));
   }
 
-  // 5. Identify Listen together (Party, Social & Communal Picks)
+  // 5. Identify Listen together
   apiTogether = apiShelves.find(s => s !== apiMix && s.title && (
     s.title.toLowerCase().includes('together') ||
     s.title.toLowerCase().includes('party') ||
@@ -250,14 +250,12 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     s.title.toLowerCase().includes('dance')
   ) && !s.title.toLowerCase().includes('listen again'));
 
-  // If no explicit Quick picks title, look for another track shelf that wasn't claimed
   if (!apiQuick) {
     apiQuick = apiShelves.find(s => s !== apiMix && s !== apiForgotten && s !== apiTrending && s !== apiTogether && s.tracks && s.tracks.length >= 4 &&
       !s.title.toLowerCase().includes('listen again')
     );
   }
 
-  // Claim all identified core shelves up front so none steals tracks from another
   if (apiQuick) claimedShelves.add(apiQuick);
   if (apiMix) claimedShelves.add(apiMix);
   if (apiForgotten) claimedShelves.add(apiForgotten);
@@ -276,7 +274,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Merge authentic tracks from unclaimed YouTube Music shelves
   if (quickPool.length < 16) {
     for (const s of apiShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
@@ -293,7 +290,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // If still under 16, draw from user's authentic library or history
   if (quickPool.length < 16 && typeof downloadedSet !== 'undefined') {
     for (const id of downloadedSet) {
       const t = findTrackAcrossAllSources(id);
@@ -305,7 +301,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
   if (quickPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
     for (const t of CATALOG) {
       if (!quickSeen.has(t.id) && !isPodcastOrLongTrack(t)) {
@@ -325,7 +320,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     tracks: quickTracks
   });
 
-  // --- Populate 2. Mix for you (Authentic YouTube Music Mixed for you shelf) ---
+  // --- Populate 2. Mix for you ---
   let mixShelfMixes = [];
   let mixShelfTracks = [];
 
@@ -338,7 +333,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Also collect any authentic mixes from other live shelves
   for (const s of apiShelves) {
     if (s.mixes && s.mixes.length > 0) {
       const sLower = (s.title || '').toLowerCase();
@@ -352,7 +346,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // If mixes have videoId, ensure original tracks and covers are available
   for (const m of mixShelfMixes) {
     if (m.videoId) {
       if (!m.cover || m.cover === 'assets/logo.png') {
@@ -371,7 +364,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Only if no authentic mixes were found at all (e.g. offline launch), use CURATED_MIXES
   if (mixShelfMixes.length === 0 && typeof CURATED_MIXES !== 'undefined') {
     for (const m of CURATED_MIXES) {
       mixShelfMixes.push(m);
@@ -393,7 +385,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     tracks: chosenMixTracks
   });
 
-  // --- Populate 3. Forgotten favorites (YouTube Music horizontal line-like cards) ---
+  // --- Populate 3. Forgotten favorites ---
   const quickIds = new Set(quickTracks.map(t => t.id));
   const forgottenPool = [];
   const forgottenSeen = new Set();
@@ -406,7 +398,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Pull authentic past listening tracks from YouTube Music throwback / feel-good shelves
   if (forgottenPool.length < 16) {
     for (const s of apiShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
@@ -423,7 +414,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Merge authentic tracks from unclaimed YouTube Music shelves
   if (forgottenPool.length < 16) {
     for (const s of apiShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
@@ -440,7 +430,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
   if (forgottenPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
     for (const t of CATALOG) {
       if (!forgottenSeen.has(t.id) && !quickIds.has(t.id) && !isPodcastOrLongTrack(t)) {
@@ -460,7 +449,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     tracks: forgottenTracks
   });
 
-  // --- Populate 4. Trending songs for you (YouTube Music horizontal line-like cards) ---
+  // --- Populate 4. Trending songs for you ---
   const forgottenIds = new Set(forgottenTracks.map(t => t.id));
   const trendPool = [];
   const trendSeen = new Set();
@@ -473,7 +462,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Merge authentic tracks from unclaimed YouTube Music shelves
   if (trendPool.length < 16) {
     for (const s of apiShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
@@ -490,7 +478,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
   if (trendPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
     for (const t of CATALOG) {
       if (!trendSeen.has(t.id) && !quickIds.has(t.id) && !forgottenIds.has(t.id) && !isPodcastOrLongTrack(t)) {
@@ -510,7 +497,7 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     tracks: trendTracks
   });
 
-  // --- Populate 5. Listen together (Party, Social & Communal Picks) ---
+  // --- Populate 5. Listen together ---
   const trendIds = new Set(trendTracks.map(t => t.id));
   const togetherPool = [];
   const togetherSeen = new Set();
@@ -523,7 +510,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Merge authentic tracks from unclaimed YouTube Music shelves
   if (togetherPool.length < 16) {
     for (const s of apiShelves) {
       const sTitleLower = (s.title || '').toLowerCase();
@@ -540,7 +526,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Only if zero YouTube Music shelves exist (first launch offline), use CATALOG as placeholder
   if (togetherPool.length < 16 && apiShelves.length === 0 && typeof CATALOG !== 'undefined') {
     for (const t of CATALOG) {
       if (!togetherSeen.has(t.id) && !quickIds.has(t.id) && !forgottenIds.has(t.id) && !trendIds.has(t.id) && !isPodcastOrLongTrack(t)) {
@@ -560,7 +545,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     tracks: togetherTracks
   });
 
-  // Track canonical titles already added to prevent duplicate / redundant sections
   const seenShelfTitles = new Set([
     'quick picks',
     'mix for you',
@@ -575,7 +559,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     if (s.title) seenShelfTitles.add(s.title.toLowerCase().trim());
   }
 
-  // 6. Additional live track shelves from YouTube Music (e.g. Similar to..., Artist Radios)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.tracks && s.tracks.length > 0) {
       const lower = (s.title || '').toLowerCase().trim();
@@ -587,7 +570,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
           lower.includes('history') || badgeLower.includes('history')) {
         continue;
       }
-      // Prohibit duplicate sections of core shelves
       if (lower.includes('quick') ||
           lower.includes('mix for you') || lower.includes('mixed for you') ||
           lower.includes('forgot') || lower.includes('past favorite') ||
@@ -613,7 +595,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // 7. Additional live mix/playlist shelves from YouTube Music (e.g. Dancing on your own, Easy Evenings)
   for (const s of apiShelves) {
     if (!claimedShelves.has(s) && s.mixes && s.mixes.length > 0) {
       const lower = (s.title || '').toLowerCase().trim();
@@ -625,7 +606,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
           lower.includes('history') || badgeLower.includes('history')) {
         continue;
       }
-      // Prohibit duplicate sections of core shelves
       if (lower.includes('quick') ||
           lower.includes('mix for you') || lower.includes('mixed for you') ||
           lower.includes('mixes for you') || lower.includes('your mix') ||
@@ -651,7 +631,6 @@ function prepareHomeShelves(apiShelves = [], shouldRotate = false) {
     }
   }
 
-  // Final pass: Strictly deduplicate shelves by id and normalized title, and enforce removal of any Listen again shelf
   const finalShelves = [];
   const finalSeenTitles = new Set();
   const finalSeenIds = new Set();
@@ -683,17 +662,17 @@ function updateHomeAuthBanner() {
   } else {
     banner.style.display = 'block';
     banner.innerHTML = `
-      <div onclick="loginWithGoogle()" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+      <div onclick="loginWithGoogle()" style="background: linear-gradient(135deg, #FFF3ED 0%, #FFFFFF 50%, #ECFDF5 100%); border: 1px solid var(--brand-orange-border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: var(--shadow-card);">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #6366F1, #06B6D4); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35); flex-shrink: 0;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+          <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #FF6B00, #FF5A1F); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255, 90, 31, 0.35); flex-shrink: 0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
           </div>
           <div>
-            <div style="font-size: 13px; font-weight: 800; color: #fff;">Connect Cloud Account</div>
-            <div style="font-size: 11px; color: var(--text-muted);">Sign in for your personal mixes, library & history</div>
+            <div style="font-size: 13.5px; font-weight: 800; color: #111827;">Connect Cloud Account</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">Sign in for your personal mixes, library & history</div>
           </div>
         </div>
-        <button class="filter-pill active auth-banner-signin-btn">Sign In</button>
+        <button class="filter-pill active auth-banner-signin-btn" style="min-height: 36px; padding: 6px 14px; font-size: 11px; font-weight: 700;">Sign In</button>
       </div>
     `;
   }
@@ -710,9 +689,9 @@ function renderHomeShelves(rawShelves, shouldRotate = false) {
   if (visibleShelves.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
-        <svg width="28" height="28" fill="var(--accent-primary)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-        <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px;">Syncing Music Feed</div>
-        <div style="font-size: 12px;">Loading live recommendations...</div>
+        <svg width="28" height="28" fill="var(--brand-orange)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 6px;">Syncing Music Feed</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Loading live recommendations...</div>
       </div>
     `;
     return;
@@ -726,7 +705,7 @@ function renderHomeShelves(rawShelves, shouldRotate = false) {
             <span class="ytm-shelf-badge">${shelf.badge || 'START RADIO FROM A SONG'}</span>
             <h2 class="section-title">${shelf.title}</h2>
           </div>
-          <button class="filter-pill shelf-play-all-btn" onclick="playAllShelfTracks('${shelf.id}')">Play all</button>
+          <button class="btn-play-all shelf-play-all-btn" onclick="playAllShelfTracks('${shelf.id}')">Play all</button>
         </div>
         <div class="ytm-grid-shelf">
           ${shelf.tracks.map(t => createYtmLineCardHtml(t, shelf.id)).join('')}
@@ -777,9 +756,7 @@ async function loadHomeFeed() {
     }
   } catch (e) {}
 
-  // Immediately render shelves (cached or default sections)
   renderHomeShelves(personalShelves || []);
-
   await fetchYouTubeMusicFeed();
 }
 

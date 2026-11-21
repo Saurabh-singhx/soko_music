@@ -1,4 +1,8 @@
-    /* Library Offline Songs Sort Bar */
+/* ============================================================ */
+/* LIBRARY & TRACK LIST - Vibrant Light Redesign                */
+/* ============================================================ */
+
+/* Library Offline Songs Sort Bar */
     .library-sort-container {
       display: flex;
       align-items: center;
@@ -9,6 +13,7 @@
       -webkit-overflow-scrolling: touch;
       padding: 4px 2px 6px;
     }
+
     .library-sort-container::-webkit-scrollbar {
       display: none;
       width: 0;
@@ -17,7 +22,7 @@
 
     .library-sort-label {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--text-dim);
       text-transform: uppercase;
       letter-spacing: 0.6px;
@@ -35,11 +40,11 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 14px;
-      background: var(--bg-surface);
+      padding: 7px 14px;
+      background: #FFFFFF;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-full);
-      color: var(--text-muted);
+      color: var(--text-secondary);
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
@@ -49,21 +54,23 @@
       min-width: 40px;
       box-sizing: border-box;
       flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
     }
+
     .library-sort-chip:active {
       transform: scale(0.96);
     }
+
     .library-sort-chip.active {
-      background: rgba(99, 102, 241, 0.22);
-      border-color: var(--accent-primary);
+      background: var(--brand-orange);
+      border-color: var(--brand-orange);
       color: #FFFFFF;
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 2px 8px rgba(255, 90, 31, 0.28);
     }
 
     .sort-dir-arrow {
       font-size: 11px;
       font-weight: 800;
-      color: var(--accent-cyan);
       margin-left: 2px;
     }
 
@@ -71,11 +78,9 @@
       position: absolute;
       top: 6px;
       right: 6px;
-      background: rgba(7, 9, 14, 0.88);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      color: #10B981;
+      background: var(--brand-green-soft);
+      border: 1px solid var(--brand-green-border);
+      color: var(--brand-green);
       font-size: 10px;
       font-weight: 800;
       padding: 2px 6px;
@@ -84,7 +89,7 @@
       align-items: center;
       gap: 3px;
       letter-spacing: 0.02em;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.06);
       z-index: 2;
     }
 
@@ -98,25 +103,31 @@
     .track-row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 7px 10px;
-      background: var(--bg-card);
+      gap: 12px;
+      padding: 8px 12px;
+      background: #FFFFFF;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+      box-sizing: border-box;
     }
+
     .track-row:active {
       background: var(--bg-card-hover);
+      border-color: var(--brand-orange-border);
+      transform: scale(0.98);
     }
 
     .track-art {
-      width: 42px;
-      height: 42px;
-      border-radius: var(--radius-sm);
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
       object-fit: cover;
-      background: #11141E;
+      background: #FFF3ED;
       flex-shrink: 0;
+      border: 1px solid var(--border-subtle);
     }
 
     .track-meta {
@@ -125,9 +136,10 @@
     }
 
     .track-title {
+      font-family: var(--font-display);
       font-size: 13.5px;
-      font-weight: 600;
-      color: var(--text-primary);
+      font-weight: 700;
+      color: #111827;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -148,22 +160,22 @@
       width: 40px;
       height: 40px;
       min-width: 40px;
-      min-height: 40px;
+      border-radius: 50%;
+      background: #F8F9FA;
+      border: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: color 0.15s ease, background 0.15s ease;
-      box-sizing: border-box;
-    }
-    .action-icon-btn:active {
       color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .action-icon-btn:hover,
+    .action-icon-btn:active {
+      background: var(--brand-orange-soft);
+      color: var(--brand-orange);
+      border-color: var(--brand-orange-border);
     }
 
     .action-icon-btn-compact {
@@ -171,72 +183,41 @@
       height: 40px;
       min-width: 40px;
       min-height: 40px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
       cursor: pointer;
-      flex-shrink: 0;
-      transition: color 0.15s ease, background 0.15s ease;
-      box-sizing: border-box;
-    }
-    .action-icon-btn-compact:active {
-      color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      transition: transform 0.15s ease;
     }
 
-    /* Filter Pills */
-    .filter-pills-row {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      margin-bottom: 14px;
-      padding-bottom: 4px;
-    }
-    .filter-pill {
-      flex: 0 0 auto;
-      padding: 8px 16px;
-      min-height: 40px;
-      min-width: 44px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-full);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .filter-pill.active {
-      background: var(--accent-primary);
-      border-color: var(--accent-primary);
-      color: #fff;
-      font-weight: 600;
-      box-shadow: 0 0 12px var(--accent-glow);
+    .action-icon-btn-compact:active {
+      transform: scale(0.92);
     }
 
     .shelf-play-all-btn {
       font-size: 11px !important;
-      font-weight: 600;
+      font-weight: 700;
       padding: 6px 14px !important;
       min-height: 40px;
       min-width: 64px;
       cursor: pointer;
+      border-radius: 9999px;
+      background: var(--brand-orange-soft);
+      color: var(--brand-orange);
+      border: 1px solid var(--brand-orange-border);
     }
 
     .auth-banner-refresh-btn {
       font-size: 11px !important;
-      font-weight: 600;
+      font-weight: 700;
       padding: 6px 14px !important;
       min-height: 40px;
       min-width: 76px;
       cursor: pointer;
+      border-radius: 9999px;
+      background: var(--brand-orange-soft);
+      color: var(--brand-orange);
+      border: 1px solid var(--brand-orange-border);
     }
-

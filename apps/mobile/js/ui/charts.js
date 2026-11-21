@@ -1,5 +1,5 @@
 // ============================================================
-// CHARTS TAB (Dynamic Live Charts with Pagination)
+// CHARTS TAB (Dynamic Live Charts with Pagination) - Vibrant Light Redesign
 // ============================================================
 const REGIONAL_PLAYLIST_IDS = window.REGIONAL_PLAYLIST_IDS || {
   "Global": "PL4fGSI1pDJn49TUu37nJoN2QTeYuRwmNv",
@@ -192,9 +192,9 @@ function renderCharts(region, page = 1) {
 
     list.innerHTML = `
       <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
-        <svg width="28" height="28" fill="var(--accent-primary)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-        <div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px;">Loading Live ${canonical} Charts</div>
-        <div style="font-size: 12px;">Fetching top regional songs...</div>
+        <svg width="28" height="28" fill="var(--brand-orange)" viewBox="0 0 24 24" class="spin-icon" style="margin-bottom: 12px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 6px;">Loading Live ${canonical} Charts</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Fetching top regional songs...</div>
       </div>
     `;
     const paginationContainer = document.getElementById('chartsPagination');
@@ -212,30 +212,35 @@ function renderCharts(region, page = 1) {
 
   list.innerHTML = pageTracks.map((track, i) => {
     const globalRank = startIdx + i + 1;
-    let badgeColor = 'var(--text-dim)';
-    let badgeBg = 'transparent';
-    if (globalRank === 1) { badgeColor = '#F59E0B'; badgeBg = 'rgba(245, 158, 11, 0.15)'; }
-    else if (globalRank === 2) { badgeColor = '#94A3B8'; badgeBg = 'rgba(148, 163, 184, 0.15)'; }
-    else if (globalRank === 3) { badgeColor = '#B45309'; badgeBg = 'rgba(180, 83, 9, 0.15)'; }
+    let badgeStyle = 'background: #F3F4F6; color: #6B7280; border: 1px solid #EAECEF;';
+    if (globalRank === 1) {
+      badgeStyle = 'background: linear-gradient(135deg, #FF6B00 0%, #F59E0B 100%); color: #FFFFFF; box-shadow: 0 2px 8px rgba(255, 90, 31, 0.35); font-weight: 800;';
+    } else if (globalRank === 2) {
+      badgeStyle = 'background: linear-gradient(135deg, #94A3B8 0%, #64748B 100%); color: #FFFFFF; font-weight: 800;';
+    } else if (globalRank === 3) {
+      badgeStyle = 'background: linear-gradient(135deg, #EF4444 0%, #D97706 100%); color: #FFFFFF; font-weight: 800;';
+    }
 
     const isDownloaded = (typeof isTrackOffline === 'function') ? isTrackOffline(track.id) : false;
     const isDownloading = (typeof activeDownloads !== 'undefined' && activeDownloads && typeof activeDownloads.has === 'function') ? activeDownloads.has(track.id) : false;
     const durFormatted = (typeof formatTime === 'function') ? formatTime(track.duration) : (track.duration || '3:30');
+    const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(track.id, '♫') : 'assets/logo.png';
+    const coverSrc = track.cover || fallbackArt;
 
     return `
       <div class="track-row" onclick="selectTrackToPlay('${track.id}')">
-        <span style="font-size: 13px; font-weight: 800; color: ${badgeColor}; background: ${badgeBg}; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;">${globalRank}</span>
-        <img class="track-art" src="${track.cover}" alt="${track.title}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" />
+        <span style="font-size: 13px; font-weight: 800; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; ${badgeStyle}">${globalRank}</span>
+        <img class="track-art" src="${coverSrc}" alt="${track.title}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
         <div class="track-meta" style="flex: 1; min-width: 0;">
           <div class="track-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${track.title}</div>
-          <div class="track-desc" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${track.artist} • ${durFormatted}</div>
+          <div class="track-desc" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${track.artist} &middot; ${durFormatted}</div>
         </div>
-        <button class="action-icon-btn" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isDownloaded ? 'Cached Offline' : 'Download'}">
+        <button class="action-icon-btn" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isDownloaded ? 'Cached Offline' : (isDownloading ? 'Downloading...' : 'Download')}" aria-label="${isDownloaded ? 'Cached Offline' : 'Download'}">
           ${isDownloaded ? 
-            '<svg width="18" height="18" fill="#10B981" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' : 
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : 
             (isDownloading ? 
-              '<svg width="18" height="18" fill="#F59E0B" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' :
-              '<svg width="18" height="18" fill="var(--text-dim)" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>'
+              '<svg width="18" height="18" fill="#FF5A1F" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' :
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>'
             )
           }
         </button>

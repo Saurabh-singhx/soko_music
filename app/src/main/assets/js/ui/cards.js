@@ -1,14 +1,17 @@
 // ============================================================
-// CARDS UI TEMPLATES
+// CARDS UI TEMPLATES - Vibrant Light Redesign
 // ============================================================
+
 function createShelfCardHtml(track) {
   if (!track || !track.id) return '';
   const isCached = isTrackOffline(track.id);
+  const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(track.id, '♫') : 'assets/logo.png';
+  const coverSrc = track.cover || fallbackArt;
   return `
     <div class="shelf-card" onclick="selectTrackToPlay('${track.id}')">
       <div class="shelf-card-art-wrapper">
-        <img class="shelf-card-art" src="${track.cover || 'assets/logo.png'}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
-        ${isCached ? '<div class="offline-chip">⚡ 160k</div>' : ''}
+        <img class="shelf-card-art" src="${coverSrc}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
+        ${isCached ? '<div class="offline-chip-mini">⚡ 160k</div>' : ''}
       </div>
       <div class="shelf-card-info">
         <div class="shelf-card-title">${track.title || 'Unknown Title'}</div>
@@ -24,23 +27,25 @@ function createYtmLineCardHtml(track, shelfId = null) {
   const isDownloading = activeDownloads.has(track.id);
   const isRadioStart = shelfId === 'quick_picks';
   const shelfArg = shelfId ? `'${shelfId}'` : 'null';
+  const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(track.id, '♫') : 'assets/logo.png';
+  const coverSrc = track.cover || fallbackArt;
   return `
     <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}', ${isRadioStart}, ${shelfArg})">
       <div class="ytm-line-art-wrapper">
-        <img class="ytm-line-art" src="${track.cover || 'assets/logo.png'}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
+        <img class="ytm-line-art" src="${coverSrc}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
         ${isCached ? '<div class="offline-chip-mini">⚡</div>' : ''}
       </div>
       <div class="ytm-line-info">
         <div class="ytm-line-title">${track.title || 'Unknown Title'}</div>
-        <div class="ytm-line-artist">${track.artist || 'Unknown Artist'}</div>
+        <div class="ytm-line-artist">${track.artist || 'Unknown Artist'}${track.plays ? ` • ${track.plays}` : ''}</div>
       </div>
       <div class="ytm-line-actions">
-        <button class="ytm-line-btn" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isCached ? 'Stored Offline' : 'Download'}">
+        <button class="ytm-line-btn" onclick="event.stopPropagation(); startDownloadTrack('${track.id}')" title="${isCached ? 'Stored Offline' : (isDownloading ? 'Downloading...' : 'Download Offline')}" aria-label="${isCached ? 'Stored Offline' : 'Download Offline'}">
           ${isCached ? 
-            '<svg width="18" height="18" fill="#10B981" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' : 
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : 
             (isDownloading ? 
-              '<svg width="18" height="18" fill="#F59E0B" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' : 
-              '<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>')}
+              '<svg width="18" height="18" fill="#FF5A1F" viewBox="0 0 24 24" class="spin-icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>' : 
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>')}
         </button>
       </div>
     </div>
@@ -58,12 +63,25 @@ function createMixCardHtml(mix) {
   if (!coverArt && mix.videoId) {
     coverArt = `https://i.ytimg.com/vi/${mix.videoId}/hqdefault.jpg`;
   }
-  coverArt = coverArt || 'assets/logo.png';
+
+  const vibrantGradients = [
+    'linear-gradient(135deg, #FF6B00 0%, #EF4444 60%, #FB7185 100%)',
+    'linear-gradient(135deg, #FF5A1F 0%, #FF8C42 52%, #FBBF24 100%)',
+    'linear-gradient(135deg, #16A34A 0%, #10B981 55%, #34D399 100%)',
+    'linear-gradient(135deg, #E11D48 0%, #EF4444 50%, #FF6B00 100%)',
+    'linear-gradient(135deg, #059669 0%, #16A34A 50%, #F59E0B 100%)'
+  ];
+  let hash = 0;
+  const idStr = String(mix.id || mix.title || '');
+  for (let i = 0; i < idStr.length; i++) hash = (hash << 5) - hash + idStr.charCodeAt(i);
+  const selectedGradient = mix.gradient || vibrantGradients[Math.abs(hash) % vibrantGradients.length];
+
+  const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(mix.id, '♫', 'MIX') : 'assets/logo.png';
+  coverArt = coverArt || fallbackArt;
   const isLogo = !coverArt || coverArt === 'assets/logo.png';
   const imgStyle = isLogo
-    ? 'opacity: 0.88; mix-blend-mode: overlay;'
+    ? 'opacity: 0.88; mix-blend-mode: overlay; width: 100%; height: 100%; object-fit: contain;'
     : 'opacity: 1; mix-blend-mode: normal; object-fit: cover; width: 100%; height: 100%;';
-  const gradient = mix.gradient || 'linear-gradient(135deg, #6366F1, #06B6D4)';
   const badge = mix.badge || 'Mix';
   const displayTitle = mix.title || (firstTrack ? firstTrack.title : 'Mix');
   const displaySubtitle = (mix.subtitle && mix.subtitle !== 'YouTube Music' && mix.subtitle !== 'Cloud Music')
@@ -73,7 +91,7 @@ function createMixCardHtml(mix) {
 
   return `
     <div class="shelf-card" onclick="playCuratedMix('${safeId}')">
-      <div class="shelf-card-art-wrapper" style="background: ${gradient};">
+      <div class="shelf-card-art-wrapper" style="background: ${selectedGradient};">
         <img class="shelf-card-art" src="${coverArt}" alt="${displayTitle}" onerror="this.onerror=null; this.src='assets/logo.png';" loading="lazy" style="${imgStyle}" />
         <div class="mix-card-badge">${badge}</div>
       </div>

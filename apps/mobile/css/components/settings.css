@@ -1,68 +1,115 @@
-    /* Settings & Storage Cards */
-    .storage-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-      margin-bottom: 16px;
-    }
+/* ============================================================ */
+/* SETTINGS & STORAGE - Vibrant Light Redesign                  */
+/* ============================================================ */
 
-    .storage-meter-bar {
-      height: 8px;
-      border-radius: var(--radius-full);
-      background: rgba(255, 255, 255, 0.08);
-      overflow: hidden;
-      margin: 10px 0;
-      display: flex;
-    }
+.storage-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+  box-sizing: border-box;
+}
 
-    .storage-fill-used {
-      background: linear-gradient(90deg, #6366F1, #06B6D4);
-      width: 15%;
-      height: 100%;
-      border-radius: var(--radius-full);
-      transition: width 0.3s ease;
-    }
+.storage-meter-bar {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: #E5E7EB;
+  overflow: hidden;
+  margin: 10px 0;
+  display: flex;
+}
 
-    .setting-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .setting-row:last-child {
-      border-bottom: none;
-    }
+.storage-fill-used {
+  background: linear-gradient(90deg, #FF5A1F, #10B981);
+  width: 15%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
 
-    .ytm-branding-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
 
-    .ytm-logo-box, .provider-logo-box {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #6366F1, #06B6D4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-    }
+.setting-row:last-child {
+  border-bottom: none;
+}
 
-    .ytm-perk-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      font-size: 12px;
-      color: var(--text-primary);
-    }
-    .ytm-perk-item:last-child {
-      margin-bottom: 0;
-    }
+.setting-row-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
 
+.setting-row-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.provider-logo-box, .ytm-logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--brand-orange-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--brand-orange);
+  border: 1px solid var(--brand-orange-border);
+}
+
+/* Listening Stats Card */
+.stats-header-bar {
+  height: 5px;
+  width: 100%;
+  background: linear-gradient(to right, #FF5A1F, #FF6B00, #16A34A);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.listening-chart {
+  height: 128px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.chart-bar {
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
+  border-radius: 6px 6px 0 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.chart-bar:hover {
+  opacity: 0.9;
+}
+
+.range-btn {
+  padding: 6px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+}
+
+.range-btn.active {
+  background: var(--brand-orange);
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(255, 90, 31, 0.3);
+}

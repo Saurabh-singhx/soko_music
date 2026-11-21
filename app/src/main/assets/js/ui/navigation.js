@@ -25,6 +25,9 @@ function switchNavTab(tabName, el) {
   } else if (tabName === 'settings') {
     updateStorageMetrics();
     updateAuthHeaderUI();
+    if (window.listeningTracker) {
+      try { window.listeningTracker.renderUI(); } catch (e) {}
+    }
   }
 }
 

@@ -397,6 +397,9 @@ function updatePlayIcons(playing) {
 }
 
 function handleSeek(val) {
+  if (window.listeningTracker) {
+    try { window.listeningTracker.onSeek(); } catch (e) {}
+  }
   const percent = parseFloat(val);
   if (isOnlineYtPlaying) {
     if (ytPlayer && typeof ytPlayer.seekTo === 'function') {

@@ -187,6 +187,9 @@ function onYtPlayerStateChange(event) {
     startRealVisualizer();
     startOnlineProgressUpdater();
     recordPlaybackStateChangeTelemetry(true);
+    if (window.listeningTracker) {
+      try { window.listeningTracker.onPlay(currentTrack ? currentTrack.id : null, false); } catch (e) {}
+    }
     if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
       let cur = 0;
       let dur = currentTrack.duration || 215;
@@ -202,6 +205,9 @@ function onYtPlayerStateChange(event) {
     stopRealVisualizer();
     stopOnlineProgressUpdater();
     recordPlaybackStateChangeTelemetry(false);
+    if (window.listeningTracker) {
+      try { window.listeningTracker.onPause(); } catch (e) {}
+    }
     if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
       let cur = 0;
       let dur = currentTrack.duration || 215;
@@ -210,9 +216,16 @@ function onYtPlayerStateChange(event) {
       }
       window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, false, Math.floor(dur), Math.floor(cur), currentTrack.cover);
     }
+  } else if (event.data === 3) { // BUFFERING
+    if (window.listeningTracker) {
+      try { window.listeningTracker.onBuffering(true); } catch (e) {}
+    }
   } else if (event.data === 0) { // ENDED
     recordTrackCompletionTelemetry();
     stopOnlineProgressUpdater();
+    if (window.listeningTracker) {
+      try { window.listeningTracker.onTrackEnded(currentTrack); } catch (e) {}
+    }
     if (isRepeat) {
       if (currentTrack) playRealTrack(currentTrack);
     } else {
@@ -236,6 +249,9 @@ function startOnlineProgressUpdater() {
       } catch (e) {}
     }
     updatePlaybackTelemetry(cur, dur);
+    if (window.listeningTracker) {
+      try { window.listeningTracker.onProgressTick(); } catch (e) {}
+    }
 
     const slider = document.getElementById('modalSeekSlider');
     const curTime = document.getElementById('modalTimeCurrent');

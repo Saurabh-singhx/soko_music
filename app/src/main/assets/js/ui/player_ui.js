@@ -1,6 +1,7 @@
 // ============================================================
-// PLAYER UI & MODAL MANAGEMENT
+// PLAYER UI & MODAL MANAGEMENT - Vibrant Light Redesign
 // ============================================================
+
 function updateLookAheadUI() {
   const titleEl = document.getElementById('nextTitle');
   const artistEl = document.getElementById('nextArtist');
@@ -20,12 +21,16 @@ function updateLookAheadUI() {
 
   if (titleEl) titleEl.innerText = lookAheadNextTrack.title || 'Unknown Title';
   if (artistEl) artistEl.innerText = lookAheadNextTrack.artist || 'Unknown Artist';
-  if (artEl) artEl.src = lookAheadNextTrack.cover || '';
+  if (artEl) {
+    const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(lookAheadNextTrack.id, '♫') : 'assets/logo.png';
+    artEl.src = lookAheadNextTrack.cover || fallbackArt;
+    artEl.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(artEl, lookAheadNextTrack.id); else artEl.src = 'assets/logo.png'; };
+  }
 
   const isNextCached = isTrackOffline(lookAheadNextTrack.id);
   if (preCacheStatus) {
     preCacheStatus.innerText = isNextCached ? '● Offline Ready' : '● Online Stream';
-    preCacheStatus.style.color = isNextCached ? 'var(--success)' : 'var(--accent-cyan)';
+    preCacheStatus.style.color = isNextCached ? 'var(--brand-green)' : 'var(--brand-orange)';
   }
 }
 
@@ -56,11 +61,11 @@ function updateDownloadBannerUI(track, percent, complete) {
     if (titleEl) titleEl.innerText = `Downloading: ${track.title}`;
     if (percentEl) {
       percentEl.innerText = `${percent}%`;
-      percentEl.style.color = '#F59E0B';
+      percentEl.style.color = '#FF5A1F';
     }
     if (fillEl) {
       fillEl.style.width = `${percent}%`;
-      fillEl.style.background = 'linear-gradient(90deg, #F59E0B, #10B981)';
+      fillEl.style.background = 'linear-gradient(90deg, #FF6B00, #FF5A1F)';
     }
   }
 }
@@ -68,11 +73,13 @@ function updateDownloadBannerUI(track, percent, complete) {
 function updatePlayerUI(track) {
   if (!track) return;
 
+  const fallbackArt = (typeof getSvgArtworkFallback === 'function') ? getSvgArtworkFallback(track.id, '♫') : 'assets/logo.png';
+
   const miniArt = document.getElementById('miniArt');
   const miniTitle = document.getElementById('miniTitle');
   const miniArtist = document.getElementById('miniArtist');
   if (miniArt) {
-    miniArt.src = track.cover || 'assets/logo.png';
+    miniArt.src = track.cover || fallbackArt;
     miniArt.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(miniArt, track.id); else miniArt.src = 'assets/logo.png'; };
   }
   if (miniTitle) miniTitle.innerText = track.title;
@@ -83,11 +90,13 @@ function updatePlayerUI(track) {
   const modalArtist = document.getElementById('modalArtist');
   const modalDuration = document.getElementById('modalTimeDuration');
   const modalHeart = document.getElementById('modalHeartIcon');
+  const modalHeartBtn = document.querySelector('.modal-heart-btn');
   const modalDlIcon = document.getElementById('modalDownloadIcon');
+  const modalDlBtn = document.querySelector('.modal-dl-btn');
 
   if (modalArt) {
     const heroCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
-    modalArt.src = heroCover || 'assets/logo.png';
+    modalArt.src = heroCover || fallbackArt;
     modalArt.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(modalArt, track.id); else modalArt.src = 'assets/logo.png'; };
   }
   if (modalTitle) modalTitle.innerText = track.title;
@@ -98,10 +107,16 @@ function updatePlayerUI(track) {
     modalHeart.style.fill = track.favorite ? '#EF4444' : 'none';
     modalHeart.style.stroke = track.favorite ? '#EF4444' : 'currentColor';
   }
+  if (modalHeartBtn) {
+    modalHeartBtn.classList.toggle('active', !!track.favorite);
+  }
 
+  const isCached = downloadedSet.has(track.id);
   if (modalDlIcon) {
-    const isCached = downloadedSet.has(track.id);
-    modalDlIcon.style.stroke = isCached ? '#10B981' : 'currentColor';
+    modalDlIcon.style.stroke = isCached ? '#16A34A' : 'currentColor';
+  }
+  if (modalDlBtn) {
+    modalDlBtn.style.color = isCached ? '#16A34A' : 'var(--text-dim)';
   }
 
   // Synchronize player theme and source switcher (Red theme scoped ONLY to player when streaming)
@@ -238,8 +253,31 @@ function closeNowPlayingModal() {
   }
 }
 
+function setStatsRange(range) {
+  if (window.listeningTracker && typeof window.listeningTracker.setRange === 'function') {
+    window.listeningTracker.setRange(range);
+  }
+}
+
+// Auto-wire range buttons in settings tab
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof document.querySelectorAll === 'function') {
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        if (typeof btn.addEventListener === 'function') {
+          btn.addEventListener('click', () => {
+            const r = btn.getAttribute('data-range');
+            if (r) setStatsRange(r);
+          });
+        }
+      });
+    }
+  });
+}
+
 window.updateLookAheadUI = updateLookAheadUI;
 window.updateDownloadBannerUI = updateDownloadBannerUI;
 window.updatePlayerUI = updatePlayerUI;
 window.openNowPlayingModal = openNowPlayingModal;
 window.closeNowPlayingModal = closeNowPlayingModal;
+window.setStatsRange = setStatsRange;

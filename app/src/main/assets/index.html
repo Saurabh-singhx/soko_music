@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Soko Music</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+
   <!-- Tokens & Base Styles -->
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
@@ -26,27 +32,34 @@
 </head>
 <body>
   <div class="app-viewport">
-    <!-- Top Header -->
+    <!-- Top Header - Vibrant Light Redesign with Unchanged Logo -->
     <header class="top-header">
       <div class="brand-group" onclick="switchNavTab('home', document.querySelector('.nav-tab-item'))">
         <img class="brand-icon" src="assets/logo.svg" alt="Soko Logo" onerror="this.onerror=null; this.src='assets/logo.png';" />
         <span class="brand-text">Soko<span class="brand-text-sub">Music</span></span>
       </div>
 
-      <button class="header-profile-btn" id="headerAuthBtn" onclick="openAuthModal()" title="Account & Settings" aria-label="Account & Settings">
-        <div id="headerProfileAvatar" class="header-profile-avatar" title="Account">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-        </div>
-      </button>
+      <div class="header-right-group">
+        <button onclick="switchNavTab('settings', document.querySelectorAll('.nav-tab-item')[4]); setTimeout(() => { const c = document.getElementById('listeningStatsCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);" class="header-listen-pill" title="Today's Listening Time">
+          <span class="pulse-dot-inline"></span>
+          <span id="headerListenBadge">0m today</span>
+        </button>
+
+        <button class="header-profile-btn" id="headerAuthBtn" onclick="openAuthModal()" title="Account & Settings" aria-label="Account & Settings">
+          <div id="headerProfileAvatar" class="header-profile-avatar" title="Account">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+        </button>
+      </div>
       <span id="badgeStatusText" style="display: none;">Sync / Login</span>
     </header>
 
     <!-- Main Content Tabs -->
     <main class="content-scroll">
-      <!-- 1. HOME TAB (Dynamic YouTube Music Feed) -->
+      <!-- 1. HOME TAB (Dynamic Cloud Music Feed) -->
       <section id="pane-home" class="tab-pane active">
         <!-- Native Swipe-Down Pull-to-Refresh Container -->
         <div id="pullToRefreshContainer" class="ptr-container">
@@ -68,8 +81,8 @@
         <!-- Dynamic Home Feed Shelves -->
         <div id="homeFeedContainer">
           <div style="text-align: center; color: var(--text-dim); padding: 50px 20px;">
-            <div class="spin-icon" style="display: inline-block; width: 26px; height: 26px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-primary); border-radius: 50%; margin-bottom: 12px;"></div>
-            <div style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Loading Cloud Music Feed...</div>
+            <div class="spin-icon" style="display: inline-block; width: 28px; height: 28px; border: 3px solid rgba(255,90,31,0.15); border-top-color: var(--brand-orange); border-radius: 50%; margin-bottom: 12px;"></div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-muted);">Loading Cloud Music Feed...</div>
           </div>
         </div>
       </section>
@@ -82,8 +95,10 @@
             <p class="section-subtitle">Trending hits with authentic audio</p>
           </div>
           <button id="btnRefreshCharts" class="action-icon-btn" onclick="refreshCurrentCharts()" title="Refresh Charts" aria-label="Refresh Charts">
-            <svg id="chartsRefreshIcon" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+            <svg id="chartsRefreshIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
             </svg>
           </button>
         </div>
@@ -113,7 +128,7 @@
 
       <!-- 3. SEARCH TAB (Responsive Cards & Real Playback) -->
       <section id="pane-search" class="tab-pane">
-        <div style="position: relative; margin-bottom: 16px;">
+        <div style="position: relative; margin-bottom: 14px;">
           <div class="search-icon-wrapper">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -129,7 +144,7 @@
         </div>
 
         <div class="track-list" id="searchResultsList">
-          <div style="text-align: center; color: var(--text-dim); padding: 40px;">Type a title, artist, or song name to search</div>
+          <div style="text-align: center; color: var(--text-dim); padding: 40px; font-size: 13px;">Type a title, artist, or song name to search</div>
         </div>
       </section>
 
@@ -141,7 +156,7 @@
             Back to Library
           </button>
           <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
-            <div id="plDetailArt" style="width: 72px; height: 72px; border-radius: var(--radius-md); background: #151B27; display: flex; align-items: center; justify-content: center; font-size: 28px;">📁</div>
+            <div id="plDetailArt" style="width: 72px; height: 72px; border-radius: var(--radius-md); background: #FFF3ED; border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; font-size: 28px;">📁</div>
             <div>
               <h2 id="plDetailTitle" class="section-title">Playlist</h2>
               <p id="plDetailSubtitle" class="section-subtitle">0 tracks</p>
@@ -158,7 +173,7 @@
           <div class="section-title-row">
             <div>
               <h2 class="section-title">Your Playlists</h2>
-              <p class="section-subtitle">Local collections & auto-smart lists</p>
+              <p class="section-subtitle">Local collections &amp; auto-smart lists</p>
             </div>
             <button class="action-icon-btn" onclick="openCreatePlaylistDialog()" title="Create Playlist">
               <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -172,29 +187,29 @@
           </div>
 
           <!-- All Offline Stored Songs Section -->
-          <div class="storage-card" style="margin-top: 16px; margin-bottom: 24px; padding: 14px;">
+          <div class="storage-card" style="margin-top: 16px; margin-bottom: 24px; padding: 16px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px;">
               <div style="min-width: 0; flex: 1;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <h2 class="section-title" style="margin-bottom: 0; font-size: 16px; font-weight: 700; white-space: nowrap;">All Offline Stored Songs</h2>
-                  <span id="librarySongCountBadge" class="badge" style="background: rgba(99,102,241,0.18); color: var(--accent-primary); font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700; white-space: nowrap;">0 songs</span>
+                  <h3 class="section-title" style="margin-bottom: 0; font-size: 16px; font-weight: 800; white-space: nowrap;">All Offline Stored Songs</h3>
+                  <span id="librarySongCountBadge" class="badge" style="background: var(--brand-green-soft); color: var(--brand-green); border: 1px solid var(--brand-green-border); font-size: 11px; padding: 2px 8px; border-radius: 9999px; font-weight: 800; white-space: nowrap;">0 songs</span>
                 </div>
                 <p class="section-subtitle" style="font-size: 11px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">100% on device disk • 0ms gapless offline playback</p>
               </div>
               <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(false)" title="Play All Offline" style="background: rgba(99,102,241,0.18); color: var(--accent-primary); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;">
+                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(false)" title="Play All Offline" style="background: var(--brand-orange); color: #fff; width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; box-shadow: 0 4px 12px rgba(255,90,31,0.35);">
                   <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(true)" title="Shuffle Offline" style="background: rgba(6,182,212,0.18); color: var(--accent-cyan); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;">
+                <button class="action-icon-btn-compact" onclick="playAllOfflineTracks(true)" title="Shuffle Offline" style="background: var(--brand-green-soft); color: var(--brand-green); border: 1px solid var(--brand-green-border); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%;">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4l8 12h4m0 0l-3-3m3 3l-3 3M4 20h4l3-4.5m4-6l1-1.5h4m0 0l-3-3m3 3l-3 3"/></svg>
                 </button>
               </div>
             </div>
 
             <!-- Quick Filter Input -->
-            <div style="position: relative; margin-bottom: 10px;">
-              <input type="text" id="libraryFilterInput" oninput="filterLibraryTracks(this.value)" placeholder="Search within downloaded songs..." style="width: 100%; min-height: 40px; height: 40px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0 12px 0 38px; color: #fff; font-size: 13px; outline: none; box-sizing: border-box;" />
-              <svg style="position: absolute; left: 12px; top: 12px; color: var(--text-dim); pointer-events: none;" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <div style="position: relative; margin-bottom: 12px;">
+              <input type="text" id="libraryFilterInput" oninput="filterLibraryTracks(this.value)" placeholder="Search within downloaded songs..." style="width: 100%; min-height: 42px; height: 42px; background: #F8F9FA; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0 12px 0 38px; color: #111827; font-size: 13px; outline: none; box-sizing: border-box;" />
+              <svg style="position: absolute; left: 12px; top: 13px; color: var(--text-dim); pointer-events: none;" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </div>
 
             <!-- Library Offline Songs Sorting -->
@@ -225,7 +240,6 @@
             </div>
             <div id="libraryPagination" style="margin-top: 10px;"></div>
           </div>
-
         </div>
       </section>
 
@@ -233,79 +247,169 @@
       <section id="pane-settings" class="tab-pane">
         <div class="section-title-row">
           <div>
-            <h2 class="section-title">Settings & Storage</h2>
-            <p class="section-subtitle">Manage offline space and audio quality</p>
+            <h2 class="section-title">Settings &amp; Storage</h2>
+            <p class="section-subtitle">Manage offline space, listening stats and audio quality</p>
+          </div>
+        </div>
+
+        <!-- NEW FEATURE: LISTENING TIME & STATS CARD -->
+        <div id="listeningStatsCard" class="storage-card" style="padding: 0; overflow: hidden; margin-top: 4px; margin-bottom: 16px;">
+          <div class="stats-header-bar"></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+            <!-- Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 12px; background: #FFF3ED; color: var(--brand-orange); display: flex; align-items: center; justify-content: center;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <h3 class="setting-row-title" style="font-size: 15px;">Listening Time &amp; Stats</h3>
+                  <p class="setting-row-sub">Live session timer &amp; playback activity</p>
+                </div>
+              </div>
+              <span style="padding: 4px 10px; border-radius: 9999px; background: linear-gradient(to right, #FEF2F2, #FFF3ED); border: 1px solid rgba(239,68,68,0.3); font-size: 11px; font-weight: 800; color: #EF4444; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                <span id="statStreakBadge">0-day streak</span>
+                <span>🔥</span>
+              </span>
+            </div>
+
+            <!-- Segmented Pill Tabs -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #F8F9FA; padding: 4px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+              <button class="range-btn active" data-range="today">Today</button>
+              <button class="range-btn" data-range="week">Week</button>
+              <button class="range-btn" data-range="month">Month</button>
+              <button class="range-btn" data-range="all">All Time</button>
+            </div>
+
+            <!-- Hero Metrics Box -->
+            <div style="display: flex; align-items: flex-end; justify-content: space-between; background: #FFF8F5; border-radius: 16px; padding: 14px; border: 1px solid #FFE4D6;">
+              <div>
+                <p id="statRangeLabel" style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Time Spent Today</p>
+                <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 2px; flex-wrap: wrap;">
+                  <span id="statTotalTime" style="font-family: var(--font-display); font-size: 28px; font-weight: 800; color: #111827; letter-spacing: -0.5px; line-height: 1;">0m</span>
+                  <span id="statLiveSec" style="font-size: 11px; font-weight: 700; color: var(--brand-green); font-variant-numeric: tabular-nums; display: none;">+00s live</span>
+                </div>
+                <p id="statTrackCount" style="font-size: 12px; font-weight: 700; color: var(--brand-orange); margin-top: 4px;">0 songs played</p>
+              </div>
+              <div style="text-align: right; flex-shrink: 0;">
+                <span class="badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 9999px; background: #ECFDF5; color: #16A34A; border: 1px solid #A7F3D0; font-size: 11px; font-weight: 800;">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background: #16A34A;"></span>
+                  <span id="statOfflinePctBadge">0% Offline</span>
+                </span>
+                <p style="font-size: 10px; color: var(--text-dim); margin-top: 6px; font-weight: 600;">Tap a bar for details</p>
+              </div>
+            </div>
+
+            <!-- Interactive Bar Chart -->
+            <div>
+              <div id="listeningChart" class="listening-chart"></div>
+              <div id="listeningChartLabels" style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px; margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;"></div>
+            </div>
+
+            <!-- Offline (Green) vs Online (Orange) Split Bar -->
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700;">
+                <span style="color: #16A34A; display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #16A34A;"></span>
+                  Offline <strong id="offlineShareText">0%</strong>
+                </span>
+                <span style="color: var(--brand-orange); display: inline-flex; align-items: center; gap: 6px;">
+                  Online <strong id="onlineShareText">0%</strong>
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--brand-orange);"></span>
+                </span>
+              </div>
+              <div style="width: 100%; height: 8px; border-radius: 9999px; background: #F3F4F6; overflow: hidden; display: flex; padding: 1px; gap: 2px;">
+                <div id="offlineShareBar" style="height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #16A34A, #10B981); width: 0%; transition: width 0.4s ease;"></div>
+                <div id="onlineShareBar" style="height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #FF6B00, #FF5A1F); width: 0%; transition: width 0.4s ease;"></div>
+              </div>
+            </div>
+
+            <!-- 3-Column Mini Stat Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+              <div style="background: #F8F9FA; border-radius: 12px; padding: 10px; border: 1px solid var(--border-subtle);">
+                <p style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">Daily Avg</p>
+                <p id="statDailyAvg" style="font-family: var(--font-display); font-size: 12px; font-weight: 800; color: #111827; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">0m</p>
+              </div>
+              <div style="background: #F8F9FA; border-radius: 12px; padding: 10px; border: 1px solid var(--border-subtle);">
+                <p style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">Top Artist</p>
+                <p id="statTopArtist" style="font-family: var(--font-display); font-size: 12px; font-weight: 800; color: var(--brand-orange); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">None yet</p>
+              </div>
+              <div style="background: #F8F9FA; border-radius: 12px; padding: 10px; border: 1px solid var(--border-subtle);">
+                <p style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">Peak Hour</p>
+                <p id="statPeakHour" style="font-family: var(--font-display); font-size: 12px; font-weight: 800; color: #16A34A; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</p>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Cloud Music Account Card -->
-        <div class="storage-card" style="margin-top: 4px; margin-bottom: 14px; padding: 14px 16px;">
+        <div class="storage-card" style="margin-bottom: 14px; padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-              <div class="provider-logo-box ytm-logo-box" id="settingsAvatarContainer" style="width: 32px; height: 32px; border-radius: 10px; overflow: hidden; cursor: pointer;" onclick="openAuthModal()" title="View Profile & Avatar">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+              <div class="provider-logo-box ytm-logo-box" id="settingsAvatarContainer" style="cursor: pointer;" onclick="openAuthModal()" title="View Profile & Avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
               </div>
               <div style="min-width: 0; flex: 1;">
-                <div style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Profile &amp; Cloud Account</div>
-                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="settingsYtmSubtitle">Not Connected • Guest Mode</div>
+                <div class="setting-row-title">Profile &amp; Cloud Account</div>
+                <div class="setting-row-sub" id="settingsYtmSubtitle">Not Connected • Guest Mode</div>
               </div>
             </div>
-            <button class="filter-pill active" onclick="openAuthModal()" style="min-height: 40px; padding: 6px 14px; font-size: 11px; font-weight: 700; flex-shrink: 0;" id="settingsAuthActionBtn">
+            <button class="filter-pill active" onclick="openAuthModal()" style="min-height: 38px; padding: 6px 14px; font-size: 11px; font-weight: 700; flex-shrink: 0;" id="settingsAuthActionBtn">
               Sign In
             </button>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.45; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <div style="background: #F8F9FA; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.45; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <span>Custom profile picture &amp; animated GIFs supported. Sync recommendations into Soko offline storage.</span>
-            <button onclick="openAuthModal()" style="background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: var(--accent-primary); border-radius: var(--radius-sm); padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;">Change Photo</button>
+            <button onclick="openAuthModal()" style="background: var(--brand-orange-soft); border: 1px solid var(--brand-orange-border); color: var(--brand-orange); border-radius: var(--radius-sm); padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Change Photo</button>
           </div>
         </div>
 
         <!-- Telemetry & Recommendation Feedback Sync Card -->
-        <div class="storage-card" style="margin-bottom: 14px; padding: 14px 16px;">
+        <div class="storage-card" style="margin-bottom: 14px; padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-              <div style="width: 32px; height: 32px; border-radius: 10px; background: rgba(99,102,241,0.18); display: flex; align-items: center; justify-content: center; color: var(--accent-primary); flex-shrink: 0;">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--brand-orange-soft); display: flex; align-items: center; justify-content: center; color: var(--brand-orange); border: 1px solid var(--brand-orange-border); flex-shrink: 0;">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               </div>
               <div style="min-width: 0; flex: 1;">
-                <div style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Recommendation Feedback Sync</div>
-                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="telemetryStatusSubtitle">Active • Watch Time, Likes &amp; History Syncing</div>
+                <div class="setting-row-title">Recommendation Feedback Sync</div>
+                <div class="setting-row-sub" id="telemetryStatusSubtitle">Active • Watch Time, Likes &amp; History Syncing</div>
               </div>
             </div>
-            <span class="badge" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #10B981; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">● ACTIVE</span>
+            <span class="badge" style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #16A34A; font-weight: 800; font-size: 10px; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">● ACTIVE</span>
           </div>
-          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); padding: 11px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+          <div style="background: #F8F9FA; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 11px 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.5;">
             Automatically reports listen time (&gt;50% completion) and skips to the recommendation model so your discovery feed continuously improves.
           </div>
         </div>
 
         <!-- Offline Disk Storage Card -->
-        <div class="storage-card" style="margin-bottom: 14px; padding: 14px 16px;">
+        <div class="storage-card" style="margin-bottom: 14px; padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-              <div style="width: 32px; height: 32px; border-radius: 10px; background: rgba(6,182,212,0.18); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); flex-shrink: 0;">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; color: #16A34A; flex-shrink: 0;">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
               </div>
               <div style="min-width: 0; flex: 1;">
-                <span style="font-size: 13.5px; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">Offline Disk Storage</span>
-                <div style="font-size: 11px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">High-bitrate local audio store</div>
+                <span class="setting-row-title" style="display: block;">Offline Disk Storage</span>
+                <div class="setting-row-sub">High-bitrate local audio store</div>
               </div>
             </div>
-            <span id="storageLabel" style="font-size: 11px; font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.25); padding: 3px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">0 MB / 4.0 GB</span>
+            <span id="storageLabel" style="font-size: 11px; font-family: ui-monospace, monospace; font-weight: 800; color: #16A34A; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">0 MB / 4.0 GB</span>
           </div>
 
           <!-- Padded well for progress bar and stats -->
-          <div style="background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-md); padding: 11px 14px; margin-top: 12px;">
+          <div style="background: #F8F9FA; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 14px; margin-top: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px;">
-              <span style="color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Disk Allocation</span>
-              <span style="color: var(--success); font-weight: 600; font-size: 11px;">● 100% Offline Ready</span>
+              <span style="color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Disk Allocation</span>
+              <span style="color: var(--success); font-weight: 700; font-size: 11px;">● 100% Offline Ready</span>
             </div>
-            <div class="storage-progress-bg" style="margin: 8px 0 10px 0; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden;">
-              <div id="storageUsedBar" class="storage-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366F1, #06B6D4); transition: width 0.3s ease;"></div>
+            <div class="storage-progress-bg" style="margin: 8px 0 10px 0; height: 6px; background: #E5E7EB; border-radius: 3px; overflow: hidden;">
+              <div id="storageUsedBar" class="storage-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #FF5A1F, #10B981); transition: width 0.3s ease;"></div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-dim);">
-              <span id="cachedSongStats">0 real songs stored locally</span>
-              <span style="color: var(--text-muted); font-size: 10px;">160k Opus / AAC</span>
+              <span id="cachedSongStats" style="font-weight: 600;">0 real songs stored locally</span>
+              <span style="color: var(--text-muted); font-size: 10px; font-weight: 600;">160k Opus / AAC</span>
             </div>
           </div>
         </div>
@@ -313,10 +417,10 @@
         <div class="storage-card" style="padding: 16px;">
           <div class="setting-row">
             <div>
-              <div style="font-size: 14px; font-weight: 600;">Maximum Cache Size</div>
-              <div style="font-size: 11px; color: var(--text-dim);">Automated eviction of oldest unpinned songs</div>
+              <div class="setting-row-title">Maximum Cache Size</div>
+              <div class="setting-row-sub">Automated eviction of oldest unpinned songs</div>
             </div>
-            <select id="maxCacheSelect" onchange="updateMaxCacheLimit(this.value)" style="background: var(--bg-surface); color: #fff; border: 1px solid var(--border-subtle); min-height: 40px; padding: 6px 12px; border-radius: 8px; font-size: 12px; outline: none;">
+            <select id="maxCacheSelect" onchange="updateMaxCacheLimit(this.value)" style="background: #F8F9FA; color: #111827; border: 1px solid var(--border-subtle); min-height: 38px; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer;">
               <option value="2.0">2.0 GB (~500 songs)</option>
               <option value="4.0" selected>4.0 GB (~1,000 songs)</option>
               <option value="8.0">8.0 GB (~2,000 songs)</option>
@@ -326,23 +430,23 @@
 
           <div class="setting-row">
             <div>
-              <div style="font-size: 14px; font-weight: 600;">Audio Engine</div>
-              <div style="font-size: 11px; color: var(--text-dim);">On-device 128k AAC/Opus native decoder</div>
+              <div class="setting-row-title">Audio Engine</div>
+              <div class="setting-row-sub">On-device 128k AAC/Opus native decoder</div>
             </div>
-            <span style="font-size: 12px; font-weight: 700; color: #10B981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 6px;">Active ✓</span>
+            <span style="font-size: 12px; font-weight: 800; color: #16A34A; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 4px 10px; border-radius: 9999px;">Active ✓</span>
           </div>
 
           <div class="setting-row">
             <div>
-              <div style="font-size: 14px; font-weight: 600;">Look-Ahead Pre-download</div>
-              <div style="font-size: 11px; color: var(--text-dim);">Caches upcoming track in background for 0ms gaps</div>
+              <div class="setting-row-title">Look-Ahead Pre-download</div>
+              <div class="setting-row-sub">Caches upcoming track in background for 0ms gaps</div>
             </div>
-            <input type="checkbox" id="chkLookAhead" checked style="width: 20px; height: 20px; accent-color: #6366F1; cursor: pointer;" />
+            <input type="checkbox" id="chkLookAhead" checked style="width: 20px; height: 20px; accent-color: var(--brand-orange); cursor: pointer;" />
           </div>
 
           <div style="padding-top: 16px;">
-            <button onclick="clearUnpinnedCache()" style="width: 100%; min-height: 44px; padding: 12px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #EF4444; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer;">
-              Clear Unpinned Cache (Keep Liked & Bundled)
+            <button onclick="clearUnpinnedCache()" style="width: 100%; min-height: 44px; padding: 12px; background: var(--brand-red-soft); border: 1px solid var(--brand-red-border); color: var(--brand-red); border-radius: var(--radius-md); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all 0.15s ease;">
+              Clear Unpinned Cache (Keep Liked &amp; Bundled)
             </button>
           </div>
         </div>
@@ -353,14 +457,14 @@
     <div id="activeDownloadBanner" class="active-download-banner">
       <div class="dl-banner-content">
         <span id="dlBannerTitle">Downloading...</span>
-        <span id="dlBannerPercent" style="color: var(--warning); font-family: ui-monospace, monospace;">0%</span>
+        <span id="dlBannerPercent" style="color: var(--brand-orange); font-family: ui-monospace, monospace;">0%</span>
       </div>
       <div class="dl-progress-bar-bg">
         <div id="dlBannerFill" class="dl-progress-bar-fill"></div>
       </div>
     </div>
 
-    <!-- Mini Bottom Player Bar -->
+    <!-- Mini Bottom Player Bar - Vibrant Light Redesign -->
     <div class="mini-player" id="miniPlayer" onclick="openNowPlayingModal()">
       <div class="mini-progress-track">
         <div id="miniProgressFill" class="mini-progress-fill"></div>
@@ -395,7 +499,7 @@
       </div>
     </div>
 
-    <!-- Bottom Navigation Dock -->
+    <!-- Bottom Navigation Dock (5 Tabs) -->
     <nav class="tab-bar-nav">
       <div class="nav-tab-item active" onclick="switchNavTab('home', this)">
         <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -424,6 +528,7 @@
         </svg>
         <span>Library</span>
       </div>
+
       <div class="nav-tab-item" onclick="switchNavTab('settings', this)">
         <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="3"></circle>
@@ -433,12 +538,12 @@
       </div>
     </nav>
 
-    <!-- Fullscreen Now Playing Modal Sheet -->
+    <!-- Fullscreen Now Playing Modal Sheet - Vibrant Light Redesign -->
     <div class="now-playing-modal" id="nowPlayingModal">
       <div class="modal-content-container">
         <!-- Header -->
         <div class="modal-header">
-          <button class="action-icon-btn modal-collapse-btn" onclick="closeNowPlayingModal()" title="Collapse Player" aria-label="Collapse Player">
+          <button class="modal-collapse-btn" onclick="closeNowPlayingModal()" title="Collapse Player" aria-label="Collapse Player">
             <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -448,7 +553,7 @@
             <span id="playerSourceLabel">⚡ Offline</span>
             <span class="source-toggle-arrow">⇄</span>
           </button>
-          <button class="action-icon-btn modal-dl-btn" onclick="triggerDownloadCurrentTrack()" title="Download Track" aria-label="Download Track">
+          <button class="modal-dl-btn" onclick="triggerDownloadCurrentTrack()" title="Download Track" aria-label="Download Track">
             <svg id="modalDownloadIcon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
             </svg>
@@ -480,14 +585,14 @@
               </div>
             </div>
             <div class="modal-track-actions">
-              <button class="action-icon-btn modal-radio-btn" id="modalRadioBtn" onclick="triggerRadioCurrentTrack()" title="Start Dynamic Radio" aria-label="Start Dynamic Radio">
+              <button class="modal-radio-btn" id="modalRadioBtn" onclick="triggerRadioCurrentTrack()" title="Start Dynamic Radio" aria-label="Start Dynamic Radio">
                 <svg id="modalRadioIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="2"></circle>
                   <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
                 </svg>
               </button>
-              <button class="action-icon-btn modal-heart-btn" onclick="toggleCurrentFavorite()" title="Like Song" aria-label="Like Song">
-                <svg id="modalHeartIcon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <button class="modal-heart-btn" onclick="toggleCurrentFavorite()" title="Like Song" aria-label="Like Song">
+                <svg id="modalHeartIcon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                 </svg>
               </button>
@@ -569,7 +674,7 @@
     <div id="authModal" class="dialog-backdrop">
       <div class="dialog-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-          <h3 class="section-title">Profile &amp; Account</h3>
+          <h3 class="section-title" style="font-size: 18px;">Profile &amp; Account</h3>
           <button class="action-icon-btn" onclick="closeAuthModal()" title="Close dialog">✕</button>
         </div>
 
@@ -620,28 +725,28 @@
         </p>
 
         <div id="authLoggedOutView">
-          <button onclick="loginWithGoogle()" style="width: 100%; padding: 12px; background: #fff; color: #111; font-weight: 700; font-size: 13px; border-radius: var(--radius-md); border: none; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <button onclick="loginWithGoogle()" style="width: 100%; padding: 12px; background: #fff; color: #111; font-weight: 700; font-size: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: var(--shadow-card);">
             <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
             Sign in with Google
           </button>
-          <button onclick="loginDemoAccount()" style="width: 100%; padding: 10px; background: rgba(99, 102, 241, 0.15); color: var(--accent-primary); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); font-weight: 600; font-size: 12px; margin-bottom: 8px; cursor: pointer;">
+          <button onclick="loginDemoAccount()" style="width: 100%; padding: 10px; background: var(--brand-orange-soft); color: var(--brand-orange); border: 1px solid var(--brand-orange-border); border-radius: var(--radius-md); font-weight: 700; font-size: 12px; margin-bottom: 8px; cursor: pointer;">
             Use Demo Music Feed
           </button>
           <div style="margin-top: 10px;">
-            <input type="text" id="ytmCookieInput" placeholder="Paste session auth token..." style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: #fff; font-size: 11px; margin-bottom: 8px;" />
-            <button onclick="loginWithCookie()" style="width: 100%; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;">Connect with Session Token</button>
+            <input type="text" id="ytmCookieInput" placeholder="Paste session auth token..." style="width: 100%; padding: 8px 12px; background: #F8F9FA; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: #111827; font-size: 11px; margin-bottom: 8px; outline: none; box-sizing: border-box;" />
+            <button onclick="loginWithCookie()" style="width: 100%; padding: 8px; background: #FFFFFF; border: 1px solid var(--border-subtle); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer;">Connect with Session Token</button>
           </div>
         </div>
 
         <div id="authLoggedInView" style="display: none;">
-          <div style="background: rgba(16, 185, 129, 0.08); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; gap: 8px;">
+          <div style="background: #ECFDF5; border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; border: 1px solid #A7F3D0; display: flex; align-items: center; gap: 8px;">
             <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success);"></div>
             <div style="font-size: 11.5px; color: var(--success); font-weight: 700;">Cloud Provider Connected &amp; Synced</div>
           </div>
-          <button onclick="syncYTMFeed()" style="width: 100%; padding: 10px; background: var(--accent-primary); color: #fff; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 12px; margin-bottom: 8px; cursor: pointer;">
+          <button onclick="syncYTMFeed()" style="width: 100%; padding: 10px; background: var(--brand-orange); color: #fff; border: none; border-radius: var(--radius-md); font-weight: 700; font-size: 12px; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(255,90,31,0.3);">
             🔄 Sync Live Feeds Now
           </button>
-          <button onclick="logoutAccount()" style="width: 100%; padding: 8px; background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: #EF4444; border-radius: var(--radius-md); font-size: 11px; cursor: pointer;">
+          <button onclick="logoutAccount()" style="width: 100%; padding: 8px; background: transparent; border: 1px solid var(--brand-red-border); color: var(--brand-red); border-radius: var(--radius-md); font-size: 11px; font-weight: 600; cursor: pointer;">
             Sign Out
           </button>
         </div>
@@ -651,7 +756,7 @@
     <!-- Create Playlist Dialog -->
     <div id="createPlaylistModal" class="dialog-backdrop">
       <div class="dialog-card">
-        <h3 class="section-title" style="margin-bottom: 8px;">Create New Playlist</h3>
+        <h3 class="section-title" style="margin-bottom: 8px; font-size: 18px;">Create New Playlist</h3>
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Enter a title for your custom local collection.</p>
         <input type="text" id="newPlaylistNameInput" class="search-input-box" style="padding-left: 14px; margin-bottom: 16px;" placeholder="Playlist name (e.g. Gym Vibes)" />
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
@@ -664,7 +769,7 @@
     <!-- Add to Playlist Dialog -->
     <div id="addToPlaylistModal" class="dialog-backdrop">
       <div class="dialog-card">
-        <h3 class="section-title" style="margin-bottom: 8px;">Add to Playlist</h3>
+        <h3 class="section-title" style="margin-bottom: 8px; font-size: 18px;">Add to Playlist</h3>
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Choose a playlist for this track:</p>
         <div id="targetPlaylistsList" class="track-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px;"></div>
         <div style="display: flex; justify-content: flex-end;">
@@ -715,6 +820,7 @@
   <script src="js/api/auth.js"></script>
 
   <script src="js/player/telemetry.js"></script>
+  <script src="js/player/listening_tracker.js"></script>
   <script src="js/player/mediasession.js"></script>
   <script src="js/player/yt_iframe.js"></script>
   <script src="js/player/queue.js"></script>

@@ -5,8 +5,13 @@ window.onNativePlayerStateChange = function(playing, durationSec) {
   isPlaying = playing;
   window.isPlaying = playing;
   updatePlayIcons(playing);
-  if (playing) startRealVisualizer();
-  else stopRealVisualizer();
+  if (playing) {
+    startRealVisualizer();
+    if (window.listeningTracker) window.listeningTracker.onPlay(currentTrack ? currentTrack.id : null, true);
+  } else {
+    stopRealVisualizer();
+    if (window.listeningTracker) window.listeningTracker.onPause();
+  }
   if (currentTrack && durationSec > 0) {
     currentTrack.duration = durationSec;
     const durTime = document.getElementById('modalTimeDuration');
@@ -18,6 +23,7 @@ window.onNativePlayerProgress = function(currentSec, durationSec) {
   window.currentPlaybackTime = currentSec;
   if (isOnlineYtPlaying) return;
   updatePlaybackTelemetry(currentSec, durationSec);
+  if (window.listeningTracker) window.listeningTracker.onProgressTick();
   const slider = document.getElementById('modalSeekSlider');
   const curTime = document.getElementById('modalTimeCurrent');
   const durTime = document.getElementById('modalTimeDuration');
@@ -35,6 +41,9 @@ window.onNativePlayerProgress = function(currentSec, durationSec) {
 
 window.onNativeTrackEnded = function() {
   recordTrackCompletionTelemetry();
+  if (window.listeningTracker) {
+    try { window.listeningTracker.onTrackEnded(currentTrack); } catch (e) {}
+  }
   if (isRepeat) {
     if (currentTrack) {
       if (window.SokoNative && typeof window.SokoNative.seekAudio === 'function') {
