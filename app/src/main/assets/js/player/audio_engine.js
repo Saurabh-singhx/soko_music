@@ -215,8 +215,9 @@ function playRealTrack(track) {
       targetSrc = `assets/music/${track.id}.opus`;
     }
 
+    const highResCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
     if (window.SokoNative && typeof window.SokoNative.playAudio === 'function') {
-      window.SokoNative.playAudio(targetSrc, track.title, track.artist, track.cover);
+      window.SokoNative.playAudio(targetSrc, track.title, track.artist, highResCover || track.cover);
       isPlaying = true;
       window.isPlaying = true;
       updatePlayIcons(true);
@@ -249,7 +250,8 @@ function playRealTrack(track) {
       activeDownloads.set(track.id, 5);
       updateDownloadBannerUI(track, 5, false);
       showToast(`📥 Downloading "${track.title}" (128k AAC)...`, '📥');
-      window.SokoNative.downloadAndPlayTrack(track.id, track.title, track.artist, track.cover);
+      const highResCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
+      window.SokoNative.downloadAndPlayTrack(track.id, track.title, track.artist, highResCover || track.cover);
     } else {
       // Fallback in browser outside APK: stream directly
       playOnlineYouTubeStream(track);
@@ -322,7 +324,8 @@ function togglePlayPause() {
       } else if (typeof window.currentPlaybackTime === 'number') {
         cur = window.currentPlaybackTime;
       }
-      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, isPlaying, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+      const cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
+      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, isPlaying, Math.floor(dur), Math.floor(cur), cover || currentTrack.cover);
     }
     recordPlaybackStateChangeTelemetry(isPlaying);
     return;

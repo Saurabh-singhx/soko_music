@@ -149,7 +149,8 @@ function playOnlineYouTubeStream(track, startSeconds = 0) {
   }
 
   if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function') {
-    window.SokoNative.updateNativePlayer(track.title, track.artist, true, track.duration || 215, startSec, track.cover);
+    const cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
+    window.SokoNative.updateNativePlayer(track.title, track.artist, true, track.duration || 215, startSec, cover || track.cover);
   }
 }
 
@@ -196,7 +197,8 @@ function onYtPlayerStateChange(event) {
       if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
         try { cur = ytPlayer.getCurrentTime() || 0; } catch (e) {}
       }
-      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, true, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+      const cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
+      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, true, Math.floor(dur), Math.floor(cur), cover || currentTrack.cover);
     }
   } else if (event.data === 2) { // PAUSED
     isPlaying = false;
@@ -214,7 +216,8 @@ function onYtPlayerStateChange(event) {
       if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
         try { cur = ytPlayer.getCurrentTime() || 0; } catch (e) {}
       }
-      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, false, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+      const cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
+      window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, false, Math.floor(dur), Math.floor(cur), cover || currentTrack.cover);
     }
   } else if (event.data === 3) { // BUFFERING
     if (window.listeningTracker) {
@@ -270,7 +273,8 @@ function startOnlineProgressUpdater() {
     if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
       if (!window._lastYtNativeUpdate || (Date.now() - window._lastYtNativeUpdate) > 2500) {
         window._lastYtNativeUpdate = Date.now();
-        window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, isPlaying, Math.floor(dur), Math.floor(cur), currentTrack.cover);
+        const cover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
+        window.SokoNative.updateNativePlayer(currentTrack.title, currentTrack.artist, isPlaying, Math.floor(dur), Math.floor(cur), cover || currentTrack.cover);
       }
     }
   }, 500);

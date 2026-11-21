@@ -156,7 +156,7 @@ public class AudioEngine {
                                 startProgressUpdater();
                                 int durSec = mp.getDuration() > 0 ? mp.getDuration() / 1000 : 215;
                                 if (mediaNotificationManager != null) {
-                                    mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0);
+                                    mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0, currentCoverUrl, false);
                                 }
                                 if (webView != null) {
                                     webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
@@ -173,7 +173,7 @@ public class AudioEngine {
                             startProgressUpdater();
                             int durSec = mediaPlayer.getDuration() > 0 ? mediaPlayer.getDuration() / 1000 : 215;
                             if (mediaNotificationManager != null) {
-                                mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0);
+                                mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0, currentCoverUrl, false);
                             }
                             if (webView != null) {
                                 webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
@@ -230,7 +230,7 @@ public class AudioEngine {
                             startProgressUpdater();
                             int durSec = mediaPlayer.getDuration() > 0 ? mediaPlayer.getDuration() / 1000 : 215;
                             if (mediaNotificationManager != null) {
-                                mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0);
+                                mediaNotificationManager.updateNotificationAndSession(title, artist, true, durSec, 0, currentCoverUrl, false);
                             }
                             if (webView != null) {
                                 webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + durSec + ")", null);
@@ -268,7 +268,7 @@ public class AudioEngine {
                         int cur = mediaPlayer.getCurrentPosition() / 1000;
                         int dur = mediaPlayer.getDuration() / 1000;
                         if (mediaNotificationManager != null) {
-                            mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, false, dur, cur);
+                            mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, false, dur, cur, currentCoverUrl, false);
                         }
                         if (webView != null) {
                             webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(false, " + dur + ")", null);
@@ -296,7 +296,7 @@ public class AudioEngine {
                             int cur = mediaPlayer.getCurrentPosition() / 1000;
                             int dur = mediaPlayer.getDuration() / 1000;
                             if (mediaNotificationManager != null) {
-                                mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, true, dur, cur);
+                                mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, true, dur, cur, currentCoverUrl, false);
                             }
                             if (webView != null) {
                                 webView.evaluateJavascript("window.onNativePlayerStateChange && window.onNativePlayerStateChange(true, " + dur + ")", null);
@@ -327,7 +327,7 @@ public class AudioEngine {
                         mediaPlayer.seekTo(seconds * 1000);
                         int dur = mediaPlayer.getDuration() / 1000;
                         if (mediaNotificationManager != null) {
-                            mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, mediaPlayer.isPlaying(), dur, seconds);
+                            mediaNotificationManager.updateNotificationAndSession(currentTrackTitle, currentTrackArtist, mediaPlayer.isPlaying(), dur, seconds, currentCoverUrl, false);
                         }
                         if (webView != null) {
                             webView.evaluateJavascript("window.onNativePlayerProgress && window.onNativePlayerProgress(" + seconds + ", " + dur + ")", null);

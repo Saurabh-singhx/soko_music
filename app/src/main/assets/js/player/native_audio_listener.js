@@ -185,6 +185,9 @@ window.syncNativePlaybackState = function(playing, curSec, durSec, title, artist
   }
 
   if (track) {
+    if (cover && cover.trim() !== '' && track.cover !== cover) {
+      track.cover = cover;
+    }
     currentTrack = track;
     window.currentTrack = track;
     if (typeof lastLoadedTrackId !== 'undefined') {

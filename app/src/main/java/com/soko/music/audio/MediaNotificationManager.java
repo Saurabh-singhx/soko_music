@@ -15,14 +15,19 @@ import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.util.Log;
+import android.util.LruCache;
 import android.webkit.WebView;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MediaNotificationManager {
     private static final String TAG = "SokoMusic";
     public static final String MEDIA_CHANNEL_ID = "soko_music_channel_v2";
     public static final int MEDIA_NOTIF_ID = 9101;
+    private static final LruCache<String, Bitmap> sArtCache = new LruCache<String, Bitmap>(20);
 
     private final Activity activity;
     private final WebView webView;
@@ -185,38 +190,189 @@ public class MediaNotificationManager {
     }
 
     public void updateNotificationAndSession(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec) {
-        updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec, currentCoverUrl, false);
+        String cover = (audioEngine != null && !audioEngine.getCurrentCoverUrl().isEmpty())
+            ? audioEngine.getCurrentCoverUrl()
+            : currentCoverUrl;
+        updateNotificationAndSession(title, artist, isPlaying, durationSec, positionSec, cover, false);
     }
 
     public void updateNotificationAndSession(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final String coverUrl, final boolean isStreaming) {
-        if (coverUrl != null && !coverUrl.isEmpty() && !coverUrl.equals(currentCoverUrl)) {
-            currentCoverUrl = coverUrl;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Bitmap bmp = null;
-                        if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://")) {
-                            InputStream in = new URL(coverUrl).openStream();
-                            bmp = BitmapFactory.decodeStream(in);
-                            in.close();
-                        } else if (coverUrl.startsWith("/")) {
-                            bmp = BitmapFactory.decodeFile(coverUrl);
-                        }
-                        if (bmp != null) {
+        final String targetCover = (coverUrl != null && !coverUrl.trim().isEmpty()) ? coverUrl.trim() : "";
+        final boolean isNewCover = !targetCover.equals(currentCoverUrl);
+
+        if (isNewCover) {
+            currentCoverUrl = targetCover;
+            // Check in-memory LRU cache first for instant synchronous thumbnail display
+            Bitmap cachedBmp = sArtCache.get(targetCover);
+            if (cachedBmp != null && !cachedBmp.isRecycled()) {
+                currentAlbumArt = cachedBmp;
+            } else {
+                currentAlbumArt = null;
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Bitmap bmp = loadBitmap(targetCover);
+                        if (bmp != null && targetCover.equals(currentCoverUrl)) {
                             currentAlbumArt = bmp;
                             activity.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    renderNotification(title, artist, isPlaying, durationSec, positionSec, isStreaming);
+                                    if (targetCover.equals(currentCoverUrl)) {
+                                        renderNotification(title, artist, isPlaying, durationSec, positionSec, isStreaming);
+                                    }
                                 }
                             });
                         }
-                    } catch (Exception ignored) {}
-                }
-            }).start();
+                    }
+                }).start();
+            }
         }
+
         renderNotification(title, artist, isPlaying, durationSec, positionSec, isStreaming);
+    }
+
+    private Bitmap loadBitmap(String url) {
+        if (url == null || url.trim().isEmpty()) return null;
+        String u = url.trim();
+
+        // 1. Check in-memory cache
+        Bitmap cached = sArtCache.get(u);
+        if (cached != null && !cached.isRecycled()) return cached;
+
+        Bitmap bmp = null;
+        try {
+            // Case A: file:// URI
+            if (u.startsWith("file://")) {
+                String filePath = u.substring(7);
+                File f = new File(filePath);
+                if (f.exists() && f.length() > 0) {
+                    bmp = decodeScaledBitmap(f.getAbsolutePath(), 512, 512);
+                }
+            }
+            // Case B: Absolute file path /...
+            else if (u.startsWith("/")) {
+                File f = new File(u);
+                if (f.exists() && f.length() > 0) {
+                    bmp = decodeScaledBitmap(f.getAbsolutePath(), 512, 512);
+                }
+            }
+            // Case C: artworks/... relative path
+            else if (u.startsWith("artworks/")) {
+                File f = new File(activity.getFilesDir(), u);
+                if (f.exists() && f.length() > 0) {
+                    bmp = decodeScaledBitmap(f.getAbsolutePath(), 512, 512);
+                }
+            }
+            // Case D: HTTP or HTTPS
+            else if (u.startsWith("http://") || u.startsWith("https://")) {
+                HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36");
+                conn.setConnectTimeout(7000);
+                conn.setReadTimeout(7000);
+                conn.setInstanceFollowRedirects(true);
+                if (conn.getResponseCode() == 200) {
+                    InputStream in = conn.getInputStream();
+                    byte[] bytes = readAllBytes(in);
+                    in.close();
+                    if (bytes != null && bytes.length > 0) {
+                        bmp = decodeScaledBitmap(bytes, 512, 512);
+                    }
+                }
+                conn.disconnect();
+            }
+            // Case E: Asset path (assets/...)
+            else {
+                String assetPath = u;
+                if (assetPath.startsWith("assets/")) assetPath = assetPath.substring(7);
+                try {
+                    InputStream in = activity.getAssets().open(assetPath);
+                    byte[] bytes = readAllBytes(in);
+                    in.close();
+                    if (bytes != null && bytes.length > 0) {
+                        bmp = decodeScaledBitmap(bytes, 512, 512);
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed loading notification art: " + u, e);
+        }
+
+        // Case F: Check diskCacheManager by videoId if still null
+        if (bmp == null && audioEngine != null) {
+            String vid = audioEngine.getActivePlaybackVideoId();
+            if (vid != null && !vid.isEmpty()) {
+                File cf = new File(new File(activity.getFilesDir(), "artworks"), vid + ".jpg");
+                if (cf.exists() && cf.length() > 0) {
+                    bmp = decodeScaledBitmap(cf.getAbsolutePath(), 512, 512);
+                }
+            }
+        }
+
+        if (bmp != null) {
+            sArtCache.put(u, bmp);
+        }
+        return bmp;
+    }
+
+    private static byte[] readAllBytes(InputStream in) {
+        if (in == null) return null;
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                baos.write(buf, 0, n);
+            }
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Bitmap decodeScaledBitmap(byte[] data, int maxW, int maxH) {
+        if (data == null || data.length == 0) return null;
+        try {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+            int inSample = 1;
+            if (opts.outWidth > maxW || opts.outHeight > maxH) {
+                int halfW = opts.outWidth / 2;
+                int halfH = opts.outHeight / 2;
+                while ((halfW / inSample) >= maxW && (halfH / inSample) >= maxH) {
+                    inSample *= 2;
+                }
+            }
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = inSample;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Bitmap decodeScaledBitmap(String path, int maxW, int maxH) {
+        if (path == null || path.isEmpty()) return null;
+        try {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(path, opts);
+            int inSample = 1;
+            if (opts.outWidth > maxW || opts.outHeight > maxH) {
+                int halfW = opts.outWidth / 2;
+                int halfH = opts.outHeight / 2;
+                while ((halfW / inSample) >= maxW && (halfH / inSample) >= maxH) {
+                    inSample *= 2;
+                }
+            }
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = inSample;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeFile(path, opts);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void renderNotification(final String title, final String artist, final boolean isPlaying, final int durationSec, final int positionSec, final boolean isStreaming) {
@@ -244,9 +400,12 @@ public class MediaNotificationManager {
                 metaBuilder.putString(MediaMetadata.METADATA_KEY_ARTIST, artist);
                 metaBuilder.putString(MediaMetadata.METADATA_KEY_ALBUM, isStreaming ? "Cloud Audio Stream" : "Soko Music Library");
                 metaBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, durationSec * 1000L);
-                if (currentAlbumArt != null) {
+                if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
                     metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, currentAlbumArt);
                     metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, currentAlbumArt);
+                } else {
+                    metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, null);
+                    metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, null);
                 }
                 mediaSession.setMetadata(metaBuilder.build());
                 mediaSession.setActive(true);
@@ -295,8 +454,10 @@ public class MediaNotificationManager {
               .addAction(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play, isPlaying ? "Pause" : "Play", pToggle)
               .addAction(android.R.drawable.ic_media_next, "Next", pNext);
 
-            if (currentAlbumArt != null) {
+            if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
                 nb.setLargeIcon(currentAlbumArt);
+            } else {
+                nb.setLargeIcon((Bitmap) null);
             }
 
             if (android.os.Build.VERSION.SDK_INT >= 21) {
