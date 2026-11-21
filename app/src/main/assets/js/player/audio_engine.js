@@ -284,6 +284,7 @@ function stopAllAudioEngines() {
   if (typeof window !== 'undefined') window.lastLoadedTrackId = null;
   updatePlayIcons(false);
   stopRealVisualizer();
+  stopSmoothProgressLoop();
 }
 
 function togglePlayPause() {
@@ -389,6 +390,82 @@ function togglePlayPause() {
   recordPlaybackStateChangeTelemetry(isPlaying);
 }
 
+let smoothProgressRaf = null;
+let lastProgressCurrentSec = 0;
+let lastProgressDurationSec = 0;
+let lastProgressTickTime = 0;
+let isUserSeekingSlider = false;
+
+function setPlaybackProgress(currentSec, durationSec) {
+  if (typeof currentSec === 'number' && !isNaN(currentSec)) {
+    lastProgressCurrentSec = Math.max(0, currentSec);
+  }
+  if (typeof durationSec === 'number' && !isNaN(durationSec) && durationSec > 0) {
+    lastProgressDurationSec = durationSec;
+  }
+  lastProgressTickTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+  const curTime = document.getElementById('modalTimeCurrent');
+  const durTime = document.getElementById('modalTimeDuration');
+  if (curTime) curTime.innerText = formatTime(Math.floor(lastProgressCurrentSec));
+  if (durTime && lastProgressDurationSec > 0) durTime.innerText = formatTime(Math.floor(lastProgressDurationSec));
+
+  if (!isUserSeekingSlider) {
+    const slider = document.getElementById('modalSeekSlider');
+    const miniFill = document.getElementById('miniProgressFill');
+    const percent = lastProgressDurationSec > 0 ? (lastProgressCurrentSec / lastProgressDurationSec) * 100 : 0;
+    if (slider && !slider.matches(':active')) {
+      slider.value = percent;
+    }
+    if (miniFill) miniFill.style.width = `${percent}%`;
+  }
+
+  if (isPlaying) {
+    startSmoothProgressLoop();
+  }
+}
+
+function startSmoothProgressLoop() {
+  if (smoothProgressRaf || typeof requestAnimationFrame !== 'function') return;
+  function tick() {
+    if (isPlaying && !isUserSeekingSlider) {
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      const elapsed = (now - (lastProgressTickTime || now)) / 1000;
+      const safeElapsed = Math.max(0, Math.min(elapsed, 2.5));
+      const dur = (currentTrack && currentTrack.duration > 0) ? currentTrack.duration : (lastProgressDurationSec || 215);
+      const currentSec = Math.min(dur, lastProgressCurrentSec + safeElapsed);
+      const percent = dur > 0 ? (currentSec / dur) * 100 : 0;
+
+      const slider = document.getElementById('modalSeekSlider');
+      const curTime = document.getElementById('modalTimeCurrent');
+      const miniFill = document.getElementById('miniProgressFill');
+
+      if (slider && !isUserSeekingSlider && !slider.matches(':active')) {
+        slider.value = percent;
+      }
+      if (miniFill) {
+        miniFill.style.width = `${percent}%`;
+      }
+      if (curTime) {
+        curTime.innerText = formatTime(Math.floor(currentSec));
+      }
+    }
+    if (isPlaying) {
+      smoothProgressRaf = requestAnimationFrame(tick);
+    } else {
+      smoothProgressRaf = null;
+    }
+  }
+  smoothProgressRaf = requestAnimationFrame(tick);
+}
+
+function stopSmoothProgressLoop() {
+  if (smoothProgressRaf && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(smoothProgressRaf);
+  }
+  smoothProgressRaf = null;
+}
+
 function updatePlayIcons(playing) {
   const miniIcon = document.getElementById('miniPlayIcon');
   const modalIcon = document.getElementById('modalMainPlayIcon');
@@ -397,6 +474,14 @@ function updatePlayIcons(playing) {
 
   if (miniIcon) miniIcon.innerHTML = playing ? pauseSvg : playSvg;
   if (modalIcon) modalIcon.innerHTML = playing ? pauseSvg : playSvg;
+
+  if (playing) {
+    if (typeof startRealVisualizer === 'function') startRealVisualizer();
+    if (typeof startSmoothProgressLoop === 'function') startSmoothProgressLoop();
+  } else {
+    if (typeof stopRealVisualizer === 'function') stopRealVisualizer();
+    if (typeof stopSmoothProgressLoop === 'function') stopSmoothProgressLoop();
+  }
 }
 
 function handleSeek(val) {
@@ -404,20 +489,30 @@ function handleSeek(val) {
     try { window.listeningTracker.onSeek(); } catch (e) {}
   }
   const percent = parseFloat(val);
+  const dur = (currentTrack && currentTrack.duration > 0) ? currentTrack.duration : (lastProgressDurationSec || 215);
+  const targetSec = (percent / 100) * dur;
+
+  lastProgressCurrentSec = targetSec;
+  lastProgressTickTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+  const curTime = document.getElementById('modalTimeCurrent');
+  if (curTime) curTime.innerText = formatTime(Math.floor(targetSec));
+  const miniFill = document.getElementById('miniProgressFill');
+  if (miniFill) miniFill.style.width = `${percent}%`;
+
   if (isOnlineYtPlaying) {
     if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
-      const dur = (ytPlayer.getDuration && ytPlayer.getDuration() > 0) ? ytPlayer.getDuration() : (currentTrack ? currentTrack.duration : 215);
-      const targetSec = (percent / 100) * dur;
-      ytPlayer.seekTo(targetSec, true);
+      const realDur = (ytPlayer.getDuration && ytPlayer.getDuration() > 0) ? ytPlayer.getDuration() : dur;
+      const ytTargetSec = (percent / 100) * realDur;
+      ytPlayer.seekTo(ytTargetSec, true);
     }
     return;
   }
 
   if (window.SokoNative && typeof window.SokoNative.seekAudio === 'function' && currentTrack) {
-    const targetSec = Math.floor((percent / 100) * (currentTrack.duration || 215));
-    window.SokoNative.seekAudio(targetSec);
+    window.SokoNative.seekAudio(Math.floor(targetSec));
   } else if (audioEl && audioEl.duration) {
-    audioEl.currentTime = (percent / 100) * audioEl.duration;
+    audioEl.currentTime = targetSec;
   }
 }
 
@@ -426,6 +521,9 @@ function seekTrack(val) {
 }
 
 function seekToSeconds(targetSec) {
+  lastProgressCurrentSec = targetSec;
+  lastProgressTickTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
   if (isOnlineYtPlaying) {
     if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
       ytPlayer.seekTo(targetSec, true);
@@ -440,25 +538,28 @@ function seekToSeconds(targetSec) {
 }
 
 function setupAudioListeners() {
+  const slider = document.getElementById('modalSeekSlider');
+  if (slider && !slider._hasSmoothListeners) {
+    slider._hasSmoothListeners = true;
+    const startSeeking = () => { isUserSeekingSlider = true; };
+    const stopSeeking = () => {
+      isUserSeekingSlider = false;
+      lastProgressTickTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    };
+    slider.addEventListener('pointerdown', startSeeking);
+    slider.addEventListener('touchstart', startSeeking, { passive: true });
+    slider.addEventListener('mousedown', startSeeking);
+    slider.addEventListener('pointerup', stopSeeking);
+    slider.addEventListener('touchend', stopSeeking);
+    slider.addEventListener('mouseup', stopSeeking);
+    slider.addEventListener('change', stopSeeking);
+  }
+
   if (!audioEl) return;
 
   audioEl.addEventListener('timeupdate', () => {
     if (isOnlineYtPlaying) return;
-    const cur = audioEl.currentTime;
-    const dur = audioEl.duration;
-    const percent = dur ? (cur / dur) * 100 : 0;
-
-    const slider = document.getElementById('modalSeekSlider');
-    const curTime = document.getElementById('modalTimeCurrent');
-    const durTime = document.getElementById('modalTimeDuration');
-    const miniFill = document.getElementById('miniProgressFill');
-
-    if (curTime) curTime.innerText = formatTime(Math.floor(cur));
-    if (durTime && dur) durTime.innerText = formatTime(Math.floor(dur));
-    if (slider && !slider.matches(':active')) {
-      slider.value = percent;
-    }
-    if (miniFill) miniFill.style.width = `${percent}%`;
+    setPlaybackProgress(audioEl.currentTime, audioEl.duration);
   });
 
   audioEl.addEventListener('ended', () => {
@@ -641,3 +742,7 @@ window.handleSeek = handleSeek;
 window.seekTrack = seekTrack;
 window.seekToSeconds = seekToSeconds;
 window.setupAudioListeners = setupAudioListeners;
+window.setPlaybackProgress = setPlaybackProgress;
+window.startSmoothProgressLoop = startSmoothProgressLoop;
+window.stopSmoothProgressLoop = stopSmoothProgressLoop;
+window.isUserSeekingSlider = isUserSeekingSlider;

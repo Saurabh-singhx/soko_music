@@ -256,19 +256,23 @@ function startOnlineProgressUpdater() {
       try { window.listeningTracker.onProgressTick(); } catch (e) {}
     }
 
-    const slider = document.getElementById('modalSeekSlider');
-    const curTime = document.getElementById('modalTimeCurrent');
-    const durTime = document.getElementById('modalTimeDuration');
-    const miniFill = document.getElementById('miniProgressFill');
+    if (typeof setPlaybackProgress === 'function') {
+      setPlaybackProgress(cur, dur);
+    } else {
+      const slider = document.getElementById('modalSeekSlider');
+      const curTime = document.getElementById('modalTimeCurrent');
+      const durTime = document.getElementById('modalTimeDuration');
+      const miniFill = document.getElementById('miniProgressFill');
 
-    if (curTime) curTime.innerText = formatTime(Math.floor(cur));
-    if (durTime && dur > 0) durTime.innerText = formatTime(Math.floor(dur));
+      if (curTime) curTime.innerText = formatTime(Math.floor(cur));
+      if (durTime && dur > 0) durTime.innerText = formatTime(Math.floor(dur));
 
-    const percent = dur > 0 ? (cur / dur) * 100 : 0;
-    if (slider && !slider.matches(':active')) {
-      slider.value = percent;
+      const percent = dur > 0 ? (cur / dur) * 100 : 0;
+      if (slider && !slider.matches(':active')) {
+        slider.value = percent;
+      }
+      if (miniFill) miniFill.style.width = `${percent}%`;
     }
-    if (miniFill) miniFill.style.width = `${percent}%`;
 
     if (window.SokoNative && typeof window.SokoNative.updateNativePlayer === 'function' && currentTrack) {
       if (!window._lastYtNativeUpdate || (Date.now() - window._lastYtNativeUpdate) > 2500) {
@@ -284,6 +288,9 @@ function stopOnlineProgressUpdater() {
   if (onlineProgressTimer) {
     clearInterval(onlineProgressTimer);
     onlineProgressTimer = null;
+  }
+  if (typeof stopSmoothProgressLoop === 'function') {
+    stopSmoothProgressLoop();
   }
 }
 

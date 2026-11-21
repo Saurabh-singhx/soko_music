@@ -299,6 +299,12 @@ function openNowPlayingModal() {
       const heroCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
       updateModalDynamicBackdrop(heroCover || currentTrack.cover);
     }
+    if (typeof isPlaying !== 'undefined' && isPlaying) {
+      if (typeof startRealVisualizer === 'function') startRealVisualizer();
+      if (typeof startSmoothProgressLoop === 'function') startSmoothProgressLoop();
+    } else {
+      if (typeof stopRealVisualizer === 'function') stopRealVisualizer();
+    }
   }
 }
 

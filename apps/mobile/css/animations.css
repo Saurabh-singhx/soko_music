@@ -63,12 +63,12 @@
   transition: height 0.2s ease;
 }
 
-.eq-playing .eq-b1, .visualizer-container .v-bar:nth-child(1) { animation: eqBounce1 0.72s ease-in-out infinite; }
-.eq-playing .eq-b2, .visualizer-container .v-bar:nth-child(2) { animation: eqBounce2 0.64s ease-in-out infinite 0.1s; }
-.eq-playing .eq-b3, .visualizer-container .v-bar:nth-child(3) { animation: eqBounce3 0.80s ease-in-out infinite 0.15s; }
-.eq-playing .eq-b4, .visualizer-container .v-bar:nth-child(4) { animation: eqBounce4 0.68s ease-in-out infinite 0.05s; }
-.eq-playing .eq-b5, .visualizer-container .v-bar:nth-child(5) { animation: eqBounce1 0.76s ease-in-out infinite 0.22s; }
-.eq-playing .eq-b6, .visualizer-container .v-bar:nth-child(6) { animation: eqBounce3 0.62s ease-in-out infinite 0.12s; }
-.eq-playing .eq-b7, .visualizer-container .v-bar:nth-child(7) { animation: eqBounce2 0.74s ease-in-out infinite 0.18s; }
-.eq-playing .eq-b8, .visualizer-container .v-bar:nth-child(8) { animation: eqBounce4 0.70s ease-in-out infinite 0.08s; }
-.eq-playing .eq-b9, .visualizer-container .v-bar:nth-child(9) { animation: eqBounce1 0.66s ease-in-out infinite 0.25s; }
+.eq-playing .eq-b1, .visualizer-container.is-playing .v-bar:nth-child(1) { animation: eqBounce1 0.72s ease-in-out infinite; }
+.eq-playing .eq-b2, .visualizer-container.is-playing .v-bar:nth-child(2) { animation: eqBounce2 0.64s ease-in-out infinite 0.1s; }
+.eq-playing .eq-b3, .visualizer-container.is-playing .v-bar:nth-child(3) { animation: eqBounce3 0.80s ease-in-out infinite 0.15s; }
+.eq-playing .eq-b4, .visualizer-container.is-playing .v-bar:nth-child(4) { animation: eqBounce4 0.68s ease-in-out infinite 0.05s; }
+.eq-playing .eq-b5, .visualizer-container.is-playing .v-bar:nth-child(5) { animation: eqBounce1 0.76s ease-in-out infinite 0.22s; }
+.eq-playing .eq-b6, .visualizer-container.is-playing .v-bar:nth-child(6) { animation: eqBounce3 0.62s ease-in-out infinite 0.12s; }
+.eq-playing .eq-b7, .visualizer-container.is-playing .v-bar:nth-child(7) { animation: eqBounce2 0.74s ease-in-out infinite 0.18s; }
+.eq-playing .eq-b8, .visualizer-container.is-playing .v-bar:nth-child(8) { animation: eqBounce4 0.70s ease-in-out infinite 0.08s; }
+.eq-playing .eq-b9, .visualizer-container.is-playing .v-bar:nth-child(9) { animation: eqBounce1 0.66s ease-in-out infinite 0.25s; }

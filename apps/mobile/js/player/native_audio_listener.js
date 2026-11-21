@@ -24,19 +24,23 @@ window.onNativePlayerProgress = function(currentSec, durationSec) {
   if (isOnlineYtPlaying) return;
   updatePlaybackTelemetry(currentSec, durationSec);
   if (window.listeningTracker) window.listeningTracker.onProgressTick();
-  const slider = document.getElementById('modalSeekSlider');
-  const curTime = document.getElementById('modalTimeCurrent');
-  const durTime = document.getElementById('modalTimeDuration');
-  const miniFill = document.getElementById('miniProgressFill');
+  if (typeof setPlaybackProgress === 'function') {
+    setPlaybackProgress(currentSec, durationSec);
+  } else {
+    const slider = document.getElementById('modalSeekSlider');
+    const curTime = document.getElementById('modalTimeCurrent');
+    const durTime = document.getElementById('modalTimeDuration');
+    const miniFill = document.getElementById('miniProgressFill');
 
-  if (curTime) curTime.innerText = formatTime(currentSec);
-  if (durTime && durationSec > 0) durTime.innerText = formatTime(durationSec);
+    if (curTime) curTime.innerText = formatTime(currentSec);
+    if (durTime && durationSec > 0) durTime.innerText = formatTime(durationSec);
 
-  const percent = durationSec > 0 ? (currentSec / durationSec) * 100 : 0;
-  if (slider && !slider.matches(':active')) {
-    slider.value = percent;
+    const percent = durationSec > 0 ? (currentSec / durationSec) * 100 : 0;
+    if (slider && !slider.matches(':active')) {
+      slider.value = percent;
+    }
+    if (miniFill) miniFill.style.width = `${percent}%`;
   }
-  if (miniFill) miniFill.style.width = `${percent}%`;
 };
 
 window.onNativeTrackEnded = function() {
