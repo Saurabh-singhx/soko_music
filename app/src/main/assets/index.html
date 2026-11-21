@@ -32,6 +32,9 @@
 </head>
 <body>
   <div class="app-viewport">
+    <!-- Status Bar Safe-Area Blend (Light Green & Orange) -->
+    <div class="status-bar-blend" id="statusBarBlend"></div>
+
     <!-- Top Header - Vibrant Light Redesign with Unchanged Logo -->
     <header class="top-header">
       <div class="brand-group" onclick="switchNavTab('home', document.querySelector('.nav-tab-item'))">
@@ -540,6 +543,9 @@
 
     <!-- Fullscreen Now Playing Modal Sheet - Vibrant Light Redesign -->
     <div class="now-playing-modal" id="nowPlayingModal">
+      <!-- Status Bar Blend (Light Green & Orange) for Bottom Player -->
+      <div class="modal-status-bar-blend" id="modalStatusBarBlend"></div>
+
       <div class="modal-content-container">
         <!-- Header -->
         <div class="modal-header">

@@ -62,7 +62,7 @@ public class MainActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            getWindow().setStatusBarColor(Color.parseColor("#07090E"));
+            getWindow().setStatusBarColor(Color.parseColor("#FF5A1F"));
             getWindow().setNavigationBarColor(Color.parseColor("#07090E"));
         }
 
@@ -203,6 +203,28 @@ public class MainActivity extends Activity {
                     }
                 }
                 return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                try {
+                    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+                    if (resourceId > 0) {
+                        float density = getResources().getDisplayMetrics().density;
+                        int sbDp = Math.round(getResources().getDimensionPixelSize(resourceId) / density);
+                        if (sbDp > 0) {
+                            view.evaluateJavascript(
+                                "(function(){" +
+                                "  var st = getComputedStyle(document.documentElement).getPropertyValue('--safe-top');" +
+                                "  if (!st || st.trim() === '0px' || st.trim() === '') {" +
+                                "    document.documentElement.style.setProperty('--safe-top', '" + sbDp + "px');" +
+                                "  }" +
+                                "})();", null
+                            );
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
         });
         if (android.os.Build.VERSION.SDK_INT >= 19) {

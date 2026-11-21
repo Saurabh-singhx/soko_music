@@ -1,4 +1,21 @@
 /* ============================================================ */
+/* STATUS BAR SAFE-AREA BLEND FOR FULLSCREEN PLAYER MODAL        */
+/* ============================================================ */
+.modal-status-bar-blend {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--safe-top, 0px);
+  min-height: var(--safe-top, 0px);
+  background: linear-gradient(90deg, #FF5A1F 0%, #FF7A00 35%, #22C55E 75%, #10B981 100%);
+  z-index: 250;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* ============================================================ */
 /* FULLSCREEN NOW PLAYING MODAL SHEET - Vibrant Light Redesign  */
 /* ============================================================ */
 .now-playing-modal {
@@ -17,7 +34,7 @@
   justify-content: space-between;
   transform: translateY(105%);
   transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
-  padding: max(var(--safe-top), 14px) 20px max(var(--safe-bottom), 18px) 20px;
+  padding: calc(var(--safe-top, 0px) + 12px) 20px max(var(--safe-bottom), 18px) 20px;
   overflow-y: auto;
   overscroll-behavior: contain;
   box-sizing: border-box;
