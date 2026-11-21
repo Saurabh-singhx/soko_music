@@ -311,50 +311,24 @@
   text-overflow: ellipsis;
   flex-shrink: 1;
   min-width: 0;
-  max-width: 140px;
+  max-width: 240px;
   font-weight: 500;
 }
 
 .modal-source-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  letter-spacing: 0.2px;
-  flex-shrink: 0;
-  user-select: none;
-  line-height: 1.2;
+  display: none !important;
 }
 
 .modal-source-pill.source-offline {
-  background: var(--brand-green-soft);
-  color: var(--brand-green);
-  border: 1px solid var(--brand-green-border);
+  display: none !important;
 }
 
 .modal-source-pill.source-streaming {
-  background: var(--brand-red-soft);
-  color: var(--brand-red);
-  border: 1px solid var(--brand-red-border);
+  display: none !important;
 }
 
 .modal-radio-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  background: var(--brand-red-soft);
-  color: var(--brand-red);
-  border: 1px solid var(--brand-red-border);
-  flex-shrink: 0;
-  user-select: none;
-  line-height: 1.2;
+  display: none !important;
 }
 
 .modal-track-actions {
