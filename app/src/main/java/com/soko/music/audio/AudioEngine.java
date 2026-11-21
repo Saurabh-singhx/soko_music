@@ -347,17 +347,17 @@ public class AudioEngine {
             public void run() {
                 try {
                     if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                        final int cur = mediaPlayer.getCurrentPosition() / 1000;
-                        final int dur = mediaPlayer.getDuration() / 1000;
+                        final double cur = mediaPlayer.getCurrentPosition() / 1000.0;
+                        final double dur = mediaPlayer.getDuration() / 1000.0;
                         if (webView != null) {
                             webView.evaluateJavascript("window.onNativePlayerProgress && window.onNativePlayerProgress(" + cur + ", " + dur + ")", null);
                         }
-                        progressHandler.postDelayed(this, 500);
+                        progressHandler.postDelayed(this, 350);
                     }
                 } catch (Exception ignored) {}
             }
         };
-        progressHandler.postDelayed(progressRunnable, 500);
+        progressHandler.postDelayed(progressRunnable, 350);
     }
 
     private void stopProgressUpdater() {
