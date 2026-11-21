@@ -98,6 +98,7 @@ function updatePlayerUI(track) {
     const heroCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(track.cover, 800) : track.cover;
     modalArt.src = heroCover || fallbackArt;
     modalArt.onerror = () => { if (typeof handleImageLoadError === 'function') handleImageLoadError(modalArt, track.id); else modalArt.src = 'assets/logo.png'; };
+    updateModalDynamicBackdrop(heroCover || track.cover || fallbackArt);
   }
   if (modalTitle) modalTitle.innerText = track.title;
   if (modalArtist) modalArtist.innerText = track.artist;
@@ -237,11 +238,67 @@ function updatePlayerUI(track) {
   }
 }
 
+function updateModalDynamicBackdrop(coverUrl) {
+  if (typeof document === 'undefined') return;
+  const artEl = document.getElementById('modalBackdropArt');
+  const prevArtEl = document.getElementById('modalBackdropArtPrev');
+  if (!artEl) return;
+
+  const newSrc = coverUrl || 'assets/logo.png';
+  if (artEl.getAttribute && artEl.getAttribute('data-src') === newSrc) return;
+  if (artEl.setAttribute) artEl.setAttribute('data-src', newSrc);
+
+  if (prevArtEl) {
+    if (artEl.src && typeof window !== 'undefined' && artEl.src !== window.location.href) {
+      prevArtEl.src = artEl.src;
+      if (prevArtEl.classList && prevArtEl.classList.add) prevArtEl.classList.add('active');
+    }
+  }
+
+  if (artEl.classList && artEl.classList.remove) artEl.classList.remove('active');
+
+  if (typeof Image === 'function') {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        artEl.src = newSrc;
+        if (artEl.classList && artEl.classList.add) artEl.classList.add('active');
+        if (prevArtEl) {
+          setTimeout(() => {
+            if (prevArtEl && prevArtEl.classList && prevArtEl.classList.remove) {
+              prevArtEl.classList.remove('active');
+            }
+          }, 650);
+        }
+      };
+      img.onerror = () => {
+        artEl.src = 'assets/logo.png';
+        if (artEl.classList && artEl.classList.add) artEl.classList.add('active');
+        if (prevArtEl && prevArtEl.classList && prevArtEl.classList.remove) {
+          prevArtEl.classList.remove('active');
+        }
+      };
+      img.src = newSrc;
+      return;
+    } catch (e) {}
+  }
+
+  artEl.src = newSrc;
+  if (artEl.classList && artEl.classList.add) artEl.classList.add('active');
+  if (prevArtEl && prevArtEl.classList && prevArtEl.classList.remove) {
+    prevArtEl.classList.remove('active');
+  }
+}
+
 function openNowPlayingModal() {
   const modal = document.getElementById('nowPlayingModal');
   if (modal) {
     modal.classList.add('active');
     document.body.classList.add('modal-open');
+    if (typeof currentTrack !== 'undefined' && currentTrack) {
+      const heroCover = (typeof getHighResArtworkUrl === 'function') ? getHighResArtworkUrl(currentTrack.cover, 800) : currentTrack.cover;
+      updateModalDynamicBackdrop(heroCover || currentTrack.cover);
+    }
   }
 }
 
@@ -281,3 +338,4 @@ window.updatePlayerUI = updatePlayerUI;
 window.openNowPlayingModal = openNowPlayingModal;
 window.closeNowPlayingModal = closeNowPlayingModal;
 window.setStatsRange = setStatsRange;
+window.updateModalDynamicBackdrop = updateModalDynamicBackdrop;

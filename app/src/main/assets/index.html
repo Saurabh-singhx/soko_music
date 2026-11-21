@@ -543,8 +543,17 @@
 
     <!-- Fullscreen Now Playing Modal Sheet - Vibrant Light Redesign -->
     <div class="now-playing-modal" id="nowPlayingModal">
-      <!-- Status Bar Blend (Light Green & Orange) for Bottom Player -->
+      <!-- Status Bar Scrim for Fullscreen Player -->
       <div class="modal-status-bar-blend" id="modalStatusBarBlend"></div>
+
+      <!-- Dynamic Ambient Artwork Backdrop (YouTube Music Style) -->
+      <div class="modal-dynamic-backdrop" id="modalDynamicBackdrop">
+        <div class="backdrop-art-wrapper">
+          <img id="modalBackdropArtPrev" class="modal-backdrop-art" src="" alt="" aria-hidden="true" />
+          <img id="modalBackdropArt" class="modal-backdrop-art active" src="assets/logo.png" alt="" aria-hidden="true" />
+        </div>
+        <div class="modal-backdrop-overlay"></div>
+      </div>
 
       <div class="modal-content-container">
         <!-- Header -->
