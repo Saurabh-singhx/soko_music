@@ -1,5 +1,6 @@
 // ============================================================
 // ACCURATE & OPTIMAL REAL-TIME LISTENING TIME & STATS ENGINE
+// Dual-Store Persistence (Native SharedPreferences + LocalStorage)
 // Zero Hardcoded Mock Data - 100% Dynamically Calculated
 // ============================================================
 
@@ -46,65 +47,89 @@
       this.unsavedSeconds = 0;
       this.activeRange = 'today';
 
-      // Load or initialize persistent stats (Zero Hardcoded Data)
+      // Load or initialize persistent stats
       this.stats = this.loadStats();
 
       // UI update throttle (1s)
       this.lastUiUpdateTime = 0;
 
-      // Auto-flush every 25 seconds
+      // Auto-flush every 3 seconds during active playback to guarantee persistence
       setInterval(() => {
-        this.flushToStorage();
-      }, 25000);
+        if (this.isPlaying || this.unsavedSeconds >= 1.0) {
+          this.flushToStorage();
+        }
+      }, 3000);
 
-      // Save on unload / background
+      // Save immediately on unload / background / visibility change
       if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
         try {
           window.addEventListener('beforeunload', () => this.flushToStorage());
           window.addEventListener('pagehide', () => this.flushToStorage());
+          window.addEventListener('blur', () => this.flushToStorage());
         } catch (e) {}
       }
       if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
         try {
           document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-              this.flushToStorage();
-            }
+            this.flushToStorage();
           });
         } catch (e) {}
       }
     }
 
     loadStats() {
+      let stats = null;
+
+      // 1. Try SokoNative SharedPreferences first (rock solid Android persistent storage)
+      try {
+        if (typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.getStoredListeningStats === 'function') {
+          const nativeRaw = window.SokoNative.getStoredListeningStats();
+          if (nativeRaw && typeof nativeRaw === 'string' && nativeRaw.trim().startsWith('{')) {
+            const parsed = JSON.parse(nativeRaw);
+            if (parsed && typeof parsed === 'object' && parsed.daily) {
+              stats = parsed;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 2. Try localStorage
       try {
         if (typeof localStorage !== 'undefined') {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) {
-            // Check for previous mock data and wipe it clean
-            if (raw.includes('Honey Singh') || raw.includes('102') || raw.includes('209520') || raw.includes('Khesari')) {
-              localStorage.removeItem(STORAGE_KEY);
-            } else {
-              const parsed = JSON.parse(raw);
-              if (parsed && typeof parsed === 'object' && parsed.daily) {
-                return parsed;
+          const localRaw = localStorage.getItem(STORAGE_KEY);
+          if (localRaw && typeof localRaw === 'string' && localRaw.trim().startsWith('{')) {
+            const parsed = JSON.parse(localRaw);
+            if (parsed && typeof parsed === 'object' && parsed.daily) {
+              if (!stats || (parsed.allTimeSeconds || 0) > (stats.allTimeSeconds || 0)) {
+                stats = parsed;
               }
             }
           }
         }
       } catch (e) {}
 
+      if (stats) {
+        this.stats = stats;
+        this.saveStats();
+        return stats;
+      }
+
       // Clean, zeroed real initial state
-      const initial = {
+      return {
         allTimeSeconds: 0,
         daily: {}
       };
-      return initial;
     }
 
     saveStats() {
+      if (!this.stats) return;
       try {
+        const jsonStr = JSON.stringify(this.stats);
         if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.stats));
+          localStorage.setItem(STORAGE_KEY, jsonStr);
+        }
+        if (typeof window !== 'undefined' && window.SokoNative && typeof window.SokoNative.setStoredListeningStats === 'function') {
+          window.SokoNative.setStoredListeningStats(jsonStr);
         }
       } catch (e) {}
     }
@@ -157,6 +182,10 @@
 
     onProgressTick() {
       this.accumulateDelta();
+      // Auto-flush whenever unsaved time reaches 2 seconds
+      if (this.unsavedSeconds >= 2.0) {
+        this.flushToStorage();
+      }
       const now = Date.now();
       if (now - this.lastUiUpdateTime >= 1000) {
         this.lastUiUpdateTime = now;
@@ -181,6 +210,7 @@
       const todayKey = getTodayKey();
       this.ensureTodayBucket(todayKey);
       this.stats.daily[todayKey].tracksPlayed = (this.stats.daily[todayKey].tracksPlayed || 0) + 1;
+      this.saveStats();
     }
 
     ensureTodayBucket(todayKey) {
@@ -198,7 +228,7 @@
 
     flushToStorage() {
       this.accumulateDelta();
-      if (this.unsavedSeconds < 0.5) return;
+      if (this.unsavedSeconds < 0.2) return;
 
       const secs = Math.floor(this.unsavedSeconds);
       this.unsavedSeconds -= secs;
@@ -635,6 +665,12 @@
     }
 
     init() {
+      // Re-load stats in case SokoNative bridge was injected after script evaluation
+      const loaded = this.loadStats();
+      if (loaded) {
+        this.stats = loaded;
+      }
+
       // Wire range buttons
       safeQueryAll('.range-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {

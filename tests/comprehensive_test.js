@@ -344,6 +344,27 @@ assert(window.downloadedSet.size === 1, `downloadedSet size is 1 (does NOT reset
 window.updateStorageMetrics();
 assert(storageStatsEl.innerText.includes('1 real songs'), `Post-restart metrics retains all downloaded tracks: "${storageStatsEl.innerText}"`);
 
+// Verify Listening Time Persistence across App Force Stop / Reboot
+console.log('Testing Listening Time Persistence across App Force Stop / Reboot...');
+assert(window.listeningTracker, 'listeningTracker exists');
+window.listeningTracker.onPlay('kPa7bsKwL-c', true);
+window.listeningTracker.unsavedSeconds = 125; // simulate 2m 5s listening
+window.listeningTracker.flushToStorage();
+
+const rawSavedStats = localStorage.getItem('soko_listening_stats_v2');
+assert(rawSavedStats, 'soko_listening_stats_v2 saved to localStorage');
+const parsedBeforeRestart = JSON.parse(rawSavedStats);
+assert(parsedBeforeRestart.allTimeSeconds >= 125, `Saved allTimeSeconds >= 125 (actual: ${parsedBeforeRestart.allTimeSeconds})`);
+
+// Wipe in-memory state (simulate process kill)
+window.listeningTracker.stats = { allTimeSeconds: 0, daily: {} };
+assert(window.listeningTracker.stats.allTimeSeconds === 0, 'In-memory listeningTracker reset (simulating kill)');
+
+// Rehydrate on app start
+window.initPersistentStorage();
+assert(window.listeningTracker.stats.allTimeSeconds >= 125, `Post-restart listeningTracker retained listening time (actual: ${window.listeningTracker.stats.allTimeSeconds}s)`);
+assert(window.listeningTracker.getTodayTotalSeconds() >= 125, `Post-restart today total seconds retained (actual: ${window.listeningTracker.getTodayTotalSeconds()}s)`);
+
 // ------------------------------------------------------------
 // TEST SUITE 4: Playlist Creation & Persistence
 // ------------------------------------------------------------

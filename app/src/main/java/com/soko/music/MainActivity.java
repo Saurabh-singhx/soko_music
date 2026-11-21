@@ -348,6 +348,22 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.evaluateJavascript("if (window.listeningTracker && typeof window.listeningTracker.flushToStorage === 'function') { try { window.listeningTracker.flushToStorage(); } catch(e){} }", null);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (webView != null) {
+            webView.evaluateJavascript("if (window.listeningTracker && typeof window.listeningTracker.flushToStorage === 'function') { try { window.listeningTracker.flushToStorage(); } catch(e){} }", null);
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (noisyAudioReceiver != null) {

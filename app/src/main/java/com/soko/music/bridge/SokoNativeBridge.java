@@ -1,6 +1,7 @@
 package com.soko.music.bridge;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
@@ -220,5 +221,32 @@ public class SokoNativeBridge {
     @JavascriptInterface
     public void sendAuthenticatedTelemetryPing(final String urlString, final String cookies) {
         if (telemetryBridge != null) telemetryBridge.sendAuthenticatedTelemetryPing(urlString, cookies);
+    }
+
+    @JavascriptInterface
+    public String getStoredListeningStats() {
+        if (activity != null) {
+            try {
+                return activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                    .getString("listening_stats_v2", "");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed reading stored listening stats", e);
+            }
+        }
+        return "";
+    }
+
+    @JavascriptInterface
+    public void setStoredListeningStats(final String statsJson) {
+        if (activity != null && statsJson != null) {
+            try {
+                activity.getSharedPreferences("soko_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("listening_stats_v2", statsJson)
+                    .commit();
+            } catch (Exception e) {
+                Log.w(TAG, "Failed persisting stored listening stats", e);
+            }
+        }
     }
 }

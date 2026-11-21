@@ -127,6 +127,16 @@ function initPersistentStorage() {
           }
         }
 
+        // 5. Rehydrate real-time listening tracker
+        if (typeof window !== 'undefined' && window.listeningTracker && typeof window.listeningTracker.loadStats === 'function') {
+          try {
+            window.listeningTracker.stats = window.listeningTracker.loadStats();
+            if (typeof window.listeningTracker.renderUI === 'function') {
+              window.listeningTracker.renderUI();
+            }
+          } catch (e) {}
+        }
+
         if (purgedAny) {
           persistDownloadState();
         }
