@@ -1,40 +1,220 @@
 /* ============================================================ */
-/* GLOBAL TOAST NOTIFICATION - Vibrant Light Redesign           */
+/* SOKO PEEKING CHARACTER NOTIFICATION - New Alert UI           */
 /* ============================================================ */
 
-.global-toast {
-  position: fixed;
-  top: calc(var(--safe-top) + 64px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  background: #111827;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #FFFFFF;
-  padding: 9px 18px;
-  border-radius: var(--radius-full);
-  font-size: 12.5px;
-  font-weight: 700;
+/* Full-viewport clipping layer so the off-screen half of the logo stays hidden */
+.soko-alert-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9999;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.soko-alert-row {
+  position: absolute;
+  top: calc(var(--safe-top, 0px) + 64px);
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.25);
+  min-height: 68px;
+}
+
+/* ---------- Half-Peeking Character (App Logo) ---------- */
+.soko-peek-logo {
+  position: absolute;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  margin-top: -32px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffffff 0%, #fff5ee 100%);
+  border: 2px solid rgba(255, 107, 43, 0.35);
+  box-shadow: 0 8px 22px rgba(255, 107, 43, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+  /* Retreat easing (overridden on peek-in) */
+  transition: transform 340ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Right-edge placement */
+.side-right .soko-peek-logo {
+  right: 0;
+  transform: translateX(115%) rotate(0deg);
+}
+.side-right .soko-peek-logo.is-peeking {
+  transform: translateX(46%) rotate(-12deg);
+  transition: transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Left-edge placement */
+.side-left .soko-peek-logo {
+  left: 0;
+  transform: translateX(-115%) rotate(0deg);
+}
+.side-left .soko-peek-logo.is-peeking {
+  transform: translateX(-46%) rotate(12deg);
+  transition: transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Gentle idle float on inner wrapper so it never overrides outer transform */
+.soko-peek-bob {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.soko-peek-logo.is-peeking .soko-peek-bob {
+  animation: sokoFloat 2.2s ease-in-out infinite;
+}
+@keyframes sokoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}
+
+/* ---------- Messenger Speech Bubble ---------- */
+.soko-bubble {
+  position: relative;
+  max-width: min(270px, calc(100vw - 72px));
+  min-height: 44px;
+  padding: 10px 14px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 107, 43, 0.28);
+  box-shadow: 0 10px 28px rgba(18, 22, 33, 0.12), 0 2px 6px rgba(255, 107, 43, 0.1);
   opacity: 0;
   pointer-events: none;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 400;
-  max-width: 90%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  cursor: pointer;
+  will-change: transform, opacity;
+  transition: transform 240ms cubic-bezier(0.34, 1.45, 0.64, 1), opacity 200ms ease;
 }
 
-.global-toast.show {
-  transform: translateX(-50%) translateY(0);
+.side-right .soko-bubble {
+  margin-left: auto;
+  margin-right: 48px;
+  transform-origin: right center;
+  transform: scale(0.76) translateX(14px);
+}
+.side-left .soko-bubble {
+  margin-right: auto;
+  margin-left: 48px;
+  transform-origin: left center;
+  transform: scale(0.76) translateX(-14px);
+}
+
+.soko-bubble.is-open {
   opacity: 1;
+  transform: scale(1) translateX(0);
+  pointer-events: auto;
 }
 
-#toastIcon {
-  color: var(--brand-orange);
-  display: inline-flex;
+/* Directional Speech Tail */
+.soko-tail {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  background: rgba(255, 255, 255, 0.96);
+  transform: rotate(45deg);
+}
+.side-right .soko-tail {
+  right: -6px;
+  border-top: 1px solid rgba(255, 107, 43, 0.28);
+  border-right: 1px solid rgba(255, 107, 43, 0.28);
+}
+.side-left .soko-tail {
+  left: -6px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.28);
+  border-left: 1px solid rgba(255, 107, 43, 0.28);
+}
+
+/* ---------- Typing Dots ---------- */
+.soko-typing {
+  display: none;
   align-items: center;
+  gap: 5px;
+  padding: 6px 4px;
+}
+.soko-bubble.is-typing .soko-typing {
+  display: flex;
+}
+.soko-bubble.is-typing .soko-body {
+  display: none;
+}
+
+.soko-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff6b2b;
+  animation: sokoDotBounce 0.9s infinite ease-in-out;
+}
+.soko-typing span:nth-child(2) { animation-delay: 0.14s; }
+.soko-typing span:nth-child(3) { animation-delay: 0.28s; }
+
+@keyframes sokoDotBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ---------- Alert Content & Countdown Bar ---------- */
+.soko-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: sokoFadeIn 180ms ease;
+}
+@keyframes sokoFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.soko-badge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #e85314;
+  background: rgba(255, 107, 43, 0.12);
+}
+
+.soko-message {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #16181d;
+}
+
+.soko-timer-track {
+  margin-top: 4px;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(22, 24, 29, 0.08);
+  overflow: hidden;
+}
+
+.soko-timer-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff8a3d, #ff5a1f);
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+
+/* Legacy fallback toast hidden */
+.global-toast {
+  display: none !important;
 }

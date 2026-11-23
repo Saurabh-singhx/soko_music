@@ -76,6 +76,8 @@ Thumbs.db
 # Logs & Temporary Scratch Files
 *.log
 *.tmp
+*.mp4
+new_notification_design/
 
 # Playwright Test Artifacts & Auth Sessions
 .playwright-session/

@@ -11,7 +11,6 @@ function createShelfCardHtml(track) {
     <div class="shelf-card" onclick="selectTrackToPlay('${track.id}')">
       <div class="shelf-card-art-wrapper">
         <img class="shelf-card-art" src="${coverSrc}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
-        ${isCached ? '<div class="offline-chip-mini">⚡ 160k</div>' : ''}
       </div>
       <div class="shelf-card-info">
         <div class="shelf-card-title">${track.title || 'Unknown Title'}</div>
@@ -33,7 +32,6 @@ function createYtmLineCardHtml(track, shelfId = null) {
     <div class="ytm-line-card" onclick="selectTrackToPlay('${track.id}', ${isRadioStart}, ${shelfArg})">
       <div class="ytm-line-art-wrapper">
         <img class="ytm-line-art" src="${coverSrc}" alt="${track.title || 'Track'}" onerror="if (typeof handleImageLoadError === 'function') handleImageLoadError(this, '${track.id}'); else { this.onerror=null; this.src='assets/logo.png'; }" loading="lazy" />
-        ${isCached ? '<div class="offline-chip-mini">⚡</div>' : ''}
       </div>
       <div class="ytm-line-info">
         <div class="ytm-line-title">${track.title || 'Unknown Title'}</div>

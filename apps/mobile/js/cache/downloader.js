@@ -29,7 +29,7 @@ window.onNativeDownloadProgress = function(trackId, percent) {
         if (autoPlay && currentTrack && currentTrack.id === trackId) {
           lastLoadedTrackId = trackId;
           if (typeof window !== 'undefined') window.lastLoadedTrackId = trackId;
-          showToast('✓ "' + track.title + '" playing from local storage!', '⚡');
+          // Download completion alert suppressed per user request
           const pendingResumeSec = (typeof window !== 'undefined' && window.__pendingOfflineResumeSec) ? window.__pendingOfflineResumeSec : 0;
           if (typeof window !== 'undefined') window.__pendingOfflineResumeSec = 0;
           setTimeout(() => {
@@ -42,7 +42,7 @@ window.onNativeDownloadProgress = function(trackId, percent) {
             }
           }, 300);
         } else if (!autoPlay) {
-          showToast('⚡ Pre-cached next song: "' + track.title + '"', '⚡');
+          // Pre-cached next song alert removed per user request
         }
         if (typeof recordLruPlay === 'function') {
           recordLruPlay(trackId);

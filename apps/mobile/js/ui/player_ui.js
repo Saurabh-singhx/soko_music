@@ -35,38 +35,37 @@ function updateLookAheadUI() {
 }
 
 function updateDownloadBannerUI(track, percent, complete) {
-  const banner = document.getElementById('activeDownloadBanner');
-  const titleEl = document.getElementById('dlBannerTitle');
-  const percentEl = document.getElementById('dlBannerPercent');
-  const fillEl = document.getElementById('dlBannerFill');
-  if (!banner) return;
+  const overlay = document.getElementById('miniDownloadOverlay');
+  const miniPlayer = document.getElementById('miniPlayer');
+  if (miniPlayer && miniPlayer.style.display === 'none') {
+    miniPlayer.style.display = 'flex';
+  }
 
-  if (complete) {
-    if (titleEl) titleEl.innerText = `✓ Downloaded ${track.title}`;
-    if (percentEl) {
-      percentEl.innerText = `100%`;
-      percentEl.style.color = '#10B981';
+  if (overlay) {
+    if (complete) {
+      overlay.style.width = '100%';
+      overlay.style.opacity = '1';
+      setTimeout(() => {
+        if (!activeDownloads || activeDownloads.size === 0) {
+          overlay.style.opacity = '0';
+          setTimeout(() => {
+            if (!activeDownloads || activeDownloads.size === 0) {
+              overlay.style.width = '0%';
+              overlay.style.opacity = '1';
+            }
+          }, 450);
+        }
+      }, 1200);
+    } else {
+      overlay.style.opacity = '1';
+      const safePercent = Math.max(0, Math.min(100, typeof percent === 'number' ? percent : 0));
+      overlay.style.width = `${safePercent}%`;
     }
-    if (fillEl) {
-      fillEl.style.width = '100%';
-      fillEl.style.background = '#10B981';
-    }
-    setTimeout(() => {
-      if (activeDownloads.size === 0) {
-        banner.style.display = 'none';
-      }
-    }, 2500);
-  } else {
-    banner.style.display = 'block';
-    if (titleEl) titleEl.innerText = `Downloading: ${track.title}`;
-    if (percentEl) {
-      percentEl.innerText = `${percent}%`;
-      percentEl.style.color = '#FF5A1F';
-    }
-    if (fillEl) {
-      fillEl.style.width = `${percent}%`;
-      fillEl.style.background = 'linear-gradient(90deg, #FF6B00, #FF5A1F)';
-    }
+  }
+
+  const banner = document.getElementById('activeDownloadBanner');
+  if (banner) {
+    banner.style.display = 'none';
   }
 }
 

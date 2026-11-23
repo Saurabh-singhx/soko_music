@@ -456,19 +456,12 @@
       </section>
     </main>
 
-    <!-- Floating Active Download Banner -->
-    <div id="activeDownloadBanner" class="active-download-banner">
-      <div class="dl-banner-content">
-        <span id="dlBannerTitle">Downloading...</span>
-        <span id="dlBannerPercent" style="color: var(--brand-orange); font-family: ui-monospace, monospace;">0%</span>
-      </div>
-      <div class="dl-progress-bar-bg">
-        <div id="dlBannerFill" class="dl-progress-bar-fill"></div>
-      </div>
-    </div>
+    <!-- Floating Active Download Banner (hidden, download progress displays in mini-player background) -->
+    <div id="activeDownloadBanner" class="active-download-banner" style="display: none !important;"></div>
 
     <!-- Mini Bottom Player Bar - Vibrant Light Redesign -->
     <div class="mini-player" id="miniPlayer" onclick="openNowPlayingModal()">
+      <div id="miniDownloadOverlay" class="mini-download-overlay"></div>
       <div class="mini-progress-track">
         <div id="miniProgressFill" class="mini-progress-fill"></div>
       </div>
@@ -793,8 +786,57 @@
       </div>
     </div>
 
-    <!-- Global Toast -->
-    <div id="globalToast" class="global-toast">
+    <!-- New Soko Peeking Alert Notification UI -->
+    <div id="soko-alert-layer" class="soko-alert-layer" aria-live="polite">
+      <div id="soko-alert-row" class="soko-alert-row side-right">
+        <!-- Messenger Bubble -->
+        <div id="soko-bubble" class="soko-bubble" role="status">
+          <div class="soko-typing" id="soko-typing">
+            <span></span><span></span><span></span>
+          </div>
+
+          <div class="soko-body" id="soko-body">
+            <span class="soko-badge" id="soko-badge">SOKO</span>
+            <div class="soko-message" id="soko-message"></div>
+            <div class="soko-timer-track">
+              <div class="soko-timer-fill" id="soko-timer-fill"></div>
+            </div>
+          </div>
+
+          <span class="soko-tail" aria-hidden="true"></span>
+        </div>
+
+        <!-- Half-Peeking Logo Character (No Body) -->
+        <div id="soko-peek-logo" class="soko-peek-logo" aria-hidden="true">
+          <div class="soko-peek-bob">
+            <svg viewBox="0 0 64 64" width="40" height="40" fill="none">
+              <defs>
+                <linearGradient id="sokoHeadphoneGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#6B7BFF" />
+                  <stop offset="100%" stop-color="#8A4FFF" />
+                </linearGradient>
+                <linearGradient id="sokoBoltGrad" x1="26" y1="20" x2="38" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#FFB830" />
+                  <stop offset="100%" stop-color="#FF5A1F" />
+                </linearGradient>
+              </defs>
+              <!-- Headphones Arc -->
+              <path d="M14 34V31C14 21.06 22.06 13 32 13C41.94 13 50 21.06 50 31V34"
+                    stroke="url(#sokoHeadphoneGrad)" stroke-width="5.5" stroke-linecap="round"/>
+              <!-- Ear Cups -->
+              <rect x="9" y="31" width="9" height="17" rx="4.5" fill="url(#sokoHeadphoneGrad)"/>
+              <rect x="46" y="31" width="9" height="17" rx="4.5" fill="url(#sokoHeadphoneGrad)"/>
+              <!-- Center Lightning Bolt -->
+              <path d="M34.5 20L24.5 34.5H31.5L29.5 46L39.5 31.5H32.5L34.5 20Z"
+                    fill="url(#sokoBoltGrad)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legacy hidden toast elements for fallback compatibility -->
+    <div id="globalToast" class="global-toast" style="display: none !important;">
       <span id="toastIcon">⚡</span>
       <span id="toastMsg">Ready</span>
     </div>
